@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Dashboard Financiero · Cristian</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f4ef;
+    --bg-tertiary: #faf9f5;
+    --text-primary: #2c2c2a;
+    --text-secondary: #6b6b66;
+    --text-tertiary: #a0a09a;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.2);
+    --success-bg: #eaf3de;
+    --success-text: #3b6d11;
+    --danger-bg: #fcebeb;
+    --danger-text: #a32d2d;
+    --warning-bg: #faeeda;
+    --warning-text: #854f0b;
+    --info-bg: #e6f1fb;
+    --info-text: #185fa5;
+    --purple-bg: #eeedfe;
+    --purple-text: #3c3489;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f;
+      --text-primary: #e8e6df; --text-secondary: #a8a8a0; --text-tertiary: #757570;
+      --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
+      --success-bg: #173404; --success-text: #c0dd97;
+      --danger-bg: #501313; --danger-text: #f09595;
+      --warning-bg: #412402; --warning-text: #fac775;
+      --info-bg: #042c53; --info-text: #85b7eb;
+      --purple-bg: #26215c; --purple-text: #cecbf6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-tertiary); color: var(--text-primary); margin: 0; padding: 24px 16px; line-height: 1.5; }
+  .wrapper { max-width: 1100px; margin: 0 auto; }
+  .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; }
+  h1 { margin: 0; font-size: 24px; font-weight: 500; }
+  .subtitle { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
+  button, select, input { font-family: inherit; font-size: 13px; color: var(--text-primary); }
+  button { background: transparent; border: 0.5px solid var(--border-strong); border-radius: var(--radius-md); padding: 8px 14px; cursor: pointer; transition: all 0.15s; }
+  button:hover { background: var(--bg-secondary); }
+  button:active { transform: scale(0.98); }
+  input, select { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 8px 12px; width: 100%; height: 36px; }
+  input:focus, select:focus { outline: none; border-color: var(--info-text); box-shadow: 0 0 0 2px rgba(55, 138, 221, 0.15); }
+  .reset-btn { font-size: 11px !important; padding: 6px 10px !important; color: var(--text-tertiary) !important; }
+  .fin-tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; border-bottom: 0.5px solid var(--border); padding-bottom: 8px; flex-wrap: wrap; }
+  .fin-tab { padding: 8px 14px; font-size: 13px; cursor: pointer; border-radius: var(--radius-md); border: 0.5px solid transparent; background: transparent; color: var(--text-secondary); transition: all 0.15s; }
+  .fin-tab:hover { background: var(--bg-secondary); }
+  .fin-tab.active { background: var(--bg-secondary); color: var(--text-primary); font-weight: 500; border-color: var(--border); }
+  .fin-section { display: none; }
+  .fin-section.active { display: block; }
+  .fin-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .fin-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 1.5rem; }
+  .metric-card { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 14px 16px; }
+  .metric-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .metric-value { font-size: 24px; font-weight: 500; }
+  .metric-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+  .raised-card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 15px; font-weight: 500; margin: 0 0 14px; }
+  .form-row-3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .form-row-debt { display: grid; grid-template-columns: 1.4fr 1fr 0.8fr 0.8fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .form-row-goal { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .form-row-pocket { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .form-row-budget { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+  @media (max-width: 640px) { .form-row-3, .form-row-debt, .form-row-goal, .form-row-pocket, .form-row-budget { grid-template-columns: 1fr; }}
+  .item-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; padding: 10px 0; border-bottom: 0.5px solid var(--border); align-items: center; font-size: 13px; }
+  .delete-btn { padding: 4px 10px !important; font-size: 12px !important; color: var(--danger-text) !important; border-color: var(--border) !important; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-md); font-size: 11px; font-weight: 500; }
+  .badge-income { background: var(--success-bg); color: var(--success-text); }
+  .progress-bar { height: 6px; background: var(--bg-secondary); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; background: var(--info-text); transition: width 0.3s; }
+  .progress-fill.danger { background: var(--danger-text); }
+  .progress-fill.success { background: var(--success-text); }
+  .progress-fill.warning { background: var(--warning-text); }
+  .empty-state { text-align: center; padding: 24px; color: var(--text-tertiary); font-size: 13px; }
+  .chart-container { position: relative; height: 280px; margin-top: 8px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; font-size: 13px; }
+  .summary-row + .summary-row { border-top: 0.5px solid var(--border); }
+  .alert { padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 12px; }
+  .alert-success { background: var(--success-bg); color: var(--success-text); }
+  .alert-warning { background: var(--warning-bg); color: var(--warning-text); }
+  .alert-danger { background: var(--danger-bg); color: var(--danger-text); }
+  .alert-info { background: var(--info-bg); color: var(--info-text); }
+  .health-meter { display: flex; align-items: center; gap: 16px; padding: 16px 18px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: 1rem; }
+  .health-score { font-size: 36px; font-weight: 500; min-width: 70px; }
+  .health-info { flex: 1; }
+  .health-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .health-status { font-size: 14px; font-weight: 500; }
+  .net-worth-card { background: linear-gradient(135deg, var(--purple-bg), var(--info-bg)); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 1.5rem; border: 0.5px solid var(--border); }
+  .net-worth-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+  .net-worth-value { font-size: 32px; font-weight: 500; color: var(--text-primary); }
+  .net-worth-detail { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+  .pocket-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .pocket-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; position: relative; }
+  .pocket-name { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .pocket-amount { font-size: 18px; font-weight: 500; }
+  .pocket-pct { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+  .pocket-delete { position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity 0.15s; padding: 2px 8px !important; font-size: 11px !important; }
+  .pocket-card:hover .pocket-delete { opacity: 1; }
+  .footer-note { text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 2rem; padding: 1rem; }
+  .controls-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .controls-right select { width: auto; min-width: 100px; }
+  .insight-box { background: var(--info-bg); border-left: 3px solid var(--info-text); border-radius: 0 var(--radius-md) var(--radius-md) 0; padding: 12px 14px; margin-bottom: 12px; font-size: 13px; color: var(--info-text); }
+  .insight-box.success { background: var(--success-bg); border-left-color: var(--success-text); color: var(--success-text); }
+  .insight-box.danger { background: var(--danger-bg); border-left-color: var(--danger-text); color: var(--danger-text); }
+  .budget-row { display: grid; grid-template-columns: 1.5fr 1fr 1.2fr 1fr; gap: 8px; padding: 10px 0; border-bottom: 0.5px solid var(--border); align-items: center; font-size: 13px; }
+  .budget-row.header { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 500; padding: 6px 0; }
+  .budget-bar-cell { display: flex; flex-direction: column; gap: 4px; }
+  .budget-bar { height: 5px; background: var(--bg-secondary); border-radius: 999px; overflow: hidden; }
+  .budget-fill { height: 100%; transition: width 0.3s; }
+  .budget-fill.ok { background: var(--success-text); }
+  .budget-fill.warn { background: var(--warning-text); }
+  .budget-fill.over { background: var(--danger-text); }
+  .budget-status { font-size: 11px; }
+  .budget-status.ok { color: var(--success-text); }
+  .budget-status.warn { color: var(--warning-text); }
+  .budget-status.over { color: var(--danger-text); }
+  .balance-positive { color: var(--success-text); }
+  .balance-negative { color: var(--danger-text); }
+  .quick-add { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; align-items: center; }
+  .month-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .month-selector select { width: auto; min-width: 140px; }
+  .tx-row { display: grid; grid-template-columns: 70px 1.5fr 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); align-items: center; font-size: 12px; }
+  .tx-row .tx-date { color: var(--text-tertiary); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="header-row">
+    <div>
+      <h1>Mi dashboard financiero</h1>
+      <p class="subtitle">Cristian Camilo · Datos guardados en este navegador</p>
+    </div>
+    <div class="controls-right">
+      <select id="currency-select"><option value="COP" selected>COP $</option></select>
+      <button onclick="exportData()">Exportar</button>
+      <button onclick="importData()">Importar</button>
+      <button class="reset-btn" onclick="resetData()">Resetear</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" />
+    </div>
+  </div>
+
+  <div class="fin-tabs">
+    <button class="fin-tab active" data-tab="resumen">Resumen</button>
+    <button class="fin-tab" data-tab="presupuesto">Presupuesto</button>
+    <button class="fin-tab" data-tab="bolsillos">Bolsillos</button>
+    <button class="fin-tab" data-tab="ingresos">Ingresos</button>
+    <button class="fin-tab" data-tab="deudas">Tarjetas</button>
+    <button class="fin-tab" data-tab="metas">Metas</button>
+  </div>
+
+  <div class="fin-section active" id="section-resumen">
+    <div class="net-worth-card">
+      <div class="net-worth-label">Patrimonio neto (ahorros − deudas)</div>
+      <div class="net-worth-value" id="net-worth">—</div>
+      <div class="net-worth-detail" id="net-worth-detail"></div>
+    </div>
+    <div id="alerts-container"></div>
+    <div class="health-meter">
+      <div class="health-score" id="health-score">—</div>
+      <div class="health-info">
+        <div class="health-label">Salud financiera</div>
+        <div class="health-status" id="health-status">Calculando...</div>
+        <div class="progress-bar" style="margin-top: 8px;"><div class="progress-fill" id="health-progress" style="width: 0%"></div></div>
+      </div>
+    </div>
+    <div class="fin-grid-4">
+      <div class="metric-card"><div class="metric-label">Total ahorrado</div><div class="metric-value" id="m-savings" style="color: var(--success-text);">—</div><div class="metric-sub" id="m-savings-detail"></div></div>
+      <div class="metric-card"><div class="metric-label">Ingresos mensuales</div><div class="metric-value" id="m-income" style="color: var(--success-text);">—</div></div>
+      <div class="metric-card"><div class="metric-label">Gastos mensuales</div><div class="metric-value" id="m-expense" style="color: var(--danger-text);">—</div><div class="metric-sub" id="m-savings-rate"></div></div>
+      <div class="metric-card"><div class="metric-label">Margen mensual</div><div class="metric-value" id="m-margin">—</div><div class="metric-sub" id="m-margin-detail"></div></div>
+    </div>
+    <div class="fin-grid-2">
+      <div class="raised-card"><p class="card-title">Distribución de ahorros</p><div class="chart-container"><canvas id="chart-pockets"></canvas></div></div>
+      <div class="raised-card"><p class="card-title">Flujo mensual</p><div class="chart-container"><canvas id="chart-comparison"></canvas></div></div>
+    </div>
+    <div class="raised-card"><p class="card-title">Resumen ejecutivo</p><div id="summary-content"></div></div>
+    <div class="raised-card" style="border: 0.5px solid var(--success-text);">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+        <p class="card-title" style="margin: 0;">Rendimientos de tus ahorros</p>
+        <div style="display: flex; gap: 8px; align-items: center; font-size: 12px;">
+          <label style="color: var(--text-secondary);">Tasa anual:</label>
+          <input type="number" id="interest-rate" step="0.01" min="0" max="100" style="width: 80px; height: 30px; font-size: 12px;" />
+          <span style="color: var(--text-secondary);">% EA</span>
+        </div>
+      </div>
+      <div id="returns-content"></div>
+    </div>
+
+    <div class="raised-card" style="border: 0.5px solid var(--info-text);">
+      <p class="card-title">💳 Estrategia de cashback + float (lo que ya haces bien)</p>
+      <div id="cashback-strategy"></div>
+    </div>
+  </div>
+
+  <div class="fin-section" id="section-presupuesto">
+    <div class="insight-box">
+      <strong>Cómo funciona:</strong> Define un presupuesto mensual por categoría, registra cada gasto cuando ocurra, y verás cuánto te queda disponible en tiempo real. Cambia de mes en el selector para ver historial.
+    </div>
+    <div class="month-selector">
+      <label style="font-size: 13px; color: var(--text-secondary);">Mes:</label>
+      <select id="month-select"></select>
+    </div>
+    <div id="budget-summary"></div>
+    <div class="raised-card">
+      <p class="card-title">Presupuesto vs gasto real por categoría</p>
+      <div class="budget-row header">
+        <div>Categoría</div><div>Presupuesto</div><div>Gastado</div><div style="text-align: right;">Disponible</div>
+      </div>
+      <div id="budget-list"></div>
+      <div class="summary-row" style="margin-top: 12px;"><span style="font-weight: 500;">Total presupuestado</span><span id="budget-total" style="font-weight: 500;">—</span></div>
+      <div class="summary-row"><span style="font-weight: 500;">Total gastado</span><span id="budget-spent-total" style="font-weight: 500; color: var(--danger-text);">—</span></div>
+      <div class="summary-row"><span style="font-weight: 500;">Disponible restante</span><span id="budget-available-total" style="font-weight: 500;">—</span></div>
+    </div>
+    <div class="raised-card">
+      <p class="card-title">Registrar gasto</p>
+      <div class="quick-add">
+        <input type="text" id="tx-desc" placeholder="¿En qué gastaste?" />
+        <input type="number" id="tx-amount" placeholder="Monto" min="0" step="0.01" />
+        <select id="tx-category"></select>
+        <button onclick="addTransaction()">Agregar</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; align-items: center;">
+        <input type="date" id="tx-date" />
+        <span style="font-size: 11px; color: var(--text-tertiary);">Fecha del gasto</span>
+      </div>
+    </div>
+    <div class="raised-card">
+      <p class="card-title">Movimientos del mes</p>
+      <div id="tx-list"></div>
+    </div>
+    <div class="raised-card">
+      <p class="card-title">Editar presupuestos</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Define cuánto quieres gastar como máximo en cada categoría</p>
+      <div id="budget-edit"></div>
+    </div>
+  </div>
+
+  <div class="fin-section" id="section-bolsillos">
+    <div class="raised-card">
+      <p class="card-title">Agregar bolsillo</p>
+      <div class="form-row-pocket">
+        <input type="text" id="pocket-name" placeholder="Nombre" />
+        <input type="number" id="pocket-amount" placeholder="Monto ahorrado" min="0" step="0.01" />
+        <select id="pocket-icon">
+          <option value="💰">💰 Operativo</option><option value="✈️">✈️ Viajes</option>
+          <option value="🛟">🛟 Emergencia</option><option value="🎓">🎓 Educación</option>
+          <option value="❤️">❤️ Personal</option><option value="⚡">⚡ Servicios</option>
+          <option value="🍻">🍻 Vida Social</option><option value="🏠">🏠 Vivienda</option>
+          <option value="📈">📈 Inversión</option>
+        </select>
+        <button onclick="addPocket()">Agregar</button>
+      </div>
+    </div>
+    <div class="raised-card">
+      <p class="card-title">Mis bolsillos</p>
+      <div id="pocket-list" class="pocket-grid"></div>
+      <div class="summary-row" style="margin-top: 16px; font-weight: 500;"><span>Total en bolsillos</span><span id="pocket-total" style="color: var(--success-text);">—</span></div>
+    </div>
+  </div>
+
+  <div class="fin-section" id="section-ingresos">
+    <div class="raised-card">
+      <p class="card-title">Agregar ingreso</p>
+      <div class="form-row-3">
+        <input type="text" id="income-name" placeholder="Concepto" />
+        <input type="number" id="income-amount" placeholder="Monto" min="0" step="0.01" />
+        <select id="income-frequency"><option value="monthly">Mensual</option><option value="biweekly">Quincenal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option><option value="once">Una sola vez</option></select>
+        <button onclick="addIncome()">Agregar</button>
+      </div>
+    </div>
+    <div class="raised-card">
+      <p class="card-title">Mis ingresos</p>
+      <div id="income-list"></div>
+      <div class="summary-row" style="margin-top: 12px; font-weight: 500;"><span>Total mensual equivalente</span><span id="income-total" style="color: var(--success-text);">—</span></div>
+    </div>
+  </div>
+
+  <div class="fin-section" id="section-deudas">
+    <div class="insight-box success"><strong>Buen hábito:</strong> Pagas tus tarjetas completas cada mes evitando intereses.</div>
+    <div class="raised-card">
+      <p class="card-title">Agregar tarjeta</p>
+      <div class="form-row-debt">
+        <input type="text" id="debt-name" placeholder="Nombre" />
+        <input type="number" id="debt-balance" placeholder="Saldo actual" min="0" step="0.01" />
+        <input type="number" id="debt-rate" placeholder="Tasa % anual" min="0" step="0.01" value="0" />
+        <input type="number" id="debt-payment" placeholder="Cupo total" min="0" step="0.01" />
+        <button onclick="addDebt()">Agregar</button>
+      </div>
+    </div>
+    <div class="raised-card">
+      <p class="card-title">Mis tarjetas</p>
+      <div id="debt-list"></div>
+      <div class="summary-row" style="margin-top: 12px;"><span>Saldo total</span><span id="debt-total" style="font-weight: 500; color: var(--warning-text);">—</span></div>
+      <div class="summary-row"><span>Cupo disponible</span><span id="debt-available" style="font-weight: 500; color: var(--success-text);">—</span></div>
+      <div class="summary-row"><span>Utilización</span><span id="debt-utilization" style="font-weight: 500;">—</span></div>
+    </div>
+  </div>
+
+  <div class="fin-section" id="section-metas">
+    <div class="raised-card">
+      <p class="card-title">Agregar meta</p>
+      <div class="form-row-goal">
+        <input type="text" id="goal-name" placeholder="Meta" />
+        <input type="number" id="goal-target" placeholder="Monto objetivo" min="0" step="0.01" />
+        <input type="number" id="goal-current" placeholder="Ya ahorrado" min="0" step="0.01" value="0" />
+        <button onclick="addGoal()">Agregar</button>
+      </div>
+    </div>
+    <div class="raised-card"><p class="card-title">Mis metas</p><div id="goal-list"></div></div>
+  </div>
+
+  <div class="footer-note">Tus datos se guardan en este navegador. Usa "Exportar" como respaldo.</div>
+</div>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'finance-dashboard-cristian-v4';
+
+  const CATEGORIES = [
+    // FIJOS NO NEGOCIABLES
+    { id: 'servicios_casa', label: 'Servicios + aporte casa', icon: '🏠', tipo: 'fijo' },
+    // ESTILO DE VIDA FIJO (poco margen)
+    { id: 'uber', label: 'Uber (mi mitad)', icon: '🚗', tipo: 'estilo' },
+    { id: 'celular', label: 'Plan celular', icon: '📞', tipo: 'estilo' },
+    { id: 'gimnasio', label: 'Gimnasio', icon: '💪', tipo: 'estilo' },
+    { id: 'streaming', label: 'Streaming (YouTube, etc.)', icon: '📺', tipo: 'estilo' },
+    // VARIABLES (donde tienes control)
+    { id: 'comida_fuera', label: 'Comer fuera (solo)', icon: '🍔', tipo: 'variable' },
+    { id: 'rappi', label: 'Domicilios Rappi', icon: '🛵', tipo: 'variable' },
+    { id: 'salidas_milena', label: 'Salidas con Milena (mi mitad)', icon: '🎭', tipo: 'variable' },
+    { id: 'gasolina', label: 'Gasolina', icon: '⛽', tipo: 'variable' },
+    { id: 'mascota', label: 'Zlatan (base mensual)', icon: '🐾', tipo: 'variable' },
+    { id: 'mascota_extra', label: 'Veterinaria/imprevistos Zlatan', icon: '🏥', tipo: 'variable' },
+    { id: 'compras', label: 'Compras varias', icon: '🛍️', tipo: 'variable' },
+    { id: 'salud', label: 'Salud / medicina', icon: '💊', tipo: 'variable' },
+    { id: 'otros', label: 'Otros', icon: '📋', tipo: 'variable' }
+  ];
+
+  function getCurrentMonthKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function getMonthLabel(k) {
+    const [y, m] = k.split('-').map(Number);
+    const ms = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return ms[m-1] + ' ' + y;
+  }
+
+  const DEFAULT_BUDGETS = {
+    // Fijos
+    servicios_casa: 750000,
+    // Estilo de vida (valores reales del usuario)
+    uber: 200000,
+    celular: 45000,
+    gimnasio: 99900,
+    streaming: 47000,
+    // Variables (valores reales del usuario)
+    comida_fuera: 100000,
+    rappi: 0,
+    salidas_milena: 200000,
+    gasolina: 120000,
+    mascota: 312500,
+    mascota_extra: 0,
+    compras: 0,
+    salud: 0,
+    otros: 0
+  };
+
+  const initialMonth = getCurrentMonthKey();
+  const DEFAULT_STATE = {
+    currency: 'COP', interestRate: 7.87,
+    interestBank: 'Lulo Bank Pro (tasa efectiva real)',
+    pockets: [
+      { id: 1, name: 'Fondo de Emergencias', amount: 7560327.94, icon: '🛟' },
+      { id: 2, name: 'Flujo Operativo', amount: 1200813.76, icon: '💰' },
+      { id: 4, name: 'Universidad', amount: 752348.33, icon: '🎓' },
+      { id: 5, name: 'Servicios', amount: 750000, icon: '⚡' },
+      { id: 6, name: 'Vida Social', amount: 400000, icon: '🍻' },
+      { id: 7, name: 'Gastos Fijos del mes', amount: 383432.27, icon: '🏠' },
+      { id: 8, name: 'Zlatan', amount: 245000, icon: '❤️' }
+    ],
+    incomes: [
+      { id: 101, name: 'Salario', amount: 2000000, frequency: 'monthly' },
+      { id: 102, name: 'Rendimientos Lulo Bank (neto)', amount: 75000, frequency: 'monthly' },
+      { id: 103, name: 'Cashback tarjetas (1%)', amount: 23500, frequency: 'monthly' }
+    ],
+    debts: [
+      { id: 301, name: 'RappiCard Davivienda', balance: 114567, rate: 0, payment: 4800000 },
+      { id: 302, name: 'Tarjeta cupo $12.2M', balance: 365075, rate: 0, payment: 12200000 }
+    ],
+    goals: [
+      { id: 401, name: 'Viajes Futuros', target: 1500000, current: 820301.04 }
+    ],
+    budgets: { [initialMonth]: { ...DEFAULT_BUDGETS } },
+    transactions: {}
+  };
+
+  let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  let chartPockets = null, chartComparison = null;
+  let currentMonth = initialMonth;
+  const FREQ = { monthly: 1, biweekly: 2, weekly: 4.33, yearly: 1/12, once: 0 };
+
+  function fmt(n) {
+    if (isNaN(n) || n === null) return '—';
+    return '$ ' + Math.round(n).toLocaleString('es-CO');
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const loaded = JSON.parse(raw);
+        state = { ...DEFAULT_STATE, ...loaded };
+        if (!state.budgets) state.budgets = { [currentMonth]: { ...DEFAULT_BUDGETS } };
+        if (!state.transactions) state.transactions = {};
+      }
+    } catch(e) { console.error(e); }
+    populateCategories();
+    populateMonths();
+    setDefaultDate();
+    renderAll();
+  }
+
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  }
+
+  function setDefaultDate() {
+    const d = new Date().toISOString().split('T')[0];
+    const el = document.getElementById('tx-date');
+    if (el && !el.value) el.value = d;
+  }
+
+  function populateCategories() {
+    const sel = document.getElementById('tx-category');
+    if (sel) sel.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
+  }
+
+  function populateMonths() {
+    const sel = document.getElementById('month-select');
+    if (!sel) return;
+    const all = new Set([currentMonth, ...Object.keys(state.budgets || {}), ...Object.keys(state.transactions || {})]);
+    const sorted = Array.from(all).sort().reverse();
+    sel.innerHTML = sorted.map(m => `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${getMonthLabel(m)}</option>`).join('');
+    sel.onchange = (e) => {
+      currentMonth = e.target.value;
+      if (!state.budgets[currentMonth]) {
+        state.budgets[currentMonth] = { ...DEFAULT_BUDGETS };
+        saveState();
+      }
+      renderBudget(); renderTransactions();
+    };
+  }
+
+  const totalPockets = () => state.pockets.reduce((s, p) => s + p.amount, 0);
+  const totalIncome = () => state.incomes.reduce((s, i) => s + i.amount * (FREQ[i.frequency] || 0), 0);
+  const totalDebt = () => state.debts.reduce((s, d) => s + d.balance, 0);
+  const totalLimit = () => state.debts.reduce((s, d) => s + d.payment, 0);
+  function totalBudget() { const b = state.budgets[currentMonth] || {}; return Object.values(b).reduce((s, v) => s + (parseFloat(v) || 0), 0); }
+  function totalSpent() { const t = state.transactions[currentMonth] || []; return t.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0); }
+  function spentByCategory(id) { const t = state.transactions[currentMonth] || []; return t.filter(x => x.category === id).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0); }
+
+  document.querySelectorAll('.fin-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fin-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.fin-section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('section-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'resumen') setTimeout(renderCharts, 50);
+      if (btn.dataset.tab === 'presupuesto') { renderBudget(); renderTransactions(); }
+    });
+  });
+
+  setTimeout(() => {
+    const r = document.getElementById('interest-rate');
+    if (r) {
+      r.value = state.interestRate || 0;
+      r.addEventListener('change', e => { state.interestRate = parseFloat(e.target.value) || 0; saveState(); renderAll(); });
+    }
+  }, 100);
+
+  window.exportData = function() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'mis-finanzas-' + new Date().toISOString().split('T')[0] + '.json';
+    a.click(); URL.revokeObjectURL(url);
+  };
+  window.importData = function() { document.getElementById('import-file').click(); };
+  document.getElementById('import-file').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const i = JSON.parse(ev.target.result);
+        if (confirm('¿Reemplazar tus datos?')) {
+          state = { ...DEFAULT_STATE, ...i };
+          saveState(); populateMonths(); renderAll(); alert('Importado');
+        }
+      } catch(err) { alert('Archivo inválido'); }
+    };
+    r.readAsText(f); e.target.value = '';
+  });
+
+  window.addPocket = function() {
+    const n = document.getElementById('pocket-name').value.trim();
+    const a = parseFloat(document.getElementById('pocket-amount').value);
+    const i = document.getElementById('pocket-icon').value;
+    if (!n || isNaN(a) || a < 0) return alert('Completa nombre y monto');
+    state.pockets.push({ id: Date.now(), name: n, amount: a, icon: i });
+    document.getElementById('pocket-name').value = '';
+    document.getElementById('pocket-amount').value = '';
+    saveState(); renderAll();
+  };
+  window.removePocket = function(id) {
+    if (!confirm('¿Eliminar?')) return;
+    state.pockets = state.pockets.filter(p => p.id !== id); saveState(); renderAll();
+  };
+  window.updatePocket = function(id, a) {
+    const p = state.pockets.find(x => x.id === id);
+    if (p) { p.amount = parseFloat(a) || 0; saveState(); renderResumen(); renderPockets(); }
+  };
+
+  window.addIncome = function() {
+    const n = document.getElementById('income-name').value.trim();
+    const a = parseFloat(document.getElementById('income-amount').value);
+    const f = document.getElementById('income-frequency').value;
+    if (!n || !a || a <= 0) return alert('Completa todo');
+    state.incomes.push({ id: Date.now(), name: n, amount: a, frequency: f });
+    document.getElementById('income-name').value = '';
+    document.getElementById('income-amount').value = '';
+    saveState(); renderAll();
+  };
+  window.removeIncome = function(id) { state.incomes = state.incomes.filter(i => i.id !== id); saveState(); renderAll(); };
+
+  window.addDebt = function() {
+    const n = document.getElementById('debt-name').value.trim();
+    const b = parseFloat(document.getElementById('debt-balance').value);
+    const r = parseFloat(document.getElementById('debt-rate').value) || 0;
+    const p = parseFloat(document.getElementById('debt-payment').value) || 0;
+    if (!n || isNaN(b) || b < 0) return alert('Completa todo');
+    state.debts.push({ id: Date.now(), name: n, balance: b, rate: r, payment: p });
+    document.getElementById('debt-name').value = '';
+    document.getElementById('debt-balance').value = '';
+    document.getElementById('debt-rate').value = '0';
+    document.getElementById('debt-payment').value = '';
+    saveState(); renderAll();
+  };
+  window.removeDebt = function(id) { state.debts = state.debts.filter(d => d.id !== id); saveState(); renderAll(); };
+  window.updateDebt = function(id, b) {
+    const d = state.debts.find(x => x.id === id);
+    if (d) { d.balance = parseFloat(b) || 0; saveState(); renderResumen(); renderDebts(); }
+  };
+
+  window.addGoal = function() {
+    const n = document.getElementById('goal-name').value.trim();
+    const t = parseFloat(document.getElementById('goal-target').value);
+    const c = parseFloat(document.getElementById('goal-current').value) || 0;
+    if (!n || !t || t <= 0) return alert('Completa todo');
+    state.goals.push({ id: Date.now(), name: n, target: t, current: c });
+    document.getElementById('goal-name').value = '';
+    document.getElementById('goal-target').value = '';
+    document.getElementById('goal-current').value = '0';
+    saveState(); renderAll();
+  };
+  window.removeGoal = function(id) { state.goals = state.goals.filter(g => g.id !== id); saveState(); renderAll(); };
+  window.updateGoal = function(id, c) {
+    const g = state.goals.find(x => x.id === id);
+    if (g) { g.current = parseFloat(c) || 0; saveState(); renderResumen(); renderGoals(); }
+  };
+
+  window.updateBudget = function(catId, v) {
+    if (!state.budgets[currentMonth]) state.budgets[currentMonth] = {};
+    state.budgets[currentMonth][catId] = parseFloat(v) || 0;
+    saveState(); renderBudget();
+  };
+
+  window.addTransaction = function() {
+    const d = document.getElementById('tx-desc').value.trim();
+    const a = parseFloat(document.getElementById('tx-amount').value);
+    const c = document.getElementById('tx-category').value;
+    const dt = document.getElementById('tx-date').value || new Date().toISOString().split('T')[0];
+    if (!d || !a || a <= 0) return alert('Completa descripción y monto');
+    const m = dt.substring(0, 7);
+    if (!state.transactions[m]) state.transactions[m] = [];
+    state.transactions[m].push({ id: Date.now(), date: dt, desc: d, amount: a, category: c });
+    document.getElementById('tx-desc').value = '';
+    document.getElementById('tx-amount').value = '';
+    saveState(); populateMonths(); renderBudget(); renderTransactions(); renderResumen();
+  };
+
+  window.removeTransaction = function(m, id) {
+    if (state.transactions[m]) {
+      state.transactions[m] = state.transactions[m].filter(t => t.id !== id);
+      saveState(); renderBudget(); renderTransactions(); renderResumen();
+    }
+  };
+
+  window.resetData = function() {
+    const c = prompt('Escribe "reset" para volver a los datos iniciales, o "borrar" para vaciar todo:');
+    if (c === 'reset') {
+      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      saveState(); renderAll();
+    } else if (c === 'borrar') {
+      state = { currency: 'COP', pockets: [], incomes: [], debts: [], goals: [], budgets: {}, transactions: {} };
+      saveState(); renderAll();
+    }
+  };
+
+  function renderPockets() {
+    const list = document.getElementById('pocket-list');
+    const total = totalPockets();
+    if (state.pockets.length === 0) {
+      list.innerHTML = '<div class="empty-state">Sin bolsillos</div>';
+    } else {
+      const sorted = [...state.pockets].sort((a, b) => b.amount - a.amount);
+      list.innerHTML = sorted.map(p => {
+        const pct = total > 0 ? ((p.amount / total) * 100).toFixed(1) : 0;
+        return `<div class="pocket-card">
+          <button class="delete-btn pocket-delete" onclick="removePocket(${p.id})">×</button>
+          <div style="font-size: 22px; margin-bottom: 8px;">${p.icon}</div>
+          <div class="pocket-name">${esc(p.name)}</div>
+          <div class="pocket-amount">${fmt(p.amount)}</div>
+          <div class="pocket-pct">${pct}% del total</div>
+          <input type="number" value="${p.amount}" min="0" step="0.01" onchange="updatePocket(${p.id}, this.value)" style="margin-top: 10px; height: 32px; font-size: 12px;" />
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('pocket-total').textContent = fmt(total);
+  }
+
+  function renderIncomes() {
+    const list = document.getElementById('income-list');
+    if (state.incomes.length === 0) {
+      list.innerHTML = '<div class="empty-state">Sin ingresos</div>';
+    } else {
+      list.innerHTML = state.incomes.map(i => `<div class="item-row">
+        <div><strong>${esc(i.name)}</strong></div>
+        <div>${fmt(i.amount)}</div>
+        <div><span class="badge badge-income">${freqLabel(i.frequency)}</span></div>
+        <button class="delete-btn" onclick="removeIncome(${i.id})">×</button>
+      </div>`).join('');
+    }
+    document.getElementById('income-total').textContent = fmt(totalIncome());
+  }
+
+  function renderDebts() {
+    const list = document.getElementById('debt-list');
+    const debt = totalDebt(), limit = totalLimit();
+    if (state.debts.length === 0) {
+      list.innerHTML = '<div class="empty-state">Sin tarjetas</div>';
+    } else {
+      list.innerHTML = state.debts.map(d => {
+        const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
+        return `<div style="padding: 12px 0; border-bottom: 0.5px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <strong>${esc(d.name)}</strong>
+            <span style="font-size: 12px; color: var(--text-secondary);">Cupo ${fmt(d.payment)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+            <span>Saldo: ${fmt(d.balance)}</span>
+            <span>Util: ${u}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill ${u > 30 ? 'warning' : 'success'}" style="width: ${Math.min(100, u)}%"></div></div>
+          <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px;">
+            <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, this.value)" />
+            <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">saldo</span>
+            <button class="delete-btn" onclick="removeDebt(${d.id})">×</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('debt-total').textContent = fmt(debt);
+    document.getElementById('debt-available').textContent = fmt(limit - debt);
+    document.getElementById('debt-utilization').textContent = limit > 0 ? ((debt / limit) * 100).toFixed(1) + '%' : '—';
+  }
+
+  function renderGoals() {
+    const list = document.getElementById('goal-list');
+    if (state.goals.length === 0) {
+      list.innerHTML = '<div class="empty-state">Sin metas</div>'; return;
+    }
+    list.innerHTML = state.goals.map(g => {
+      const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+      const rem = Math.max(0, g.target - g.current);
+      return `<div style="padding: 14px 0; border-bottom: 0.5px solid var(--border);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <strong style="font-size: 14px;">${esc(g.name)}</strong>
+          <span style="font-size: 12px; color: var(--text-secondary);">${pct}%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+          <span>${fmt(g.current)} de ${fmt(g.target)}</span>
+          <span>Faltan ${fmt(rem)}</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill success" style="width: ${pct}%"></div></div>
+        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px;">
+          <input type="number" value="${g.current}" min="0" step="0.01" onchange="updateGoal(${g.id}, this.value)" />
+          <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">actualizar</span>
+          <button class="delete-btn" onclick="removeGoal(${g.id})">×</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderBudget() {
+    if (!state.budgets[currentMonth]) state.budgets[currentMonth] = { ...DEFAULT_BUDGETS };
+    const b = state.budgets[currentMonth];
+    const list = document.getElementById('budget-list');
+    const editList = document.getElementById('budget-edit');
+    const sum = document.getElementById('budget-summary');
+    if (!list) return;
+
+    let tBudget = 0, tSpent = 0;
+    let html = '', editHtml = '';
+
+    CATEGORIES.forEach(cat => {
+      const bg = b[cat.id] || 0;
+      const sp = spentByCategory(cat.id);
+      const av = bg - sp;
+      const pct = bg > 0 ? Math.min(100, (sp / bg) * 100) : 0;
+      tBudget += bg; tSpent += sp;
+      let cls = 'ok';
+      if (pct >= 100) cls = 'over';
+      else if (pct >= 80) cls = 'warn';
+      const status = pct >= 100 ? `Excediste ${fmt(sp - bg)}` : `${pct.toFixed(0)}% usado`;
+
+      html += `<div class="budget-row">
+        <div>${cat.icon} ${cat.label}</div>
+        <div>${fmt(bg)}</div>
+        <div class="budget-bar-cell">
+          <span>${fmt(sp)}</span>
+          <div class="budget-bar"><div class="budget-fill ${cls}" style="width: ${pct}%"></div></div>
+          <span class="budget-status ${cls}">${status}</span>
+        </div>
+        <div style="text-align: right; font-weight: 500;" class="${av < 0 ? 'balance-negative' : 'balance-positive'}">${fmt(av)}</div>
+      </div>`;
+
+      editHtml += `<div class="form-row-budget">
+        <span style="font-size: 13px;">${cat.icon} ${cat.label}</span>
+        <input type="number" value="${bg}" min="0" step="1000" onchange="updateBudget('${cat.id}', this.value)" />
+        <span style="font-size: 11px; color: var(--text-tertiary);">sugerido: ${fmt(DEFAULT_BUDGETS[cat.id])}</span>
+        <button onclick="updateBudget('${cat.id}', ${DEFAULT_BUDGETS[cat.id]})" style="font-size: 11px !important; padding: 4px 10px !important;">Reset</button>
+      </div>`;
+    });
+
+    list.innerHTML = html;
+    editList.innerHTML = editHtml;
+    document.getElementById('budget-total').textContent = fmt(tBudget);
+    document.getElementById('budget-spent-total').textContent = fmt(tSpent);
+    const av = tBudget - tSpent;
+    const avEl = document.getElementById('budget-available-total');
+    avEl.textContent = fmt(av);
+    avEl.style.color = av >= 0 ? 'var(--success-text)' : 'var(--danger-text)';
+
+    const inc = totalIncome();
+    const margin = inc - tSpent;
+    const projMargin = inc - tBudget;
+    sum.innerHTML = `<div class="fin-grid-4">
+      <div class="metric-card"><div class="metric-label">Ingreso del mes</div><div class="metric-value" style="color: var(--success-text);">${fmt(inc)}</div></div>
+      <div class="metric-card"><div class="metric-label">Presupuesto total</div><div class="metric-value" style="color: var(--info-text);">${fmt(tBudget)}</div></div>
+      <div class="metric-card"><div class="metric-label">Gastado hasta hoy</div><div class="metric-value" style="color: var(--danger-text);">${fmt(tSpent)}</div></div>
+      <div class="metric-card"><div class="metric-label">Margen real</div><div class="metric-value ${margin >= 0 ? 'balance-positive' : 'balance-negative'}">${fmt(margin)}</div><div class="metric-sub">Si gastas todo: ${fmt(projMargin)}</div></div>
+    </div>`;
+  }
+
+  function renderTransactions() {
+    const list = document.getElementById('tx-list');
+    if (!list) return;
+    const txs = (state.transactions[currentMonth] || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+    if (txs.length === 0) {
+      list.innerHTML = '<div class="empty-state">No hay movimientos en ' + getMonthLabel(currentMonth) + '. Empieza a registrarlos.</div>';
+      return;
+    }
+    list.innerHTML = txs.map(t => {
+      const cat = CATEGORIES.find(c => c.id === t.category) || { icon: '📋', label: 'Otros' };
+      const d = new Date(t.date + 'T00:00:00');
+      const ds = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+      return `<div class="tx-row">
+        <div class="tx-date">${ds}</div>
+        <div>${esc(t.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label}</span></div>
+        <div style="color: var(--danger-text); font-weight: 500;">${fmt(t.amount)}</div>
+        <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  function renderResumen() {
+    const sav = totalPockets();
+    const inc = totalIncome();
+    const debt = totalDebt();
+    const nw = sav - debt;
+    const spent = totalSpent();
+    const budget = totalBudget();
+    const exp = spent > 0 ? spent : budget;
+    const bal = inc - exp;
+
+    document.getElementById('net-worth').textContent = fmt(nw);
+    document.getElementById('net-worth-detail').textContent = `Ahorros ${fmt(sav)} − Deudas ${fmt(debt)}`;
+    document.getElementById('m-savings').textContent = sav > 0 ? fmt(sav) : '—';
+    if (exp > 0) document.getElementById('m-savings-detail').textContent = `Cubre ${(sav/exp).toFixed(1)} meses de gastos`;
+    document.getElementById('m-income').textContent = inc > 0 ? fmt(inc) : '—';
+    document.getElementById('m-expense').textContent = exp > 0 ? fmt(exp) : '—';
+    document.getElementById('m-margin').textContent = (inc > 0 || exp > 0) ? fmt(bal) : '—';
+    document.getElementById('m-margin').style.color = bal >= 0 ? 'var(--success-text)' : 'var(--danger-text)';
+    if (inc > 0) {
+      document.getElementById('m-savings-rate').textContent = `Tasa ahorro: ${((bal/inc)*100).toFixed(0)}%`;
+      document.getElementById('m-margin-detail').textContent = spent > 0 ? 'Basado en gastos reales' : 'Basado en presupuesto';
+    }
+
+    renderHealthScore(sav, inc, exp, debt, bal);
+    renderAlerts(sav, inc, exp, debt, bal);
+    renderSummary(sav, inc, exp, debt, bal, nw);
+    renderReturns();
+    renderCashbackStrategy();
+  }
+
+  function renderHealthScore(sav, inc, exp, debt, bal) {
+    const sEl = document.getElementById('health-score');
+    const stEl = document.getElementById('health-status');
+    const pEl = document.getElementById('health-progress');
+    let s = 50;
+    if (exp > 0) {
+      const m = sav / exp;
+      if (m >= 6) s += 25; else if (m >= 3) s += 18; else if (m >= 1) s += 8; else s -= 5;
+    } else if (sav > 0) s += 10;
+    if (inc > 0) {
+      const r = (bal / inc) * 100;
+      if (r >= 20) s += 15; else if (r >= 10) s += 10; else if (r >= 0) s += 3; else s -= 15;
+    }
+    if (sav > debt) s += 10;
+    if (debt === 0 || (inc > 0 && (debt / inc) < 0.5)) s += 5;
+    if (state.pockets.length >= 3) s += 5;
+    s = Math.max(0, Math.min(100, s));
+    sEl.textContent = s;
+    let st, c, fc;
+    if (s >= 80) { st = 'Excelente · estás muy bien'; c = 'var(--success-text)'; fc = 'success'; }
+    else if (s >= 65) { st = 'Buena · vas por buen camino'; c = 'var(--success-text)'; fc = 'success'; }
+    else if (s >= 45) { st = 'Regular · hay espacio para mejorar'; c = 'var(--warning-text)'; fc = 'warning'; }
+    else { st = 'Necesita atención'; c = 'var(--danger-text)'; fc = 'danger'; }
+    sEl.style.color = c;
+    stEl.textContent = st;
+    pEl.className = 'progress-fill ' + fc;
+    pEl.style.width = s + '%';
+  }
+
+  function renderAlerts(sav, inc, exp, debt, bal) {
+    const c = document.getElementById('alerts-container');
+    const a = [];
+    if (inc > 0 && bal < 0) a.push({ t: 'danger', x: `Déficit mensual de ${fmt(Math.abs(bal))}. Revisa Presupuesto para optimizar.` });
+    else if (inc > 0 && bal >= 0 && bal < 200000) a.push({ t: 'warning', x: `Margen apretado: ${fmt(bal)}/mes.` });
+    else if (inc > 0 && bal >= 200000) a.push({ t: 'success', x: `Margen saludable de ${fmt(bal)}/mes. Aprovecha para invertir.` });
+    if (exp > 0) {
+      const m = sav / exp;
+      if (m >= 6) a.push({ t: 'success', x: `Fondo cubre ${m.toFixed(1)} meses de gastos. Excelente colchón.` });
+      else if (m >= 3) a.push({ t: 'info', x: `Fondo cubre ${m.toFixed(1)} meses. Saludable.` });
+    }
+    if (debt > 0 && totalLimit() > 0) {
+      const u = (debt / totalLimit()) * 100;
+      if (u < 30) a.push({ t: 'success', x: `Utilización de crédito en ${u.toFixed(1)}%. Excelente.` });
+    }
+    c.innerHTML = a.map(x => `<div class="alert alert-${x.t}">${x.x}</div>`).join('');
+  }
+
+  function renderSummary(sav, inc, exp, debt, bal, nw) {
+    const c = document.getElementById('summary-content');
+    const aI = inc * 12, aE = exp * 12, aS = bal * 12;
+    let h = '';
+    h += `<div class="summary-row"><span>Patrimonio neto</span><span style="font-weight: 500;">${fmt(nw)}</span></div>`;
+    h += `<div class="summary-row"><span>Ingreso anual</span><span style="font-weight: 500; color: var(--success-text);">${fmt(aI)}</span></div>`;
+    h += `<div class="summary-row"><span>Gasto anual</span><span style="font-weight: 500; color: var(--danger-text);">${fmt(aE)}</span></div>`;
+    h += `<div class="summary-row"><span>Ahorro anual proyectado</span><span style="font-weight: 500; color: ${bal >= 0 ? 'var(--success-text)' : 'var(--danger-text)'};">${fmt(aS)}</span></div>`;
+    h += `<div class="summary-row"><span>Patrimonio en 12 meses</span><span style="font-weight: 500; color: ${bal >= 0 ? 'var(--success-text)' : 'var(--danger-text)'};">${fmt(nw + aS)}</span></div>`;
+    if (exp > 0) {
+      const ide = exp * 6;
+      const e = state.pockets.find(p => /emergencia/i.test(p.name));
+      if (e) h += `<div class="summary-row"><span>Fondo emergencia ideal (6 meses)</span><span style="font-weight: 500;">${fmt(ide)} (${((e.amount/ide)*100).toFixed(0)}% logrado)</span></div>`;
+    }
+    c.innerHTML = h;
+  }
+
+  function renderReturns() {
+    const c = document.getElementById('returns-content');
+    if (!c) return;
+    const r = (state.interestRate || 0) / 100;
+    const p = totalPockets();
+    if (r === 0 || p === 0) { c.innerHTML = '<div class="empty-state">Configura tasa</div>'; return; }
+    const aRG = p * r;
+    const dRG = aRG / 365;
+    const UVT = 52374;
+    const dT = UVT * 0.055;
+    const ex = dRG > dT;
+    const tD = Math.max(0, dRG - dT);
+    const mT = ex ? (tD * 30 * 0.07) : 0;
+    const aT = ex ? (tD * 365 * 0.07) : 0;
+    const mRG = p * (Math.pow(1 + r, 1/12) - 1);
+    const mRN = mRG - mT;
+    const aRN = aRG - aT;
+    const inc = totalIncome();
+    const sp = totalSpent() || totalBudget();
+    const margin = Math.max(0, inc - sp);
+    const eA = aRN / p;
+    const eM = Math.pow(1 + eA, 1/12) - 1;
+    function proj(m, ct) { let b = p; for (let i = 0; i < m; i++) b = b * (1 + eM) + ct; return b; }
+
+    let h = '';
+    h += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;">`;
+    h += `<div class="metric-card"><div class="metric-label">Renta diaria</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(dRG)}</div></div>`;
+    h += `<div class="metric-card"><div class="metric-label">Renta mensual neta</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(mRN)}</div></div>`;
+    h += `<div class="metric-card"><div class="metric-label">Renta anual neta</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(aRN)}</div></div>`;
+    h += `</div>`;
+    if (ex) h += `<div class="alert alert-info" style="font-size: 12px;"><strong>Retefuente activa:</strong> Lulo retiene 7% sobre el excedente del umbral diario.</div>`;
+    h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">Proyección con interés compuesto</p>`;
+    h += `<table style="width: 100%; font-size: 12px;"><thead><tr style="border-bottom: 0.5px solid var(--border);"><th style="text-align: left; padding: 8px 4px; color: var(--text-secondary); font-weight: 500;">Plazo</th><th style="text-align: right; padding: 8px 4px; color: var(--text-secondary); font-weight: 500;">Sin aportes</th><th style="text-align: right; padding: 8px 4px; color: var(--text-secondary); font-weight: 500;">+ ${fmt(margin)}/mes</th></tr></thead><tbody>`;
+    h += `<tr><td style="padding: 8px 4px;">Hoy</td><td style="text-align: right; padding: 8px 4px;">${fmt(p)}</td><td style="text-align: right; padding: 8px 4px;">${fmt(p)}</td></tr>`;
+    [12, 60, 120].forEach((m, i) => {
+      const lbls = ['1 año', '5 años', '10 años'];
+      h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 8px 4px;">En ${lbls[i]}</td><td style="text-align: right; padding: 8px 4px;">${fmt(proj(m, 0))}</td><td style="text-align: right; padding: 8px 4px; color: var(--success-text); font-weight: 500;">${fmt(proj(m, margin))}</td></tr>`;
+    });
+    h += `</tbody></table>`;
+    h += `<p style="font-size: 11px; color: var(--text-tertiary); margin: 12px 0 0;">Tasa: ${state.interestRate}% E.A. · ${state.interestBank}</p>`;
+    c.innerHTML = h;
+  }
+
+  function renderCashbackStrategy() {
+    const c = document.getElementById('cashback-strategy');
+    if (!c) return;
+    const monthSpent = totalSpent() || totalBudget();
+    const gastoTarjetasTotal = monthSpent * 0.85;
+    const cashbackCalculado = gastoTarjetasTotal * 0.01;
+    const tasaDiaria = (state.interestRate / 100) / 365;
+    const floatMensual = gastoTarjetasTotal * tasaDiaria * 25;
+    const beneficioTotal = cashbackCalculado + floatMensual;
+
+    let h = '';
+    h += `<p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px;">Tu plata se queda generando rendimientos en Lulo mientras compras con tarjeta. Pagas la tarjeta el día del corte. Ganas cashback Y rendimientos al mismo tiempo.</p>`;
+    h += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">`;
+    h += `<div class="metric-card"><div class="metric-label">Cashback estimado/mes</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(cashbackCalculado)}</div><div class="metric-sub">1% de ${fmt(gastoTarjetasTotal)}</div></div>`;
+    h += `<div class="metric-card"><div class="metric-label">Float (intereses extras)</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(floatMensual)}</div><div class="metric-sub">25 días al ${state.interestRate}% E.A.</div></div>`;
+    h += `<div class="metric-card"><div class="metric-label">Beneficio total/mes</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(beneficioTotal)}</div><div class="metric-sub">${fmt(beneficioTotal*12)}/año</div></div>`;
+    h += `</div>`;
+    h += `<div style="margin-top: 14px; padding: 12px 14px; background: var(--success-bg); border-radius: var(--radius-md); font-size: 12px; color: var(--success-text);">`;
+    h += `<strong>✓ Estrategia inteligente:</strong> Estás aprovechando el "float" — un truco financiero que pocos dominan. Sigue así, pero <strong>nunca dejes de pagar la tarjeta completa</strong>: si pagas mínimo, los intereses (25-30% E.A.) destruyen todo el beneficio.`;
+    h += `</div>`;
+    c.innerHTML = h;
+  }
+
+  function renderCharts() {
+    const c1 = document.getElementById('chart-pockets');
+    const c2 = document.getElementById('chart-comparison');
+    if (!c1 || !c2 || typeof Chart === 'undefined') return;
+    const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const tc = dark ? '#e8e6df' : '#2c2c2a';
+    const cl = ['#7F77DD', '#1D9E75', '#D85A30', '#D4537E', '#378ADD', '#639922', '#BA7517', '#888780', '#E24B4A'];
+
+    const sorted = [...state.pockets].sort((a, b) => b.amount - a.amount);
+    const lbls = sorted.map(p => p.name);
+    const vals = sorted.map(p => Math.round(p.amount));
+
+    if (chartPockets) chartPockets.destroy();
+    const p1 = c1.parentElement;
+    if (vals.length > 0) {
+      p1.innerHTML = '<canvas id="chart-pockets"></canvas>';
+      chartPockets = new Chart(document.getElementById('chart-pockets'), {
+        type: 'doughnut',
+        data: { labels: lbls, datasets: [{ data: vals, backgroundColor: cl.slice(0, vals.length), borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: tc, font: { size: 11 }, boxWidth: 10, padding: 6 }},
+            tooltip: { callbacks: { label: (ctx) => {
+              const t = vals.reduce((a, b) => a + b, 0);
+              return ctx.label + ': ' + fmt(ctx.parsed) + ' (' + ((ctx.parsed/t)*100).toFixed(1) + '%)';
+            }}}
+          }
+        }
+      });
+    }
+
+    const inc = totalIncome();
+    const exp = totalSpent() || totalBudget();
+    const bal = inc - exp;
+    if (chartComparison) chartComparison.destroy();
+    const p2 = c2.parentElement;
+    if (inc > 0 || exp > 0) {
+      p2.innerHTML = '<canvas id="chart-comparison"></canvas>';
+      chartComparison = new Chart(document.getElementById('chart-comparison'), {
+        type: 'bar',
+        data: {
+          labels: ['Ingresos', 'Gastos', 'Margen'],
+          datasets: [{
+            data: [Math.round(inc), Math.round(exp), Math.round(bal)],
+            backgroundColor: ['#1D9E75', '#E24B4A', bal >= 0 ? '#378ADD' : '#A32D2D'],
+            borderWidth: 0
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => fmt(ctx.parsed.y) }}},
+          scales: {
+            y: { ticks: { color: tc, font: { size: 11 }, callback: (v) => fmt(v) }, grid: { color: 'rgba(128,128,128,0.1)' }},
+            x: { ticks: { color: tc, font: { size: 11 }}, grid: { display: false }}
+          }
+        }
+      });
+    }
+  }
+
+  function freqLabel(f) { return { monthly: 'Mensual', biweekly: 'Quincenal', weekly: 'Semanal', yearly: 'Anual', once: 'Único' }[f] || f; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function renderAll() {
+    renderPockets(); renderIncomes(); renderDebts(); renderGoals();
+    renderResumen(); renderBudget(); renderTransactions(); renderCharts();
+  }
+
+  if (typeof Chart !== 'undefined') loadState();
+  else window.addEventListener('load', loadState);
+})();
+</script>
+
+</body>
+</html>
