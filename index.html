@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mi Dashboard Financiero · Cristian</title>
+<title>Tablero Financiero Pro Cristian</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
   :root {
@@ -132,63 +132,590 @@
   .month-selector select { width: auto; min-width: 140px; }
   .tx-row { display: grid; grid-template-columns: 70px 1.5fr 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); align-items: center; font-size: 12px; }
   .tx-row .tx-date { color: var(--text-tertiary); font-size: 11px; }
+
+  /* HERO BANNER */
+  .hero-banner {
+    background: linear-gradient(135deg, #7F77DD 0%, #1D9E75 100%);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px;
+    margin-bottom: 1.5rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(127, 119, 221, 0.25);
+  }
+  .hero-banner::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-banner::after {
+    content: '$ € £ ¥ ₿';
+    position: absolute;
+    bottom: -20px;
+    right: 20px;
+    font-size: 80px;
+    color: rgba(255,255,255,0.05);
+    letter-spacing: 8px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .hero-content { display: flex; align-items: center; gap: 20px; position: relative; z-index: 1; }
+  .hero-icon-container {
+    width: 72px; height: 72px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+  }
+  .hero-logo { width: 56px; height: 56px; }
+  .hero-logo path, .hero-logo circle:not([opacity]) { fill: white !important; }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    backdrop-filter: blur(10px);
+    border: 0.5px solid rgba(255,255,255,0.3);
+  }
+  .hero-title {
+    margin: 0 0 4px;
+    font-size: 28px;
+    font-weight: 500;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+  .hero-subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+  }
+  .hero-tagline {
+    font-style: italic;
+    color: rgba(255,255,255,0.7);
+  }
+  .hero-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-controls select, .hero-controls .btn-icon, .hero-controls .reset-btn {
+    background: rgba(255,255,255,0.15);
+    border: 0.5px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.15s;
+  }
+  .hero-controls select:hover, .hero-controls .btn-icon:hover, .hero-controls .reset-btn:hover {
+    background: rgba(255,255,255,0.25);
+  }
+  .hero-controls select { width: auto; min-width: 80px; height: auto; }
+  .hero-controls .reset-btn { font-size: 16px !important; padding: 6px 12px !important; color: white !important; }
+
+  @media (max-width: 600px) {
+    .hero-banner { padding: 20px 18px; }
+    .hero-content { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .hero-title { font-size: 22px; }
+    .hero-icon-container { width: 56px; height: 56px; }
+    .hero-logo { width: 40px; height: 40px; }
+  }
+
+  /* HERO METRICS - tarjetas principales con personalidad */
+  .hero-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 1.5rem;
+  }
+  .metric-hero {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .metric-hero:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .metric-hero-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+  .metric-hero-icon.purple { background: var(--purple-bg); color: var(--purple-text); }
+  .metric-hero-icon.green { background: var(--success-bg); color: var(--success-text); }
+  .metric-hero-icon.red { background: var(--danger-bg); color: var(--danger-text); }
+  .metric-hero-icon.amber { background: var(--warning-bg); color: var(--warning-text); }
+  .metric-hero-icon.blue { background: var(--info-bg); color: var(--info-text); }
+  .metric-hero-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .metric-hero-value {
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .metric-hero-sub {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 6px;
+  }
+  .metric-hero-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-top: 6px;
+  }
+  .metric-hero-trend.up { background: var(--success-bg); color: var(--success-text); }
+  .metric-hero-trend.down { background: var(--danger-bg); color: var(--danger-text); }
+
+  /* PATRIMONIO HERO CARD */
+  .net-worth-hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    margin-bottom: 1.5rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(15, 52, 96, 0.3);
+  }
+  .net-worth-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      radial-gradient(circle at 20% 50%, rgba(127, 119, 221, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(29, 158, 117, 0.15) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .net-worth-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .net-worth-hero-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .net-worth-hero-value {
+    font-size: 38px;
+    font-weight: 500;
+    color: white;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin: 0;
+  }
+  .net-worth-hero-detail {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 10px;
+  }
+  .net-worth-icon-bg {
+    font-size: 70px;
+    opacity: 0.2;
+    line-height: 1;
+  }
+  @media (max-width: 600px) {
+    .net-worth-hero-value { font-size: 28px; }
+    .net-worth-icon-bg { font-size: 50px; }
+  }
+
+  /* HEALTH METER MEJORADO */
+  .health-meter-pro {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 22px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .health-circle {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+  }
+  .health-circle svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .health-circle-track {
+    fill: none;
+    stroke: var(--bg-secondary);
+    stroke-width: 8;
+  }
+  .health-circle-fill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease, stroke 0.3s;
+  }
+  .health-circle-text {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 22px;
+    font-weight: 500;
+  }
+
+  /* QUICK ACTIONS */
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .quick-action {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .quick-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-color: var(--info-text);
+  }
+  .quick-action-icon {
+    font-size: 28px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .quick-action-label {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .quick-action-sub {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* TARJETAS DE CRÉDITO VISUALES */
+  .credit-card {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 14px;
+    padding: 18px 20px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 14px;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .credit-card::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -30%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .credit-card.visa-davivienda {
+    background: linear-gradient(135deg, #c8102e 0%, #8b0a1f 100%);
+  }
+  .credit-card.mastercard-lulo {
+    background: linear-gradient(135deg, #000814 0%, #001d3d 50%, #003566 100%);
+  }
+  .credit-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    z-index: 1;
+  }
+  .credit-card-bank-logo {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .credit-card-bank-logo svg {
+    height: 100%;
+    width: auto;
+  }
+  .credit-card-bank-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+    letter-spacing: 0.3px;
+  }
+  .credit-card-chip {
+    width: 38px;
+    height: 28px;
+    background: linear-gradient(135deg, #f4d03f 0%, #d4a017 100%);
+    border-radius: 5px;
+    margin: 14px 0 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .credit-card-chip::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 0.5px solid rgba(0,0,0,0.2);
+    border-radius: 3px;
+    background: repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(0,0,0,0.15) 4px, rgba(0,0,0,0.15) 5px);
+  }
+  .credit-card-number {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .credit-card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    position: relative;
+    z-index: 1;
+  }
+  .credit-card-info-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+  .credit-card-info-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+  }
+  .credit-card-brand {
+    height: 32px;
+    display: flex;
+    align-items: center;
+  }
+  .credit-card-brand svg {
+    height: 100%;
+    width: auto;
+  }
+
+  /* Logo de Davivienda - rojo y blanco con casita */
+  .logo-davivienda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .logo-davivienda-icon {
+    width: 16px;
+    height: 16px;
+    background: #c8102e;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z'/></svg>") center/contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z'/></svg>") center/contain no-repeat;
+  }
+  .logo-davivienda-text {
+    color: #c8102e;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  /* Card grid mejor */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+    margin-bottom: 1rem;
+  }
+  .card-detail-section {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
 </style>
 </head>
 <body>
 
 <div class="wrapper">
-  <div class="header-row">
-    <div>
-      <h1>Mi dashboard financiero</h1>
-      <p class="subtitle">Cristian Camilo · Datos guardados en este navegador</p>
+  <div class="hero-banner">
+    <div class="hero-content">
+      <div class="hero-icon-container">
+        <svg class="hero-logo" viewBox="0 0 64 64" fill="none">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#7F77DD;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#1D9E75;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <circle cx="32" cy="32" r="30" fill="url(#logoGrad)" opacity="0.15"/>
+          <circle cx="32" cy="32" r="22" fill="url(#logoGrad)" opacity="0.25"/>
+          <path d="M32 14L36 26L48 26L38 34L42 46L32 38L22 46L26 34L16 26L28 26L32 14Z" fill="url(#logoGrad)"/>
+        </svg>
+      </div>
+      <div>
+        <div class="hero-badge">💎 Pro Edition</div>
+        <h1 class="hero-title">Tablero Financiero Pro</h1>
+        <p class="hero-subtitle">Cristian · <span class="hero-tagline">Tu dinero. Tu control. Tu futuro.</span></p>
+      </div>
     </div>
-    <div class="controls-right">
+    <div class="hero-controls">
       <select id="currency-select"><option value="COP" selected>COP $</option></select>
-      <button onclick="exportData()">Exportar</button>
-      <button onclick="importData()">Importar</button>
-      <button class="reset-btn" onclick="resetData()">Resetear</button>
+      <button onclick="exportData()" class="btn-icon" title="Exportar datos">📥 Exportar</button>
+      <button onclick="importData()" class="btn-icon" title="Importar datos">📤 Importar</button>
+      <button class="reset-btn" onclick="resetData()" title="Resetear datos">↻</button>
       <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
   </div>
 
   <div class="fin-tabs">
-    <button class="fin-tab active" data-tab="resumen">Resumen</button>
-    <button class="fin-tab" data-tab="presupuesto">Presupuesto</button>
-    <button class="fin-tab" data-tab="bolsillos">Bolsillos</button>
-    <button class="fin-tab" data-tab="ingresos">Ingresos</button>
-    <button class="fin-tab" data-tab="deudas">Tarjetas</button>
-    <button class="fin-tab" data-tab="metas">Metas</button>
+    <button class="fin-tab active" data-tab="resumen">🏠 Resumen</button>
+    <button class="fin-tab" data-tab="presupuesto">💸 Presupuesto</button>
+    <button class="fin-tab" data-tab="bolsillos">👛 Bolsillos</button>
+    <button class="fin-tab" data-tab="ingresos">💰 Ingresos</button>
+    <button class="fin-tab" data-tab="deudas">💳 Tarjetas</button>
+    <button class="fin-tab" data-tab="metas">🎯 Metas</button>
   </div>
 
   <div class="fin-section active" id="section-resumen">
-    <div class="net-worth-card">
-      <div class="net-worth-label">Patrimonio neto (ahorros − deudas)</div>
-      <div class="net-worth-value" id="net-worth">—</div>
-      <div class="net-worth-detail" id="net-worth-detail"></div>
-    </div>
-    <div id="alerts-container"></div>
-    <div class="health-meter">
-      <div class="health-score" id="health-score">—</div>
-      <div class="health-info">
-        <div class="health-label">Salud financiera</div>
-        <div class="health-status" id="health-status">Calculando...</div>
-        <div class="progress-bar" style="margin-top: 8px;"><div class="progress-fill" id="health-progress" style="width: 0%"></div></div>
+    <div class="net-worth-hero">
+      <div class="net-worth-hero-grid">
+        <div>
+          <div class="net-worth-hero-label">💎 Patrimonio neto</div>
+          <p class="net-worth-hero-value" id="net-worth">—</p>
+          <div class="net-worth-hero-detail" id="net-worth-detail"></div>
+        </div>
+        <div class="net-worth-icon-bg">💰</div>
       </div>
     </div>
-    <div class="fin-grid-4">
-      <div class="metric-card"><div class="metric-label">Total ahorrado</div><div class="metric-value" id="m-savings" style="color: var(--success-text);">—</div><div class="metric-sub" id="m-savings-detail"></div></div>
-      <div class="metric-card"><div class="metric-label">Ingresos mensuales</div><div class="metric-value" id="m-income" style="color: var(--success-text);">—</div></div>
-      <div class="metric-card"><div class="metric-label">Gastos mensuales</div><div class="metric-value" id="m-expense" style="color: var(--danger-text);">—</div><div class="metric-sub" id="m-savings-rate"></div></div>
-      <div class="metric-card"><div class="metric-label">Margen mensual</div><div class="metric-value" id="m-margin">—</div><div class="metric-sub" id="m-margin-detail"></div></div>
+
+    <div id="alerts-container"></div>
+
+    <div class="hero-metrics">
+      <div class="metric-hero">
+        <div class="metric-hero-icon green">🏦</div>
+        <div class="metric-hero-label">Total ahorrado</div>
+        <p class="metric-hero-value" id="m-savings" style="color: var(--success-text);">—</p>
+        <div class="metric-hero-sub" id="m-savings-detail"></div>
+      </div>
+      <div class="metric-hero">
+        <div class="metric-hero-icon blue">📈</div>
+        <div class="metric-hero-label">Ingresos del mes</div>
+        <p class="metric-hero-value" id="m-income" style="color: var(--info-text);">—</p>
+      </div>
+      <div class="metric-hero">
+        <div class="metric-hero-icon red">📉</div>
+        <div class="metric-hero-label">Gastos del mes</div>
+        <p class="metric-hero-value" id="m-expense" style="color: var(--danger-text);">—</p>
+        <div class="metric-hero-sub" id="m-savings-rate"></div>
+      </div>
+      <div class="metric-hero">
+        <div class="metric-hero-icon purple">⚖️</div>
+        <div class="metric-hero-label">Margen mensual</div>
+        <p class="metric-hero-value" id="m-margin">—</p>
+        <div class="metric-hero-sub" id="m-margin-detail"></div>
+      </div>
     </div>
+
+    <div class="health-meter-pro">
+      <div class="health-circle">
+        <svg viewBox="0 0 100 100">
+          <circle class="health-circle-track" cx="50" cy="50" r="42"/>
+          <circle class="health-circle-fill" id="health-circle-progress" cx="50" cy="50" r="42" stroke="#1D9E75" stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
+        </svg>
+        <div class="health-circle-text" id="health-score">—</div>
+      </div>
+      <div style="flex: 1;">
+        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">🩺 Salud financiera</div>
+        <div style="font-size: 16px; font-weight: 500;" id="health-status">Calculando...</div>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="health-tip"></div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <div class="quick-action" onclick="document.querySelector('[data-tab=presupuesto]').click()">
+        <span class="quick-action-icon">💸</span>
+        <div class="quick-action-label">Registrar gasto</div>
+        <div class="quick-action-sub">Anotar movimiento</div>
+      </div>
+      <div class="quick-action" onclick="document.querySelector('[data-tab=bolsillos]').click()">
+        <span class="quick-action-icon">👛</span>
+        <div class="quick-action-label">Mis bolsillos</div>
+        <div class="quick-action-sub">Ver ahorros</div>
+      </div>
+      <div class="quick-action" onclick="document.querySelector('[data-tab=deudas]').click()">
+        <span class="quick-action-icon">💳</span>
+        <div class="quick-action-label">Tarjetas</div>
+        <div class="quick-action-sub">Saldos y cashback</div>
+      </div>
+      <div class="quick-action" onclick="document.querySelector('[data-tab=metas]').click()">
+        <span class="quick-action-icon">🎯</span>
+        <div class="quick-action-label">Metas</div>
+        <div class="quick-action-sub">Objetivos de ahorro</div>
+      </div>
+    </div>
+
     <div class="fin-grid-2">
-      <div class="raised-card"><p class="card-title">Distribución de ahorros</p><div class="chart-container"><canvas id="chart-pockets"></canvas></div></div>
-      <div class="raised-card"><p class="card-title">Flujo mensual</p><div class="chart-container"><canvas id="chart-comparison"></canvas></div></div>
+      <div class="raised-card"><p class="card-title">📊 Distribución de ahorros</p><div class="chart-container"><canvas id="chart-pockets"></canvas></div></div>
+      <div class="raised-card"><p class="card-title">📉 Flujo mensual</p><div class="chart-container"><canvas id="chart-comparison"></canvas></div></div>
     </div>
-    <div class="raised-card"><p class="card-title">Resumen ejecutivo</p><div id="summary-content"></div></div>
+
+    <div class="raised-card"><p class="card-title">📋 Resumen ejecutivo</p><div id="summary-content"></div></div>
+
     <div class="raised-card" style="border: 0.5px solid var(--success-text);">
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-        <p class="card-title" style="margin: 0;">Rendimientos de tus ahorros</p>
+        <p class="card-title" style="margin: 0;">💎 Rendimientos de tus ahorros</p>
         <div style="display: flex; gap: 8px; align-items: center; font-size: 12px;">
           <label style="color: var(--text-secondary);">Tasa anual:</label>
           <input type="number" id="interest-rate" step="0.01" min="0" max="100" style="width: 80px; height: 30px; font-size: 12px;" />
@@ -199,7 +726,7 @@
     </div>
 
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
-      <p class="card-title">💳 Estrategia de cashback + float (lo que ya haces bien)</p>
+      <p class="card-title">💳 Estrategia cashback + float</p>
       <div id="cashback-strategy"></div>
     </div>
   </div>
@@ -231,10 +758,20 @@
         <select id="tx-category"></select>
         <button onclick="addTransaction()">Agregar</button>
       </div>
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; align-items: center;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; align-items: center;">
+        <select id="tx-payment-method">
+          <option value="tarjeta">💳 Tarjeta de crédito</option>
+          <option value="pse">🏦 PSE</option>
+          <option value="llave">🔑 Llave / Bre-B</option>
+          <option value="efectivo">💵 Efectivo</option>
+          <option value="debito">🏧 Débito Lulo</option>
+        </select>
+        <select id="tx-card" style="display: none;">
+          <option value="">Selecciona tarjeta</option>
+        </select>
         <input type="date" id="tx-date" />
-        <span style="font-size: 11px; color: var(--text-tertiary);">Fecha del gasto</span>
       </div>
+      <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
     </div>
     <div class="raised-card">
       <p class="card-title">Movimientos del mes</p>
@@ -298,6 +835,21 @@
         <input type="number" id="debt-payment" placeholder="Cupo total" min="0" step="0.01" />
         <button onclick="addDebt()">Agregar</button>
       </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+        <select id="debt-bank">
+          <option value="">Banco emisor</option>
+          <option value="davivienda">🏠 Davivienda</option>
+          <option value="lulo">🟡 Lulo Bank</option>
+          <option value="other">Otro banco</option>
+        </select>
+        <select id="debt-brand">
+          <option value="">Franquicia</option>
+          <option value="visa">VISA</option>
+          <option value="mastercard">Mastercard</option>
+        </select>
+        <input type="text" id="debt-digits" placeholder="Últimos 4 dígitos" maxlength="4" pattern="[0-9]{4}" />
+        <input type="number" id="debt-cutoff" placeholder="Día corte (1-31)" min="1" max="31" />
+      </div>
     </div>
     <div class="raised-card">
       <p class="card-title">Mis tarjetas</p>
@@ -305,6 +857,7 @@
       <div class="summary-row" style="margin-top: 12px;"><span>Saldo total</span><span id="debt-total" style="font-weight: 500; color: var(--warning-text);">—</span></div>
       <div class="summary-row"><span>Cupo disponible</span><span id="debt-available" style="font-weight: 500; color: var(--success-text);">—</span></div>
       <div class="summary-row"><span>Utilización</span><span id="debt-utilization" style="font-weight: 500;">—</span></div>
+      <div class="summary-row"><span>💰 Cashback total del mes</span><span id="cashback-total" style="font-weight: 500; color: var(--success-text);">—</span></div>
     </div>
   </div>
 
@@ -321,12 +874,19 @@
     <div class="raised-card"><p class="card-title">Mis metas</p><div id="goal-list"></div></div>
   </div>
 
-  <div class="footer-note">Tus datos se guardan en este navegador. Usa "Exportar" como respaldo.</div>
+  <div class="footer-note">
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;">
+      <span style="font-size: 14px;">💎</span>
+      <strong style="color: var(--text-secondary);">Tablero Financiero Pro</strong>
+      <span style="font-size: 14px;">💎</span>
+    </div>
+    <div>Tus datos se guardan en este navegador · Usa "Exportar" como respaldo periódico</div>
+  </div>
 </div>
 
 <script>
 (function() {
-  const STORAGE_KEY = 'finance-dashboard-cristian-v4';
+  const STORAGE_KEY = 'finance-dashboard-cristian-v9';
 
   const CATEGORIES = [
     // FIJOS NO NEGOCIABLES
@@ -393,12 +953,11 @@
     ],
     incomes: [
       { id: 101, name: 'Salario', amount: 2000000, frequency: 'monthly' },
-      { id: 102, name: 'Rendimientos Lulo Bank (neto)', amount: 75000, frequency: 'monthly' },
-      { id: 103, name: 'Cashback tarjetas (1%)', amount: 23500, frequency: 'monthly' }
+      { id: 102, name: 'Rendimientos Lulo Bank (neto)', amount: 75000, frequency: 'monthly' }
     ],
     debts: [
-      { id: 301, name: 'RappiCard Davivienda', balance: 114567, rate: 0, payment: 4800000 },
-      { id: 302, name: 'Tarjeta cupo $12.2M', balance: 365075, rate: 0, payment: 12200000 }
+      { id: 301, name: 'RappiCard', balance: 114567, rate: 0, payment: 4800000, cutoffDay: 30, brand: 'visa', bank: 'davivienda', lastDigits: '3101' },
+      { id: 302, name: 'Lulo Bank', balance: 365075, rate: 0, payment: 12200000, cutoffDay: 5, brand: 'mastercard', bank: 'lulo', lastDigits: '7310' }
     ],
     goals: [
       { id: 401, name: 'Viajes Futuros', target: 1500000, current: 820301.04 }
@@ -446,6 +1005,45 @@
   function populateCategories() {
     const sel = document.getElementById('tx-category');
     if (sel) sel.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
+    populateCards();
+    setupPaymentMethodListener();
+  }
+
+  function populateCards() {
+    const sel = document.getElementById('tx-card');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecciona tarjeta</option>' +
+      state.debts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  }
+
+  function setupPaymentMethodListener() {
+    const methodSel = document.getElementById('tx-payment-method');
+    const cardSel = document.getElementById('tx-card');
+    const cashbackInfo = document.getElementById('tx-cashback-info');
+    const amountInput = document.getElementById('tx-amount');
+    if (!methodSel || !cardSel) return;
+
+    function updateUI() {
+      const isCard = methodSel.value === 'tarjeta';
+      cardSel.style.display = isCard ? 'block' : 'none';
+      updateCashbackPreview();
+    }
+
+    function updateCashbackPreview() {
+      const isCard = methodSel.value === 'tarjeta';
+      const amount = parseFloat(amountInput.value) || 0;
+      if (isCard && amount > 0) {
+        const cashback = amount * 0.01;
+        cashbackInfo.style.display = 'block';
+        cashbackInfo.innerHTML = `💰 Cashback estimado: <strong>${fmt(cashback)}</strong> (1% del gasto)`;
+      } else {
+        cashbackInfo.style.display = 'none';
+      }
+    }
+
+    methodSel.addEventListener('change', updateUI);
+    amountInput.addEventListener('input', updateCashbackPreview);
+    updateUI();
   }
 
   function populateMonths() {
@@ -466,6 +1064,11 @@
 
   const totalPockets = () => state.pockets.reduce((s, p) => s + p.amount, 0);
   const totalIncome = () => state.incomes.reduce((s, i) => s + i.amount * (FREQ[i.frequency] || 0), 0);
+  const totalMonthCashback = () => {
+    const txs = state.transactions[currentMonth] || [];
+    return txs.reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
+  };
+  const totalIncomeWithCashback = () => totalIncome() + totalMonthCashback();
   const totalDebt = () => state.debts.reduce((s, d) => s + d.balance, 0);
   const totalLimit = () => state.debts.reduce((s, d) => s + d.payment, 0);
   function totalBudget() { const b = state.budgets[currentMonth] || {}; return Object.values(b).reduce((s, v) => s + (parseFloat(v) || 0), 0); }
@@ -550,18 +1153,30 @@
     const b = parseFloat(document.getElementById('debt-balance').value);
     const r = parseFloat(document.getElementById('debt-rate').value) || 0;
     const p = parseFloat(document.getElementById('debt-payment').value) || 0;
+    const co = parseInt(document.getElementById('debt-cutoff').value) || null;
+    const bank = document.getElementById('debt-bank').value || null;
+    const brand = document.getElementById('debt-brand').value || null;
+    const lastDigits = document.getElementById('debt-digits').value.trim() || null;
     if (!n || isNaN(b) || b < 0) return alert('Completa todo');
-    state.debts.push({ id: Date.now(), name: n, balance: b, rate: r, payment: p });
+    state.debts.push({ id: Date.now(), name: n, balance: b, rate: r, payment: p, cutoffDay: co, bank, brand, lastDigits });
     document.getElementById('debt-name').value = '';
     document.getElementById('debt-balance').value = '';
     document.getElementById('debt-rate').value = '0';
     document.getElementById('debt-payment').value = '';
+    document.getElementById('debt-cutoff').value = '';
+    document.getElementById('debt-bank').value = '';
+    document.getElementById('debt-brand').value = '';
+    document.getElementById('debt-digits').value = '';
     saveState(); renderAll();
   };
   window.removeDebt = function(id) { state.debts = state.debts.filter(d => d.id !== id); saveState(); renderAll(); };
-  window.updateDebt = function(id, b) {
+  window.updateDebt = function(id, field, val) {
     const d = state.debts.find(x => x.id === id);
-    if (d) { d.balance = parseFloat(b) || 0; saveState(); renderResumen(); renderDebts(); }
+    if (d) {
+      if (field === 'balance') d.balance = parseFloat(val) || 0;
+      else if (field === 'cutoffDay') d.cutoffDay = parseInt(val) || null;
+      saveState(); renderResumen(); renderDebts();
+    }
   };
 
   window.addGoal = function() {
@@ -592,19 +1207,53 @@
     const a = parseFloat(document.getElementById('tx-amount').value);
     const c = document.getElementById('tx-category').value;
     const dt = document.getElementById('tx-date').value || new Date().toISOString().split('T')[0];
+    const method = document.getElementById('tx-payment-method').value;
+    const cardId = document.getElementById('tx-card').value;
     if (!d || !a || a <= 0) return alert('Completa descripción y monto');
+    if (method === 'tarjeta' && !cardId) return alert('Selecciona la tarjeta usada');
+
     const m = dt.substring(0, 7);
     if (!state.transactions[m]) state.transactions[m] = [];
-    state.transactions[m].push({ id: Date.now(), date: dt, desc: d, amount: a, category: c });
+
+    // Calcular cashback si fue con tarjeta
+    let cashback = 0;
+    let cardIdNum = null;
+    if (method === 'tarjeta' && cardId) {
+      cashback = a * 0.01;
+      cardIdNum = parseInt(cardId);
+      // Sumar al saldo de la tarjeta
+      const card = state.debts.find(x => x.id === cardIdNum);
+      if (card) {
+        card.balance += a;
+      }
+    }
+
+    state.transactions[m].push({
+      id: Date.now(),
+      date: dt, desc: d, amount: a, category: c,
+      paymentMethod: method,
+      cardId: cardIdNum,
+      cashback: cashback
+    });
+
     document.getElementById('tx-desc').value = '';
     document.getElementById('tx-amount').value = '';
-    saveState(); populateMonths(); renderBudget(); renderTransactions(); renderResumen();
+    document.getElementById('tx-cashback-info').style.display = 'none';
+    saveState(); populateMonths(); renderBudget(); renderTransactions(); renderResumen(); renderDebts();
   };
 
   window.removeTransaction = function(m, id) {
     if (state.transactions[m]) {
+      // Si fue con tarjeta, restar del saldo de la tarjeta
+      const tx = state.transactions[m].find(t => t.id === id);
+      if (tx && tx.paymentMethod === 'tarjeta' && tx.cardId) {
+        const card = state.debts.find(x => x.id === tx.cardId);
+        if (card) {
+          card.balance = Math.max(0, card.balance - tx.amount);
+        }
+      }
       state.transactions[m] = state.transactions[m].filter(t => t.id !== id);
-      saveState(); renderBudget(); renderTransactions(); renderResumen();
+      saveState(); renderBudget(); renderTransactions(); renderResumen(); renderDebts();
     }
   };
 
@@ -656,27 +1305,93 @@
     document.getElementById('income-total').textContent = fmt(totalIncome());
   }
 
+  // SVGs de logos
+  const VISA_LOGO = `<svg viewBox="0 0 1000 324" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M433.4 6.9L284.7 318.1h-97L114.6 35.5c-4.4-17.5-8.3-23.9-21.9-31.3C70.5-7.9 33.7-19.3 0-26.7L2.2-37h156.2c19.9 0 37.8 13.3 42.3 36.2l38.7 205.7L335.6 6.9h97.8zm383.9 209.5c.4-94.6-130.7-99.8-129.9-142.1.3-12.9 12.5-26.5 39.4-30 13.3-1.7 49.9-3.1 91.4 16l16.2-75.7C812 -22.8 783 -32 747.2-32 656 -32 591.7 16.5 591.2 86c-.6 51.4 45.9 80 80.9 97.1 36.1 17.5 48.2 28.7 48.1 44.4-.3 24-28.7 34.6-55.3 35-46.4.7-73.4-12.5-94.9-22.5l-16.7 78.3c21.6 9.9 61.4 18.5 102.6 18.9 96.9 0 160.3-47.9 160.6-122zm240.9 101.7H1144l-74.5-311.2h-78.8c-17.7 0-32.7 10.3-39.3 26.1L811.7 318.1h96.8l19.2-53.3h118.3l11.2 53.3zM954.2 192l48.5-133.7L1030.6 192H954.2zM565.2 6.9L489 318.1h-92.2L473 6.9h92.2z"/></svg>`;
+
+  const MASTERCARD_LOGO = `<svg viewBox="0 0 152 108" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="56" cy="54" r="48" fill="#EB001B"/>
+    <circle cx="96" cy="54" r="48" fill="#F79E1B"/>
+    <path d="M76 18c-12 9-20 22-20 36s8 27 20 36c12-9 20-22 20-36s-8-27-20-36z" fill="#FF5F00"/>
+  </svg>`;
+
+  const DAVIVIENDA_LOGO = `<div style="display: flex; align-items: center; gap: 6px; background: white; padding: 4px 10px; border-radius: 4px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="#c8102e"><path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
+    <span style="color: #c8102e; font-size: 11px; font-weight: 700; letter-spacing: -0.3px;">Davivienda</span>
+  </div>`;
+
+  const LULO_LOGO = `<div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.95); padding: 4px 10px; border-radius: 4px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="#d4ff3a"><circle cx="12" cy="12" r="10" fill="#0a0e27"/><circle cx="12" cy="12" r="5" fill="#d4ff3a"/></svg>
+    <span style="color: #0a0e27; font-size: 11px; font-weight: 700; letter-spacing: -0.3px;">lulo bank</span>
+  </div>`;
+
+  const BANK_INFO = {
+    davivienda: { name: 'Davivienda', logo: DAVIVIENDA_LOGO, cardClass: 'visa-davivienda' },
+    lulo: { name: 'Lulo Bank', logo: LULO_LOGO, cardClass: 'mastercard-lulo' }
+  };
+
+  const BRAND_INFO = {
+    visa: { name: 'VISA', logo: VISA_LOGO },
+    mastercard: { name: 'Mastercard', logo: MASTERCARD_LOGO }
+  };
+
   function renderDebts() {
     const list = document.getElementById('debt-list');
     const debt = totalDebt(), limit = totalLimit();
     if (state.debts.length === 0) {
       list.innerHTML = '<div class="empty-state">Sin tarjetas</div>';
     } else {
-      list.innerHTML = state.debts.map(d => {
+      list.innerHTML = '<div class="cards-grid">' + state.debts.map(d => {
         const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
-        return `<div style="padding: 12px 0; border-bottom: 0.5px solid var(--border);">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-            <strong>${esc(d.name)}</strong>
-            <span style="font-size: 12px; color: var(--text-secondary);">Cupo ${fmt(d.payment)}</span>
+        const bank = BANK_INFO[d.bank] || { name: '', logo: '', cardClass: '' };
+        const brand = BRAND_INFO[d.brand] || { name: '', logo: '' };
+        const lastDigits = d.lastDigits || d.id.toString().slice(-4);
+
+        return `<div class="credit-card ${bank.cardClass}">
+          <div class="credit-card-top">
+            ${bank.logo || `<div class="credit-card-bank-name">${esc(d.name)}</div>`}
+            <div class="credit-card-info-label" style="text-align: right;">CUPO TOTAL<br><span class="credit-card-info-value">${fmt(d.payment)}</span></div>
+          </div>
+          <div>
+            <div class="credit-card-chip"></div>
+            <div class="credit-card-number">•••• •••• •••• ${lastDigits}</div>
+            <div class="credit-card-bottom">
+              <div>
+                <div class="credit-card-info-label">Saldo actual</div>
+                <div class="credit-card-info-value">${fmt(d.balance)}</div>
+              </div>
+              <div class="credit-card-brand">${brand.logo}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+
+      // Detalles editables debajo de las tarjetas
+      list.innerHTML += state.debts.map(d => {
+        const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
+        const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay) : null;
+        const cardStats = getCardMonthStats(d.id);
+        const bank = BANK_INFO[d.bank] || { name: 'Banco' };
+        const brand = BRAND_INFO[d.brand] || { name: 'Tarjeta' };
+
+        return `<div class="card-detail-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="font-size: 14px;">${esc(d.name)} · ${brand.name}</strong>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--bg-secondary); color: var(--text-secondary);">${bank.name}</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
-            <span>Saldo: ${fmt(d.balance)}</span>
-            <span>Util: ${u}%</span>
+            <span>Utilización: <strong>${u}%</strong></span>
+            <span>Disponible: <strong>${fmt(d.payment - d.balance)}</strong></span>
           </div>
           <div class="progress-bar"><div class="progress-fill ${u > 30 ? 'warning' : 'success'}" style="width: ${Math.min(100, u)}%"></div></div>
-          <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px;">
-            <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, this.value)" />
-            <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">saldo</span>
+          ${cutoffInfo ? `<div style="margin-top: 10px; padding: 8px 10px; background: ${cutoffInfo.bg}; color: ${cutoffInfo.color}; border-radius: var(--radius-md); font-size: 12px;">${cutoffInfo.icon} ${cutoffInfo.text}</div>` : ''}
+          ${cardStats.txCount > 0 ? `<div style="margin-top: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: var(--text-secondary);">📊 Compras este mes:</span><span style="font-weight: 500;">${cardStats.txCount} (${fmt(cardStats.totalSpent)})</span></div>
+            <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">💰 Cashback ganado:</span><span style="font-weight: 500; color: var(--success-text);">+${fmt(cardStats.totalCashback)}</span></div>
+          </div>` : ''}
+          <div style="display: grid; grid-template-columns: 1fr 100px auto auto; gap: 8px; margin-top: 10px; align-items: center;">
+            <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, 'balance', this.value)" placeholder="Saldo" />
+            <input type="number" value="${d.cutoffDay || ''}" min="1" max="31" onchange="updateDebt(${d.id}, 'cutoffDay', this.value)" placeholder="Día corte" title="Día del mes que cierra el periodo" />
+            <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">corte</span>
             <button class="delete-btn" onclick="removeDebt(${d.id})">×</button>
           </div>
         </div>`;
@@ -685,6 +1400,48 @@
     document.getElementById('debt-total').textContent = fmt(debt);
     document.getElementById('debt-available').textContent = fmt(limit - debt);
     document.getElementById('debt-utilization').textContent = limit > 0 ? ((debt / limit) * 100).toFixed(1) + '%' : '—';
+
+    const totalCashbackMonth = state.debts.reduce((s, d) => s + getCardMonthStats(d.id).totalCashback, 0);
+    const cashbackEl = document.getElementById('cashback-total');
+    if (cashbackEl) cashbackEl.textContent = totalCashbackMonth > 0 ? '+' + fmt(totalCashbackMonth) : '—';
+  }
+
+  function getCardMonthStats(cardId) {
+    const txs = state.transactions[currentMonth] || [];
+    const cardTxs = txs.filter(t => t.cardId === cardId);
+    const totalSpent = cardTxs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    const totalCashback = cardTxs.reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
+    return { txCount: cardTxs.length, totalSpent, totalCashback };
+  }
+
+  function getCutoffStatus(cutoffDay) {
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // Calcular próxima fecha de corte
+    let nextCutoff;
+    if (currentDay <= cutoffDay) {
+      // Aún no llega el corte de este mes
+      nextCutoff = new Date(currentYear, currentMonth, cutoffDay);
+    } else {
+      // Ya pasó el corte, el próximo es el siguiente mes
+      nextCutoff = new Date(currentYear, currentMonth + 1, cutoffDay);
+    }
+
+    const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
+    const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
+
+    if (daysLeft <= 0) {
+      return { icon: '🚨', text: `¡HOY es el corte (${dateStr})! Paga la tarjeta antes del cierre del día.`, bg: 'var(--danger-bg)', color: 'var(--danger-text)' };
+    } else if (daysLeft <= 3) {
+      return { icon: '⚠️', text: `Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Recuerda pagar antes.`, bg: 'var(--warning-bg)', color: 'var(--warning-text)' };
+    } else if (daysLeft <= 7) {
+      return { icon: '🔔', text: `Corte en ${daysLeft} días (${dateStr}). Planifica el pago.`, bg: 'var(--info-bg)', color: 'var(--info-text)' };
+    } else {
+      return { icon: '📅', text: `Próximo corte: ${dateStr} (en ${daysLeft} días)`, bg: 'var(--bg-secondary)', color: 'var(--text-secondary)' };
+    }
   }
 
   function renderGoals() {
@@ -783,13 +1540,27 @@
       list.innerHTML = '<div class="empty-state">No hay movimientos en ' + getMonthLabel(currentMonth) + '. Empieza a registrarlos.</div>';
       return;
     }
+
+    const PAYMENT_METHODS = {
+      tarjeta: { icon: '💳', label: 'Tarjeta' },
+      pse: { icon: '🏦', label: 'PSE' },
+      llave: { icon: '🔑', label: 'Llave/Bre-B' },
+      efectivo: { icon: '💵', label: 'Efectivo' },
+      debito: { icon: '🏧', label: 'Débito Lulo' }
+    };
+
     list.innerHTML = txs.map(t => {
       const cat = CATEGORIES.find(c => c.id === t.category) || { icon: '📋', label: 'Otros' };
       const d = new Date(t.date + 'T00:00:00');
       const ds = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+      const method = PAYMENT_METHODS[t.paymentMethod] || { icon: '💵', label: 'Efectivo' };
+      const card = t.cardId ? state.debts.find(x => x.id === t.cardId) : null;
+      const cashbackStr = t.cashback > 0 ? `<span style="color: var(--success-text); font-size: 11px;"> · +${fmt(t.cashback)} cashback</span>` : '';
+      const methodStr = card ? `${method.icon} ${esc(card.name)}` : `${method.icon} ${method.label}`;
+
       return `<div class="tx-row">
         <div class="tx-date">${ds}</div>
-        <div>${esc(t.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label}</span></div>
+        <div>${esc(t.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span></div>
         <div style="color: var(--danger-text); font-weight: 500;">${fmt(t.amount)}</div>
         <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>
       </div>`;
@@ -829,7 +1600,8 @@
   function renderHealthScore(sav, inc, exp, debt, bal) {
     const sEl = document.getElementById('health-score');
     const stEl = document.getElementById('health-status');
-    const pEl = document.getElementById('health-progress');
+    const tipEl = document.getElementById('health-tip');
+    const circleEl = document.getElementById('health-circle-progress');
     let s = 50;
     if (exp > 0) {
       const m = sav / exp;
@@ -844,32 +1616,102 @@
     if (state.pockets.length >= 3) s += 5;
     s = Math.max(0, Math.min(100, s));
     sEl.textContent = s;
-    let st, c, fc;
-    if (s >= 80) { st = 'Excelente · estás muy bien'; c = 'var(--success-text)'; fc = 'success'; }
-    else if (s >= 65) { st = 'Buena · vas por buen camino'; c = 'var(--success-text)'; fc = 'success'; }
-    else if (s >= 45) { st = 'Regular · hay espacio para mejorar'; c = 'var(--warning-text)'; fc = 'warning'; }
-    else { st = 'Necesita atención'; c = 'var(--danger-text)'; fc = 'danger'; }
+
+    let st, c, tip;
+    if (s >= 80) {
+      st = '🌟 Excelente · estás muy bien';
+      c = '#1D9E75';
+      tip = 'Tu disciplina financiera es ejemplar. Considera invertir para hacer crecer más rápido.';
+    } else if (s >= 65) {
+      st = '✅ Buena · vas por buen camino';
+      c = '#639922';
+      tip = 'Mantén el ritmo. Pequeñas optimizaciones te llevarán al siguiente nivel.';
+    } else if (s >= 45) {
+      st = '🟡 Regular · hay espacio para mejorar';
+      c = '#BA7517';
+      tip = 'Revisa tus gastos variables y empieza con metas pequeñas pero constantes.';
+    } else {
+      st = '⚠️ Necesita atención';
+      c = '#A32D2D';
+      tip = 'Es momento de actuar. Empieza por reducir un gasto y construir tu fondo de emergencia.';
+    }
+
     sEl.style.color = c;
     stEl.textContent = st;
-    pEl.className = 'progress-fill ' + fc;
-    pEl.style.width = s + '%';
+    if (tipEl) tipEl.textContent = tip;
+    if (circleEl) {
+      const circumference = 263.89; // 2 * π * 42
+      const offset = circumference - (s / 100) * circumference;
+      circleEl.style.strokeDashoffset = offset;
+      circleEl.style.stroke = c;
+    }
   }
 
   function renderAlerts(sav, inc, exp, debt, bal) {
     const c = document.getElementById('alerts-container');
     const a = [];
-    if (inc > 0 && bal < 0) a.push({ t: 'danger', x: `Déficit mensual de ${fmt(Math.abs(bal))}. Revisa Presupuesto para optimizar.` });
-    else if (inc > 0 && bal >= 0 && bal < 200000) a.push({ t: 'warning', x: `Margen apretado: ${fmt(bal)}/mes.` });
-    else if (inc > 0 && bal >= 200000) a.push({ t: 'success', x: `Margen saludable de ${fmt(bal)}/mes. Aprovecha para invertir.` });
+
+    // 1. ALERTAS DE FECHAS DE CORTE DE TARJETAS (prioridad alta)
+    state.debts.forEach(d => {
+      if (d.cutoffDay) {
+        const today = new Date();
+        const currentDay = today.getDate();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        let nextCutoff;
+        if (currentDay <= d.cutoffDay) {
+          nextCutoff = new Date(currentYear, currentMonth, d.cutoffDay);
+        } else {
+          nextCutoff = new Date(currentYear, currentMonth + 1, d.cutoffDay);
+        }
+        const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
+        const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
+
+        if (daysLeft <= 0) {
+          a.push({ t: 'danger', x: `🚨 <strong>${d.name}</strong>: ¡HOY es el corte! Paga ${fmt(d.balance)} antes del cierre del día.` });
+        } else if (daysLeft <= 3) {
+          a.push({ t: 'warning', x: `⚠️ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Saldo a pagar: ${fmt(d.balance)}.` });
+        } else if (daysLeft <= 7) {
+          a.push({ t: 'info', x: `🔔 <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Planifica el pago de ${fmt(d.balance)}.` });
+        }
+      }
+    });
+
+    // 2. ALERTAS DE PRESUPUESTO
+    const budgets = state.budgets[currentMonth] || {};
+    CATEGORIES.forEach(cat => {
+      const budget = budgets[cat.id] || 0;
+      const spent = spentByCategory(cat.id);
+      if (budget > 0 && spent > 0) {
+        const pct = (spent / budget) * 100;
+        if (pct >= 100) {
+          a.push({ t: 'danger', x: `🚨 <strong>Excediste presupuesto en ${cat.label}</strong>: gastaste ${fmt(spent)} de ${fmt(budget)} (excedido por ${fmt(spent - budget)}).` });
+        } else if (pct >= 80) {
+          a.push({ t: 'warning', x: `⚠️ <strong>${cat.label} al ${pct.toFixed(0)}%</strong> del presupuesto. Te quedan ${fmt(budget - spent)} este mes.` });
+        }
+      }
+    });
+
+    // 3. ALERTAS GENERALES
+    if (inc > 0 && bal < 0) {
+      a.push({ t: 'danger', x: `Déficit mensual de ${fmt(Math.abs(bal))}. Revisa Presupuesto para optimizar.` });
+    } else if (inc > 0 && bal >= 0 && bal < 200000) {
+      a.push({ t: 'warning', x: `Margen apretado: ${fmt(bal)}/mes.` });
+    } else if (inc > 0 && bal >= 200000) {
+      a.push({ t: 'success', x: `Margen saludable de ${fmt(bal)}/mes. Aprovecha para invertir.` });
+    }
+
     if (exp > 0) {
       const m = sav / exp;
       if (m >= 6) a.push({ t: 'success', x: `Fondo cubre ${m.toFixed(1)} meses de gastos. Excelente colchón.` });
       else if (m >= 3) a.push({ t: 'info', x: `Fondo cubre ${m.toFixed(1)} meses. Saludable.` });
     }
+
     if (debt > 0 && totalLimit() > 0) {
       const u = (debt / totalLimit()) * 100;
       if (u < 30) a.push({ t: 'success', x: `Utilización de crédito en ${u.toFixed(1)}%. Excelente.` });
     }
+
     c.innerHTML = a.map(x => `<div class="alert alert-${x.t}">${x.x}</div>`).join('');
   }
 
