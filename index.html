@@ -949,7 +949,7 @@
 
 <script>
 (function() {
-  const STORAGE_KEY = 'finance-dashboard-cristian-v13';
+  const STORAGE_KEY = 'finance-dashboard-cristian-v15';
 
   const CATEGORIES = [
     // FIJOS NO NEGOCIABLES
@@ -1050,6 +1050,11 @@
         if (!state.budgets) state.budgets = { [currentMonth]: { ...DEFAULT_BUDGETS } };
         if (!state.transactions) state.transactions = {};
         if (!state.extraIncomes) state.extraIncomes = {};
+        // Asegurar que existe el bolsillo de efectivo
+        if (state.pockets && !state.pockets.find(p => p.isCash)) {
+          state.pockets.push({ id: Date.now(), name: 'Efectivo', amount: 0, icon: '💵', isCash: true });
+          saveState();
+        }
       }
     } catch(e) { console.error(e); }
     populateCategories();
@@ -1209,6 +1214,10 @@
         const i = JSON.parse(ev.target.result);
         if (confirm('¿Reemplazar tus datos?')) {
           state = { ...DEFAULT_STATE, ...i };
+          // Asegurar bolsillo de efectivo
+          if (state.pockets && !state.pockets.find(p => p.isCash)) {
+            state.pockets.push({ id: Date.now(), name: 'Efectivo', amount: 0, icon: '💵', isCash: true });
+          }
           saveState(); populateMonths(); renderAll(); alert('Importado');
         }
       } catch(err) { alert('Archivo inválido'); }
@@ -1543,7 +1552,7 @@
           <div class="pocket-name">${esc(p.name)}${p.isCash ? ' · físico' : ''}</div>
           <div class="pocket-amount">${fmt(p.amount)}</div>
           <div class="pocket-pct">${pct}% del total</div>
-          <input type="number" value="${p.amount}" min="0" step="0.01" onchange="updatePocket(${p.id}, this.value)" style="margin-top: 10px; height: 32px; font-size: 12px;" />
+          <input type="number" value="${p.amount}" min="0" step="0.01" onfocus="this.select()" onchange="updatePocket(${p.id}, this.value)" placeholder="Editar saldo" style="margin-top: 10px; height: 36px; font-size: 13px; background: var(--bg-secondary); border: 1px solid var(--border-strong); cursor: text;" />
         </div>`;
       }).join('');
     }
