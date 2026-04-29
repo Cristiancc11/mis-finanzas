@@ -809,7 +809,8 @@
 
   <div class="fin-section" id="section-ingresos">
     <div class="raised-card">
-      <p class="card-title">Agregar ingreso</p>
+      <p class="card-title">💼 Agregar ingreso recurrente</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Salario, rentas, suscripciones que recibes regularmente</p>
       <div class="form-row-3">
         <input type="text" id="income-name" placeholder="Concepto" />
         <input type="number" id="income-amount" placeholder="Monto" min="0" step="0.01" />
@@ -818,9 +819,44 @@
       </div>
     </div>
     <div class="raised-card">
-      <p class="card-title">Mis ingresos</p>
+      <p class="card-title">📋 Mis ingresos recurrentes</p>
       <div id="income-list"></div>
       <div class="summary-row" style="margin-top: 12px; font-weight: 500;"><span>Total mensual equivalente</span><span id="income-total" style="color: var(--success-text);">—</span></div>
+    </div>
+
+    <div class="raised-card" style="border: 0.5px solid var(--info-text);">
+      <p class="card-title">💰 Registrar ingreso extra (no recurrente)</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Bonos, devoluciones, regalos, ventas, freelance ocasional</p>
+      <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center;">
+        <input type="text" id="extra-desc" placeholder="¿De dónde viene?" />
+        <input type="number" id="extra-amount" placeholder="Monto" min="0" step="0.01" />
+        <select id="extra-source">
+          <option value="bono">🎁 Bono / Bonificación</option>
+          <option value="devolucion">↩️ Devolución</option>
+          <option value="regalo">🎉 Regalo</option>
+          <option value="venta">🛒 Venta</option>
+          <option value="freelance">💼 Freelance / Trabajo extra</option>
+          <option value="prestamo">💵 Devolución de préstamo</option>
+          <option value="reembolso">📋 Reembolso (hermana/Milena)</option>
+          <option value="otro">📌 Otro</option>
+        </select>
+        <button onclick="addExtraIncome()">Agregar</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
+        <input type="date" id="extra-date" />
+        <span style="font-size: 11px; color: var(--text-tertiary);">Fecha del ingreso</span>
+      </div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">💸 Ingresos extras del mes</p>
+      <div class="month-selector" style="margin-bottom: 12px;">
+        <label style="font-size: 13px; color: var(--text-secondary);">Mes:</label>
+        <select id="extra-month-select"></select>
+      </div>
+      <div id="extra-list"></div>
+      <div class="summary-row" style="margin-top: 12px; font-weight: 500;"><span>Total ingresos extras del mes</span><span id="extra-total" style="color: var(--success-text);">—</span></div>
+      <div class="summary-row" style="font-weight: 500;"><span>💎 Ingreso TOTAL del mes (recurrente + extras + cashback)</span><span id="extra-grand-total" style="color: var(--success-text); font-size: 15px;">—</span></div>
     </div>
   </div>
 
@@ -886,7 +922,7 @@
 
 <script>
 (function() {
-  const STORAGE_KEY = 'finance-dashboard-cristian-v9';
+  const STORAGE_KEY = 'finance-dashboard-cristian-v10';
 
   const CATEGORIES = [
     // FIJOS NO NEGOCIABLES
@@ -963,7 +999,8 @@
       { id: 401, name: 'Viajes Futuros', target: 1500000, current: 820301.04 }
     ],
     budgets: { [initialMonth]: { ...DEFAULT_BUDGETS } },
-    transactions: {}
+    transactions: {},
+    extraIncomes: {} // { 'YYYY-MM': [{id, date, desc, amount, source}] }
   };
 
   let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -984,6 +1021,7 @@
         state = { ...DEFAULT_STATE, ...loaded };
         if (!state.budgets) state.budgets = { [currentMonth]: { ...DEFAULT_BUDGETS } };
         if (!state.transactions) state.transactions = {};
+        if (!state.extraIncomes) state.extraIncomes = {};
       }
     } catch(e) { console.error(e); }
     populateCategories();
@@ -1000,6 +1038,8 @@
     const d = new Date().toISOString().split('T')[0];
     const el = document.getElementById('tx-date');
     if (el && !el.value) el.value = d;
+    const el2 = document.getElementById('extra-date');
+    if (el2 && !el2.value) el2.value = d;
   }
 
   function populateCategories() {
@@ -1068,7 +1108,12 @@
     const txs = state.transactions[currentMonth] || [];
     return txs.reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
   };
-  const totalIncomeWithCashback = () => totalIncome() + totalMonthCashback();
+  const totalMonthExtraIncome = (month) => {
+    const m = month || currentMonth;
+    const extras = (state.extraIncomes && state.extraIncomes[m]) || [];
+    return extras.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  };
+  const totalIncomeWithCashback = () => totalIncome() + totalMonthCashback() + totalMonthExtraIncome();
   const totalDebt = () => state.debts.reduce((s, d) => s + d.balance, 0);
   const totalLimit = () => state.debts.reduce((s, d) => s + d.payment, 0);
   function totalBudget() { const b = state.budgets[currentMonth] || {}; return Object.values(b).reduce((s, v) => s + (parseFloat(v) || 0), 0); }
@@ -1147,6 +1192,93 @@
     saveState(); renderAll();
   };
   window.removeIncome = function(id) { state.incomes = state.incomes.filter(i => i.id !== id); saveState(); renderAll(); };
+
+  // INGRESOS EXTRAS (no recurrentes)
+  window.addExtraIncome = function() {
+    const desc = document.getElementById('extra-desc').value.trim();
+    const amount = parseFloat(document.getElementById('extra-amount').value);
+    const source = document.getElementById('extra-source').value;
+    const date = document.getElementById('extra-date').value || new Date().toISOString().split('T')[0];
+    if (!desc || !amount || amount <= 0) return alert('Completa descripción y monto');
+
+    const month = date.substring(0, 7);
+    if (!state.extraIncomes) state.extraIncomes = {};
+    if (!state.extraIncomes[month]) state.extraIncomes[month] = [];
+    state.extraIncomes[month].push({ id: Date.now(), date, desc, amount, source });
+
+    document.getElementById('extra-desc').value = '';
+    document.getElementById('extra-amount').value = '';
+    saveState();
+    populateExtraMonths();
+    renderExtraIncomes();
+    renderResumen();
+  };
+
+  window.removeExtraIncome = function(month, id) {
+    if (state.extraIncomes && state.extraIncomes[month]) {
+      state.extraIncomes[month] = state.extraIncomes[month].filter(e => e.id !== id);
+      saveState();
+      renderExtraIncomes();
+      renderResumen();
+    }
+  };
+
+  let currentExtraMonth = currentMonth;
+
+  function populateExtraMonths() {
+    const sel = document.getElementById('extra-month-select');
+    if (!sel) return;
+    const all = new Set([currentMonth, currentExtraMonth, ...Object.keys(state.extraIncomes || {})]);
+    const sorted = Array.from(all).filter(Boolean).sort().reverse();
+    sel.innerHTML = sorted.map(m => `<option value="${m}" ${m === currentExtraMonth ? 'selected' : ''}>${getMonthLabel(m)}</option>`).join('');
+    sel.onchange = (e) => {
+      currentExtraMonth = e.target.value;
+      renderExtraIncomes();
+    };
+  }
+
+  function renderExtraIncomes() {
+    const list = document.getElementById('extra-list');
+    if (!list) return;
+
+    const SOURCE_INFO = {
+      bono: { icon: '🎁', label: 'Bono' },
+      devolucion: { icon: '↩️', label: 'Devolución' },
+      regalo: { icon: '🎉', label: 'Regalo' },
+      venta: { icon: '🛒', label: 'Venta' },
+      freelance: { icon: '💼', label: 'Freelance' },
+      prestamo: { icon: '💵', label: 'Devolución préstamo' },
+      reembolso: { icon: '📋', label: 'Reembolso' },
+      otro: { icon: '📌', label: 'Otro' }
+    };
+
+    const extras = ((state.extraIncomes || {})[currentExtraMonth] || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+
+    if (extras.length === 0) {
+      list.innerHTML = '<div class="empty-state">No hay ingresos extras en ' + getMonthLabel(currentExtraMonth) + '. Cuando recibas algo extra, regístralo aquí.</div>';
+    } else {
+      list.innerHTML = extras.map(e => {
+        const src = SOURCE_INFO[e.source] || { icon: '📌', label: 'Otro' };
+        const d = new Date(e.date + 'T00:00:00');
+        const ds = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+        return `<div class="tx-row">
+          <div class="tx-date">${ds}</div>
+          <div>${esc(e.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${src.icon} ${src.label}</span></div>
+          <div style="color: var(--success-text); font-weight: 500;">+${fmt(e.amount)}</div>
+          <button class="delete-btn" onclick="removeExtraIncome('${currentExtraMonth}', ${e.id})">×</button>
+        </div>`;
+      }).join('');
+    }
+
+    const extraTotal = totalMonthExtraIncome(currentExtraMonth);
+    document.getElementById('extra-total').textContent = extraTotal > 0 ? '+' + fmt(extraTotal) : '—';
+
+    // Total grand: ingresos recurrentes + extras + cashback
+    const recurrent = totalIncome();
+    const cashback = currentExtraMonth === currentMonth ? totalMonthCashback() : 0;
+    const grandTotal = recurrent + extraTotal + cashback;
+    document.getElementById('extra-grand-total').textContent = fmt(grandTotal);
+  }
 
   window.addDebt = function() {
     const n = document.getElementById('debt-name').value.trim();
@@ -1569,7 +1701,10 @@
 
   function renderResumen() {
     const sav = totalPockets();
-    const inc = totalIncome();
+    const incRecurrent = totalIncome();
+    const incExtras = totalMonthExtraIncome();
+    const incCashback = totalMonthCashback();
+    const inc = incRecurrent + incExtras + incCashback;
     const debt = totalDebt();
     const nw = sav - debt;
     const spent = totalSpent();
@@ -1581,7 +1716,25 @@
     document.getElementById('net-worth-detail').textContent = `Ahorros ${fmt(sav)} − Deudas ${fmt(debt)}`;
     document.getElementById('m-savings').textContent = sav > 0 ? fmt(sav) : '—';
     if (exp > 0) document.getElementById('m-savings-detail').textContent = `Cubre ${(sav/exp).toFixed(1)} meses de gastos`;
+
     document.getElementById('m-income').textContent = inc > 0 ? fmt(inc) : '—';
+    const incomeBreakdown = [];
+    if (incRecurrent > 0) incomeBreakdown.push(`Salario ${fmt(incRecurrent)}`);
+    if (incExtras > 0) incomeBreakdown.push(`Extras +${fmt(incExtras)}`);
+    if (incCashback > 0) incomeBreakdown.push(`Cashback +${fmt(incCashback)}`);
+    const incomeMetric = document.getElementById('m-income');
+    if (incomeMetric && incomeBreakdown.length > 1) {
+      const sub = incomeMetric.parentElement.querySelector('.metric-hero-sub');
+      if (!sub) {
+        const newSub = document.createElement('div');
+        newSub.className = 'metric-hero-sub';
+        newSub.id = 'm-income-detail';
+        incomeMetric.parentElement.appendChild(newSub);
+      }
+      const subEl = document.getElementById('m-income-detail') || incomeMetric.parentElement.querySelector('.metric-hero-sub');
+      if (subEl) subEl.textContent = incomeBreakdown.join(' · ');
+    }
+
     document.getElementById('m-expense').textContent = exp > 0 ? fmt(exp) : '—';
     document.getElementById('m-margin').textContent = (inc > 0 || exp > 0) ? fmt(bal) : '—';
     document.getElementById('m-margin').style.color = bal >= 0 ? 'var(--success-text)' : 'var(--danger-text)';
@@ -1863,6 +2016,8 @@
   function renderAll() {
     renderPockets(); renderIncomes(); renderDebts(); renderGoals();
     renderResumen(); renderBudget(); renderTransactions(); renderCharts();
+    populateExtraMonths();
+    renderExtraIncomes();
   }
 
   if (typeof Chart !== 'undefined') loadState();
