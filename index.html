@@ -102,6 +102,21 @@
   .net-worth-detail { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
   .pocket-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
   .pocket-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; position: relative; }
+  .pocket-card.cash-pocket {
+    background: linear-gradient(135deg, #f4f1d4 0%, #e8e4b8 100%);
+    border: 0.5px solid #d4c97a;
+    color: #4a3f0f;
+  }
+  @media (prefers-color-scheme: dark) {
+    .pocket-card.cash-pocket {
+      background: linear-gradient(135deg, #3a3520 0%, #2d2818 100%);
+      border: 0.5px solid #6b5f2e;
+      color: #e8d878;
+    }
+  }
+  .pocket-card.cash-pocket .pocket-name { color: inherit; opacity: 0.7; }
+  .pocket-card.cash-pocket .pocket-amount { color: inherit; }
+  .pocket-card.cash-pocket .pocket-pct { color: inherit; opacity: 0.6; }
   .pocket-name { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
   .pocket-amount { font-size: 18px; font-weight: 500; }
   .pocket-pct { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
@@ -771,6 +786,14 @@
         </select>
         <input type="date" id="tx-date" />
       </div>
+      <div id="tx-pocket-row" style="display: none; margin-top: 8px;">
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
+          <select id="tx-pocket">
+            <option value="">¿De qué bolsillo salió?</option>
+          </select>
+          <span style="font-size: 11px; color: var(--text-tertiary);">Se descontará automáticamente</span>
+        </div>
+      </div>
       <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
     </div>
     <div class="raised-card">
@@ -785,6 +808,7 @@
   </div>
 
   <div class="fin-section" id="section-bolsillos">
+    <div id="cash-summary"></div>
     <div class="raised-card">
       <p class="card-title">Agregar bolsillo</p>
       <div class="form-row-pocket">
@@ -795,7 +819,7 @@
           <option value="🛟">🛟 Emergencia</option><option value="🎓">🎓 Educación</option>
           <option value="❤️">❤️ Personal</option><option value="⚡">⚡ Servicios</option>
           <option value="🍻">🍻 Vida Social</option><option value="🏠">🏠 Vivienda</option>
-          <option value="📈">📈 Inversión</option>
+          <option value="📈">📈 Inversión</option><option value="💵">💵 Efectivo</option>
         </select>
         <button onclick="addPocket()">Agregar</button>
       </div>
@@ -842,10 +866,13 @@
         </select>
         <button onclick="addExtraIncome()">Agregar</button>
       </div>
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center;">
         <input type="date" id="extra-date" />
-        <span style="font-size: 11px; color: var(--text-tertiary);">Fecha del ingreso</span>
+        <select id="extra-pocket">
+          <option value="">¿A qué bolsillo va?</option>
+        </select>
       </div>
+      <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">Si seleccionas un bolsillo, el dinero se sumará automáticamente</p>
     </div>
 
     <div class="raised-card">
@@ -922,7 +949,7 @@
 
 <script>
 (function() {
-  const STORAGE_KEY = 'finance-dashboard-cristian-v10';
+  const STORAGE_KEY = 'finance-dashboard-cristian-v13';
 
   const CATEGORIES = [
     // FIJOS NO NEGOCIABLES
@@ -985,7 +1012,8 @@
       { id: 5, name: 'Servicios', amount: 750000, icon: '⚡' },
       { id: 6, name: 'Vida Social', amount: 400000, icon: '🍻' },
       { id: 7, name: 'Gastos Fijos del mes', amount: 383432.27, icon: '🏠' },
-      { id: 8, name: 'Zlatan', amount: 245000, icon: '❤️' }
+      { id: 8, name: 'Zlatan', amount: 245000, icon: '❤️' },
+      { id: 9, name: 'Efectivo', amount: 0, icon: '💵', isCash: true }
     ],
     incomes: [
       { id: 101, name: 'Salario', amount: 2000000, frequency: 'monthly' },
@@ -1046,6 +1074,7 @@
     const sel = document.getElementById('tx-category');
     if (sel) sel.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
     populateCards();
+    populatePocketsSelector();
     setupPaymentMethodListener();
   }
 
@@ -1056,16 +1085,41 @@
       state.debts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
   }
 
+  function populatePocketsSelector() {
+    const sel = document.getElementById('tx-pocket');
+    if (sel) {
+      sel.innerHTML = '<option value="">No descontar de bolsillo</option>' +
+        state.pockets.map(p => `<option value="${p.id}">${p.icon} ${p.name} (${fmt(p.amount)})</option>`).join('');
+    }
+    const extraSel = document.getElementById('extra-pocket');
+    if (extraSel) {
+      extraSel.innerHTML = '<option value="">No agregar a bolsillo</option>' +
+        state.pockets.map(p => `<option value="${p.id}">${p.icon} ${p.name} (${fmt(p.amount)})</option>`).join('');
+    }
+  }
+
   function setupPaymentMethodListener() {
     const methodSel = document.getElementById('tx-payment-method');
     const cardSel = document.getElementById('tx-card');
     const cashbackInfo = document.getElementById('tx-cashback-info');
     const amountInput = document.getElementById('tx-amount');
+    const pocketRow = document.getElementById('tx-pocket-row');
+    const pocketSel = document.getElementById('tx-pocket');
     if (!methodSel || !cardSel) return;
 
     function updateUI() {
       const isCard = methodSel.value === 'tarjeta';
+      const isCash = methodSel.value === 'efectivo';
       cardSel.style.display = isCard ? 'block' : 'none';
+      if (pocketRow) pocketRow.style.display = isCard ? 'none' : 'block';
+
+      // Si seleccionó efectivo, auto-sugerir el bolsillo de efectivo
+      if (isCash && pocketSel) {
+        const cashPocket = state.pockets.find(p => p.isCash);
+        if (cashPocket && !pocketSel.value) {
+          pocketSel.value = cashPocket.id;
+        }
+      }
       updateCashbackPreview();
     }
 
@@ -1199,27 +1253,52 @@
     const amount = parseFloat(document.getElementById('extra-amount').value);
     const source = document.getElementById('extra-source').value;
     const date = document.getElementById('extra-date').value || new Date().toISOString().split('T')[0];
+    const pocketId = document.getElementById('extra-pocket') ? document.getElementById('extra-pocket').value : '';
     if (!desc || !amount || amount <= 0) return alert('Completa descripción y monto');
 
     const month = date.substring(0, 7);
     if (!state.extraIncomes) state.extraIncomes = {};
     if (!state.extraIncomes[month]) state.extraIncomes[month] = [];
-    state.extraIncomes[month].push({ id: Date.now(), date, desc, amount, source });
+
+    let pocketIdNum = null;
+    if (pocketId) {
+      pocketIdNum = parseInt(pocketId);
+      const pocket = state.pockets.find(x => x.id === pocketIdNum);
+      if (pocket) {
+        pocket.amount = pocket.amount + amount;
+      }
+    }
+
+    state.extraIncomes[month].push({
+      id: Date.now(), date, desc, amount, source, pocketId: pocketIdNum
+    });
 
     document.getElementById('extra-desc').value = '';
     document.getElementById('extra-amount').value = '';
+    if (document.getElementById('extra-pocket')) document.getElementById('extra-pocket').value = '';
     saveState();
     populateExtraMonths();
+    populatePocketsSelector();
     renderExtraIncomes();
     renderResumen();
+    renderPockets();
   };
 
   window.removeExtraIncome = function(month, id) {
     if (state.extraIncomes && state.extraIncomes[month]) {
+      const extra = state.extraIncomes[month].find(e => e.id === id);
+      if (extra && extra.pocketId) {
+        const pocket = state.pockets.find(x => x.id === extra.pocketId);
+        if (pocket) {
+          pocket.amount = Math.max(0, pocket.amount - extra.amount);
+        }
+      }
       state.extraIncomes[month] = state.extraIncomes[month].filter(e => e.id !== id);
       saveState();
+      populatePocketsSelector();
       renderExtraIncomes();
       renderResumen();
+      renderPockets();
     }
   };
 
@@ -1261,9 +1340,11 @@
         const src = SOURCE_INFO[e.source] || { icon: '📌', label: 'Otro' };
         const d = new Date(e.date + 'T00:00:00');
         const ds = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+        const pocket = e.pocketId ? state.pockets.find(p => p.id === e.pocketId) : null;
+        const pocketStr = pocket ? ` → ${pocket.icon} ${esc(pocket.name)}` : '';
         return `<div class="tx-row">
           <div class="tx-date">${ds}</div>
-          <div>${esc(e.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${src.icon} ${src.label}</span></div>
+          <div>${esc(e.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${src.icon} ${src.label}${pocketStr}</span></div>
           <div style="color: var(--success-text); font-weight: 500;">+${fmt(e.amount)}</div>
           <button class="delete-btn" onclick="removeExtraIncome('${currentExtraMonth}', ${e.id})">×</button>
         </div>`;
@@ -1341,22 +1422,35 @@
     const dt = document.getElementById('tx-date').value || new Date().toISOString().split('T')[0];
     const method = document.getElementById('tx-payment-method').value;
     const cardId = document.getElementById('tx-card').value;
+    const pocketId = document.getElementById('tx-pocket') ? document.getElementById('tx-pocket').value : '';
     if (!d || !a || a <= 0) return alert('Completa descripción y monto');
     if (method === 'tarjeta' && !cardId) return alert('Selecciona la tarjeta usada');
 
     const m = dt.substring(0, 7);
     if (!state.transactions[m]) state.transactions[m] = [];
 
-    // Calcular cashback si fue con tarjeta
     let cashback = 0;
     let cardIdNum = null;
+    let pocketIdNum = null;
+
     if (method === 'tarjeta' && cardId) {
       cashback = a * 0.01;
       cardIdNum = parseInt(cardId);
-      // Sumar al saldo de la tarjeta
       const card = state.debts.find(x => x.id === cardIdNum);
       if (card) {
         card.balance += a;
+      }
+    } else if (pocketId) {
+      // Si NO es tarjeta y se seleccionó bolsillo, descontar del bolsillo
+      pocketIdNum = parseInt(pocketId);
+      const pocket = state.pockets.find(x => x.id === pocketIdNum);
+      if (pocket) {
+        if (pocket.amount < a) {
+          if (!confirm(`El bolsillo "${pocket.name}" tiene ${fmt(pocket.amount)} pero quieres gastar ${fmt(a)}. ¿Continuar de todas formas? (quedará en negativo)`)) {
+            return;
+          }
+        }
+        pocket.amount = pocket.amount - a;
       }
     }
 
@@ -1365,27 +1459,38 @@
       date: dt, desc: d, amount: a, category: c,
       paymentMethod: method,
       cardId: cardIdNum,
+      pocketId: pocketIdNum,
       cashback: cashback
     });
 
     document.getElementById('tx-desc').value = '';
     document.getElementById('tx-amount').value = '';
+    if (document.getElementById('tx-pocket')) document.getElementById('tx-pocket').value = '';
     document.getElementById('tx-cashback-info').style.display = 'none';
-    saveState(); populateMonths(); renderBudget(); renderTransactions(); renderResumen(); renderDebts();
+    saveState(); populateMonths(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
   };
 
   window.removeTransaction = function(m, id) {
     if (state.transactions[m]) {
-      // Si fue con tarjeta, restar del saldo de la tarjeta
       const tx = state.transactions[m].find(t => t.id === id);
-      if (tx && tx.paymentMethod === 'tarjeta' && tx.cardId) {
-        const card = state.debts.find(x => x.id === tx.cardId);
-        if (card) {
-          card.balance = Math.max(0, card.balance - tx.amount);
+      if (tx) {
+        // Si fue con tarjeta, revertir saldo
+        if (tx.paymentMethod === 'tarjeta' && tx.cardId) {
+          const card = state.debts.find(x => x.id === tx.cardId);
+          if (card) {
+            card.balance = Math.max(0, card.balance - tx.amount);
+          }
+        }
+        // Si descontó de un bolsillo, devolverle el dinero
+        if (tx.pocketId) {
+          const pocket = state.pockets.find(x => x.id === tx.pocketId);
+          if (pocket) {
+            pocket.amount = pocket.amount + tx.amount;
+          }
         }
       }
       state.transactions[m] = state.transactions[m].filter(t => t.id !== id);
-      saveState(); renderBudget(); renderTransactions(); renderResumen(); renderDebts();
+      saveState(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
     }
   };
 
@@ -1403,16 +1508,39 @@
   function renderPockets() {
     const list = document.getElementById('pocket-list');
     const total = totalPockets();
+    const cashTotal = state.pockets.filter(p => p.isCash).reduce((s, p) => s + p.amount, 0);
+    const digitalTotal = total - cashTotal;
+
+    // Resumen de efectivo vs digital
+    const cashSummary = document.getElementById('cash-summary');
+    if (cashSummary) {
+      cashSummary.innerHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem;">
+        <div class="metric-hero">
+          <div class="metric-hero-icon" style="background: linear-gradient(135deg, #f4d03f, #d4a017); color: white;">💵</div>
+          <div class="metric-hero-label">Efectivo en mano</div>
+          <p class="metric-hero-value" style="color: var(--warning-text);">${fmt(cashTotal)}</p>
+          <div class="metric-hero-sub">Físico · controla siempre lo que cargas</div>
+        </div>
+        <div class="metric-hero">
+          <div class="metric-hero-icon green">🏦</div>
+          <div class="metric-hero-label">Dinero digital</div>
+          <p class="metric-hero-value" style="color: var(--success-text);">${fmt(digitalTotal)}</p>
+          <div class="metric-hero-sub">En Lulo Bank y bolsillos</div>
+        </div>
+      </div>`;
+    }
+
     if (state.pockets.length === 0) {
       list.innerHTML = '<div class="empty-state">Sin bolsillos</div>';
     } else {
       const sorted = [...state.pockets].sort((a, b) => b.amount - a.amount);
       list.innerHTML = sorted.map(p => {
         const pct = total > 0 ? ((p.amount / total) * 100).toFixed(1) : 0;
-        return `<div class="pocket-card">
+        const cashClass = p.isCash ? ' cash-pocket' : '';
+        return `<div class="pocket-card${cashClass}">
           <button class="delete-btn pocket-delete" onclick="removePocket(${p.id})">×</button>
           <div style="font-size: 22px; margin-bottom: 8px;">${p.icon}</div>
-          <div class="pocket-name">${esc(p.name)}</div>
+          <div class="pocket-name">${esc(p.name)}${p.isCash ? ' · físico' : ''}</div>
           <div class="pocket-amount">${fmt(p.amount)}</div>
           <div class="pocket-pct">${pct}% del total</div>
           <input type="number" value="${p.amount}" min="0" step="0.01" onchange="updatePocket(${p.id}, this.value)" style="margin-top: 10px; height: 32px; font-size: 12px;" />
@@ -1687,8 +1815,16 @@
       const ds = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
       const method = PAYMENT_METHODS[t.paymentMethod] || { icon: '💵', label: 'Efectivo' };
       const card = t.cardId ? state.debts.find(x => x.id === t.cardId) : null;
+      const pocket = t.pocketId ? state.pockets.find(x => x.id === t.pocketId) : null;
       const cashbackStr = t.cashback > 0 ? `<span style="color: var(--success-text); font-size: 11px;"> · +${fmt(t.cashback)} cashback</span>` : '';
-      const methodStr = card ? `${method.icon} ${esc(card.name)}` : `${method.icon} ${method.label}`;
+      let methodStr;
+      if (card) {
+        methodStr = `${method.icon} ${esc(card.name)}`;
+      } else if (pocket) {
+        methodStr = `${method.icon} ${method.label} desde ${pocket.icon} ${esc(pocket.name)}`;
+      } else {
+        methodStr = `${method.icon} ${method.label}`;
+      }
 
       return `<div class="tx-row">
         <div class="tx-date">${ds}</div>
