@@ -107,16 +107,29 @@
     border: 0.5px solid #d4c97a;
     color: #4a3f0f;
   }
+  .pocket-card.rappi-pocket {
+    background: linear-gradient(135deg, #ffeaea 0%, #ffd4d4 100%);
+    border: 0.5px solid #ff7675;
+    color: #8b0000;
+  }
   @media (prefers-color-scheme: dark) {
     .pocket-card.cash-pocket {
       background: linear-gradient(135deg, #3a3520 0%, #2d2818 100%);
       border: 0.5px solid #6b5f2e;
       color: #e8d878;
     }
+    .pocket-card.rappi-pocket {
+      background: linear-gradient(135deg, #3a1818 0%, #2a1010 100%);
+      border: 0.5px solid #8b3535;
+      color: #ff9999;
+    }
   }
-  .pocket-card.cash-pocket .pocket-name { color: inherit; opacity: 0.7; }
-  .pocket-card.cash-pocket .pocket-amount { color: inherit; }
-  .pocket-card.cash-pocket .pocket-pct { color: inherit; opacity: 0.6; }
+  .pocket-card.cash-pocket .pocket-name,
+  .pocket-card.rappi-pocket .pocket-name { color: inherit; opacity: 0.7; }
+  .pocket-card.cash-pocket .pocket-amount,
+  .pocket-card.rappi-pocket .pocket-amount { color: inherit; }
+  .pocket-card.cash-pocket .pocket-pct,
+  .pocket-card.rappi-pocket .pocket-pct { color: inherit; opacity: 0.6; }
   .pocket-name { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
   .pocket-amount { font-size: 18px; font-weight: 500; }
   .pocket-pct { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
@@ -949,7 +962,7 @@
 
 <script>
 (function() {
-  const STORAGE_KEY = 'finance-dashboard-cristian-v15';
+  const STORAGE_KEY = 'finance-dashboard-cristian-v16';
 
   const CATEGORIES = [
     // FIJOS NO NEGOCIABLES
@@ -1013,7 +1026,8 @@
       { id: 6, name: 'Vida Social', amount: 400000, icon: '🍻' },
       { id: 7, name: 'Gastos Fijos del mes', amount: 383432.27, icon: '🏠' },
       { id: 8, name: 'Zlatan', amount: 245000, icon: '❤️' },
-      { id: 9, name: 'Efectivo', amount: 0, icon: '💵', isCash: true }
+      { id: 9, name: 'Efectivo', amount: 0, icon: '💵', isCash: true },
+      { id: 10, name: 'Cashback RappiCard', amount: 300693.23, icon: '💳', bank: 'rappi', rate: 9 }
     ],
     incomes: [
       { id: 101, name: 'Salario', amount: 2000000, frequency: 'monthly' },
@@ -1050,9 +1064,13 @@
         if (!state.budgets) state.budgets = { [currentMonth]: { ...DEFAULT_BUDGETS } };
         if (!state.transactions) state.transactions = {};
         if (!state.extraIncomes) state.extraIncomes = {};
-        // Asegurar que existe el bolsillo de efectivo
+        // Asegurar que existan los bolsillos especiales
         if (state.pockets && !state.pockets.find(p => p.isCash)) {
           state.pockets.push({ id: Date.now(), name: 'Efectivo', amount: 0, icon: '💵', isCash: true });
+          saveState();
+        }
+        if (state.pockets && !state.pockets.find(p => p.bank === 'rappi')) {
+          state.pockets.push({ id: Date.now() + 1, name: 'Cashback RappiCard', amount: 300693.23, icon: '💳', bank: 'rappi', rate: 9 });
           saveState();
         }
       }
@@ -1214,9 +1232,12 @@
         const i = JSON.parse(ev.target.result);
         if (confirm('¿Reemplazar tus datos?')) {
           state = { ...DEFAULT_STATE, ...i };
-          // Asegurar bolsillo de efectivo
+          // Asegurar bolsillos especiales
           if (state.pockets && !state.pockets.find(p => p.isCash)) {
             state.pockets.push({ id: Date.now(), name: 'Efectivo', amount: 0, icon: '💵', isCash: true });
+          }
+          if (state.pockets && !state.pockets.find(p => p.bank === 'rappi')) {
+            state.pockets.push({ id: Date.now() + 1, name: 'Cashback RappiCard', amount: 300693.23, icon: '💳', bank: 'rappi', rate: 9 });
           }
           saveState(); populateMonths(); renderAll(); alert('Importado');
         }
@@ -1518,23 +1539,29 @@
     const list = document.getElementById('pocket-list');
     const total = totalPockets();
     const cashTotal = state.pockets.filter(p => p.isCash).reduce((s, p) => s + p.amount, 0);
-    const digitalTotal = total - cashTotal;
+    const rappiTotal = state.pockets.filter(p => p.bank === 'rappi').reduce((s, p) => s + p.amount, 0);
+    const luloTotal = total - cashTotal - rappiTotal;
 
-    // Resumen de efectivo vs digital
     const cashSummary = document.getElementById('cash-summary');
     if (cashSummary) {
-      cashSummary.innerHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem;">
+      cashSummary.innerHTML = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 1rem;">
+        <div class="metric-hero">
+          <div class="metric-hero-icon green">🏦</div>
+          <div class="metric-hero-label">Lulo Bank (7.87% EA)</div>
+          <p class="metric-hero-value" style="color: var(--success-text);">${fmt(luloTotal)}</p>
+          <div class="metric-hero-sub">Bolsillos digitales</div>
+        </div>
+        <div class="metric-hero">
+          <div class="metric-hero-icon red">💳</div>
+          <div class="metric-hero-label">Cashback Rappi (9% EA)</div>
+          <p class="metric-hero-value" style="color: var(--danger-text);">${fmt(rappiTotal)}</p>
+          <div class="metric-hero-sub">Tasa más alta · liquidez total</div>
+        </div>
         <div class="metric-hero">
           <div class="metric-hero-icon" style="background: linear-gradient(135deg, #f4d03f, #d4a017); color: white;">💵</div>
           <div class="metric-hero-label">Efectivo en mano</div>
           <p class="metric-hero-value" style="color: var(--warning-text);">${fmt(cashTotal)}</p>
-          <div class="metric-hero-sub">Físico · controla siempre lo que cargas</div>
-        </div>
-        <div class="metric-hero">
-          <div class="metric-hero-icon green">🏦</div>
-          <div class="metric-hero-label">Dinero digital</div>
-          <p class="metric-hero-value" style="color: var(--success-text);">${fmt(digitalTotal)}</p>
-          <div class="metric-hero-sub">En Lulo Bank y bolsillos</div>
+          <div class="metric-hero-sub">Físico · controla siempre</div>
         </div>
       </div>`;
     }
@@ -1545,11 +1572,14 @@
       const sorted = [...state.pockets].sort((a, b) => b.amount - a.amount);
       list.innerHTML = sorted.map(p => {
         const pct = total > 0 ? ((p.amount / total) * 100).toFixed(1) : 0;
-        const cashClass = p.isCash ? ' cash-pocket' : '';
-        return `<div class="pocket-card${cashClass}">
+        let extraClass = '';
+        if (p.isCash) extraClass = ' cash-pocket';
+        else if (p.bank === 'rappi') extraClass = ' rappi-pocket';
+        const subLabel = p.isCash ? ' · físico' : (p.bank === 'rappi' ? ` · ${p.rate || 9}% E.A.` : '');
+        return `<div class="pocket-card${extraClass}">
           <button class="delete-btn pocket-delete" onclick="removePocket(${p.id})">×</button>
           <div style="font-size: 22px; margin-bottom: 8px;">${p.icon}</div>
-          <div class="pocket-name">${esc(p.name)}${p.isCash ? ' · físico' : ''}</div>
+          <div class="pocket-name">${esc(p.name)}${subLabel}</div>
           <div class="pocket-amount">${fmt(p.amount)}</div>
           <div class="pocket-pct">${pct}% del total</div>
           <input type="number" value="${p.amount}" min="0" step="0.01" onfocus="this.select()" onchange="updatePocket(${p.id}, this.value)" placeholder="Editar saldo" style="margin-top: 10px; height: 36px; font-size: 13px; background: var(--bg-secondary); border: 1px solid var(--border-strong); cursor: text;" />
