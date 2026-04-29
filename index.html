@@ -757,6 +757,11 @@
       <p class="card-title">💳 Estrategia cashback + float</p>
       <div id="cashback-strategy"></div>
     </div>
+
+    <div class="raised-card" style="border: 0.5px solid #7F77DD;">
+      <p class="card-title">📊 Mi puntaje crediticio</p>
+      <div id="credit-score-content"></div>
+    </div>
   </div>
 
   <div class="fin-section" id="section-presupuesto">
@@ -962,7 +967,7 @@
 
 <script>
 (function() {
-  const STORAGE_KEY = 'finance-dashboard-cristian-v16';
+  const STORAGE_KEY = 'finance-dashboard-cristian-v17';
 
   const CATEGORIES = [
     // FIJOS NO NEGOCIABLES
@@ -1042,7 +1047,14 @@
     ],
     budgets: { [initialMonth]: { ...DEFAULT_BUDGETS } },
     transactions: {},
-    extraIncomes: {} // { 'YYYY-MM': [{id, date, desc, amount, source}] }
+    extraIncomes: {},
+    creditScore: {
+      lastReported: 678,
+      lastReportedDate: '2026-02-09',
+      history: [
+        { date: '2026-02-09', score: 678, source: 'DataCrédito' }
+      ]
+    }
   };
 
   let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -1923,6 +1935,7 @@
     renderSummary(sav, inc, exp, debt, bal, nw);
     renderReturns();
     renderCashbackStrategy();
+    renderCreditScore();
   }
 
   function renderHealthScore(sav, inc, exp, debt, bal) {
@@ -2125,6 +2138,120 @@
     h += `</div>`;
     c.innerHTML = h;
   }
+
+  function renderCreditScore() {
+    const c = document.getElementById('credit-score-content');
+    if (!c) return;
+
+    const cs = state.creditScore || { lastReported: 678, lastReportedDate: '2026-02-09', history: [] };
+    const lastScore = cs.lastReported || 678;
+    const lastDate = cs.lastReportedDate ? new Date(cs.lastReportedDate + 'T00:00:00') : new Date('2026-02-09');
+    const today = new Date();
+    const monthsPassed = Math.max(0, Math.floor((today - lastDate) / (1000 * 60 * 60 * 24 * 30)));
+
+    // Calcular utilización actual
+    const debt = totalDebt();
+    const limit = totalLimit();
+    const util = limit > 0 ? (debt / limit) * 100 : 0;
+
+    // Mejora estimada según factores
+    let improvement = 0;
+    if (util < 10) improvement += 35;
+    else if (util < 30) improvement += 15;
+    if (monthsPassed >= 1) improvement += monthsPassed * 4;
+    improvement = Math.min(improvement, 100); // máximo +100 desde último reporte
+
+    const estimatedScore = Math.min(850, lastScore + improvement);
+
+    // Categoría
+    function getCategory(score) {
+      if (score >= 850) return { label: 'Excelente', color: '#1D9E75', icon: '🌟' };
+      if (score >= 751) return { label: 'Muy Bueno', color: '#639922', icon: '✨' };
+      if (score >= 671) return { label: 'Bueno', color: '#378ADD', icon: '✓' };
+      if (score >= 580) return { label: 'Regular', color: '#BA7517', icon: '⚠️' };
+      return { label: 'Pobre', color: '#A32D2D', icon: '🔴' };
+    }
+    const cat = getCategory(estimatedScore);
+    const lastCat = getCategory(lastScore);
+
+    // Posición en barra (150-950)
+    const minS = 150, maxS = 950;
+    const lastPos = ((lastScore - minS) / (maxS - minS)) * 100;
+    const estPos = ((estimatedScore - minS) / (maxS - minS)) * 100;
+
+    let h = '';
+    h += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">`;
+    h += `<div class="metric-card" style="border-left: 3px solid ${lastCat.color};"><div class="metric-label">Último reportado</div><div class="metric-value" style="font-size: 28px; color: ${lastCat.color};">${lastScore}</div><div class="metric-sub">${lastCat.icon} ${lastCat.label} · ${lastDate.toLocaleDateString('es-CO', {day: '2-digit', month: 'short', year: 'numeric'})}</div></div>`;
+    h += `<div class="metric-card" style="border-left: 3px solid ${cat.color}; background: linear-gradient(135deg, var(--bg-secondary), ${cat.color}20);"><div class="metric-label">Estimación actual ⭐</div><div class="metric-value" style="font-size: 28px; color: ${cat.color};">${estimatedScore}</div><div class="metric-sub">${cat.icon} ${cat.label} · +${improvement} puntos</div></div>`;
+    h += `</div>`;
+
+    // Barra visual escalada
+    h += `<div style="margin: 16px 0;">`;
+    h += `<div style="position: relative; height: 30px; background: linear-gradient(to right, #A32D2D 0%, #A32D2D 25%, #BA7517 25%, #BA7517 45%, #378ADD 45%, #378ADD 60%, #639922 60%, #639922 80%, #1D9E75 80%, #1D9E75 100%); border-radius: 6px;">`;
+    h += `<div style="position: absolute; top: -4px; left: ${lastPos}%; width: 3px; height: 38px; background: rgba(0,0,0,0.5); transform: translateX(-50%);" title="Febrero: ${lastScore}"></div>`;
+    h += `<div style="position: absolute; top: -8px; left: ${estPos}%; width: 4px; height: 46px; background: ${cat.color}; transform: translateX(-50%); border-radius: 2px; box-shadow: 0 0 8px ${cat.color};" title="Estimado: ${estimatedScore}"></div>`;
+    h += `</div>`;
+    h += `<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary); margin-top: 4px;"><span>150</span><span>580</span><span>670</span><span>750</span><span>850</span><span>950</span></div>`;
+    h += `<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary);"><span>Pobre</span><span>Regular</span><span>Bueno</span><span>Muy Bueno</span><span>Excelente</span></div>`;
+    h += `</div>`;
+
+    // Análisis de factores
+    h += `<div style="margin-top: 16px;">`;
+    h += `<p style="font-size: 13px; font-weight: 500; margin: 0 0 8px;">📈 Factores que mejoraron tu score</p>`;
+    h += `<table style="width: 100%; font-size: 12px;">`;
+    h += `<thead><tr style="border-bottom: 0.5px solid var(--border);"><th style="text-align: left; padding: 6px 4px; color: var(--text-secondary);">Factor</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Antes</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Ahora</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Impacto</th></tr></thead>`;
+    h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">Utilización de crédito</td><td style="text-align: right; color: var(--danger-text);">38.5%</td><td style="text-align: right; color: var(--success-text);">${util.toFixed(1)}%</td><td style="text-align: right; color: var(--success-text);">+30 a +50</td></tr>`;
+    h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">Pago a 1 cuota</td><td style="text-align: right; color: var(--warning-text);">Volátil</td><td style="text-align: right; color: var(--success-text);">Consistente</td><td style="text-align: right; color: var(--success-text);">+10 a +20</td></tr>`;
+    h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">Hábito de pago (sin moras)</td><td style="text-align: right;">0 moras</td><td style="text-align: right; color: var(--success-text);">0 moras</td><td style="text-align: right; color: var(--success-text);">+5 a +10</td></tr>`;
+    h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">Antigüedad cuentas</td><td style="text-align: right;">5 meses</td><td style="text-align: right;">${5 + monthsPassed} meses</td><td style="text-align: right; color: var(--success-text);">+5 a +15</td></tr>`;
+    h += `</table>`;
+    h += `</div>`;
+
+    // Proyección
+    h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">🎯 Proyección si mantienes los hábitos</p>`;
+    h += `<table style="width: 100%; font-size: 12px;">`;
+    [3, 6, 12, 24].forEach(m => {
+      const proj = Math.min(820, estimatedScore + m * 4);
+      const projCat = getCategory(proj);
+      h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">En ${m} meses</td><td style="text-align: right; color: ${projCat.color}; font-weight: 500;">${proj} (${projCat.label})</td></tr>`;
+    });
+    h += `</table>`;
+
+    // Tips para subir más
+    h += `<div style="margin-top: 16px; padding: 12px 14px; background: var(--info-bg); border-radius: var(--radius-md); font-size: 12px; color: var(--info-text);">`;
+    h += `<strong>💡 Para subir más rápido:</strong><br>`;
+    h += `• Mantén utilización debajo del 10% (estás en ${util.toFixed(1)}% — ¡excelente!)<br>`;
+    h += `• Sigue pagando todo a 1 cuota completa<br>`;
+    h += `• No abras nuevas tarjetas en los próximos 6-12 meses<br>`;
+    h += `• Usa ambas tarjetas regularmente (no las dejes inactivas)`;
+    h += `</div>`;
+
+    // Actualizar puntaje real
+    h += `<div style="margin-top: 14px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md);">`;
+    h += `<p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 8px;">📝 Cuando consultes tu reporte real, actualízalo aquí:</p>`;
+    h += `<div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px;">`;
+    h += `<input type="number" id="cs-score" placeholder="Puntaje real" min="150" max="950" value="${lastScore}" />`;
+    h += `<input type="date" id="cs-date" value="${cs.lastReportedDate || ''}" />`;
+    h += `<button onclick="updateCreditScore()">Actualizar</button>`;
+    h += `</div>`;
+    h += `</div>`;
+
+    c.innerHTML = h;
+  }
+
+  window.updateCreditScore = function() {
+    const score = parseInt(document.getElementById('cs-score').value);
+    const date = document.getElementById('cs-date').value || new Date().toISOString().split('T')[0];
+    if (!score || score < 150 || score > 950) return alert('Ingresa un puntaje válido (150-950)');
+    if (!state.creditScore) state.creditScore = { history: [] };
+    state.creditScore.lastReported = score;
+    state.creditScore.lastReportedDate = date;
+    if (!state.creditScore.history) state.creditScore.history = [];
+    state.creditScore.history.push({ date, score, source: 'DataCrédito' });
+    saveState();
+    renderCreditScore();
+    alert('Puntaje actualizado');
+  };
 
   function renderCharts() {
     const c1 = document.getElementById('chart-pockets');
