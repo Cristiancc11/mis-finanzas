@@ -3,8 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Tablero Financiero Pro Cristian</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg-primary: #ffffff;
@@ -616,6 +620,55 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="auth-screen" style="display: none; position: fixed; inset: 0; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: var(--bg-primary); border-radius: 20px; padding: 32px 28px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: linear-gradient(135deg, #7F77DD, #1D9E75); border-radius: 16px; margin-bottom: 12px;">
+        <span style="font-size: 32px;">💎</span>
+      </div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: var(--text-primary);">Tablero Financiero Pro</h1>
+      <p style="margin: 6px 0 0; font-size: 13px; color: var(--text-secondary);">Tu dinero. Tu control. Tu futuro.</p>
+    </div>
+
+    <div id="auth-error" style="display: none; padding: 10px 14px; background: var(--danger-bg); color: var(--danger-text); border-radius: 8px; font-size: 13px; margin-bottom: 14px;"></div>
+    <div id="auth-success" style="display: none; padding: 10px 14px; background: var(--success-bg); color: var(--success-text); border-radius: 8px; font-size: 13px; margin-bottom: 14px;"></div>
+
+    <div style="display: flex; gap: 6px; margin-bottom: 18px; padding: 4px; background: var(--bg-secondary); border-radius: 10px;">
+      <button id="tab-login" onclick="switchAuthTab('login')" style="flex: 1; padding: 8px; background: var(--bg-primary); border: none; border-radius: 8px; cursor: pointer; font-weight: 500; color: var(--text-primary);">Iniciar sesión</button>
+      <button id="tab-signup" onclick="switchAuthTab('signup')" style="flex: 1; padding: 8px; background: transparent; border: none; border-radius: 8px; cursor: pointer; color: var(--text-secondary);">Crear cuenta</button>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">Correo electrónico</label>
+      <input type="email" id="auth-email" placeholder="tu@correo.com" style="width: 100%; padding: 10px 14px; height: 42px; font-size: 14px;" />
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">Contraseña</label>
+      <input type="password" id="auth-password" placeholder="Mínimo 6 caracteres" style="width: 100%; padding: 10px 14px; height: 42px; font-size: 14px;" />
+    </div>
+
+    <button id="auth-submit" onclick="handleAuth()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 10px; font-weight: 500; font-size: 14px; cursor: pointer;">Iniciar sesión</button>
+
+    <p style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin: 16px 0 0;">Tus datos se guardan de forma segura en la nube</p>
+  </div>
+</div>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen" style="display: flex; position: fixed; inset: 0; background: var(--bg-tertiary); z-index: 9998; align-items: center; justify-content: center; flex-direction: column;">
+  <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: linear-gradient(135deg, #7F77DD, #1D9E75); border-radius: 16px; margin-bottom: 16px; animation: pulse 1.5s ease-in-out infinite;">
+    <span style="font-size: 32px;">💎</span>
+  </div>
+  <p style="font-size: 14px; color: var(--text-secondary); margin: 0;">Cargando...</p>
+  <style>
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+  </style>
+</div>
+
 <div class="wrapper">
   <div class="hero-banner">
     <div class="hero-content">
@@ -642,9 +695,12 @@
       <select id="currency-select"><option value="COP" selected>COP $</option></select>
       <button onclick="exportData()" class="btn-icon" title="Exportar datos">📥 Exportar</button>
       <button onclick="importData()" class="btn-icon" title="Importar datos">📤 Importar</button>
+      <button onclick="migrateLocalData()" class="btn-icon" title="Migrar datos del navegador a la nube" id="migrate-btn" style="display: none;">☁️ Subir local</button>
+      <button onclick="handleLogout()" class="btn-icon" title="Cerrar sesión">🚪 Salir</button>
       <button class="reset-btn" onclick="resetData()" title="Resetear datos">↻</button>
       <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
+    <div id="sync-indicator" style="position: absolute; top: 12px; right: 16px; font-size: 11px; color: rgba(255,255,255,0.7);"></div>
   </div>
 
   <div class="fin-tabs">
@@ -966,8 +1022,324 @@
 </div>
 
 <script>
+// ============================================================
+// SUPABASE AUTH & SYNC
+// ============================================================
+const SUPABASE_URL = 'https://safxdvagmrkpkyzpghtt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_sc5mjkLrctQfU4AEz3rfAg_Q8SFLJpY';
+const STORAGE_KEY_GLOBAL = 'finance-dashboard-cristian-v20';
+
+let supabaseClient = null;
+let currentUser = null;
+let authMode = 'login'; // 'login' o 'signup'
+let saveTimeout = null;
+let isLoadingFromCloud = false;
+
+// Inicializar Supabase
+function initSupabase() {
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    return true;
+  } catch (e) {
+    console.error('Error inicializando Supabase:', e);
+    return false;
+  }
+}
+
+// Verificar si hay sesión activa al cargar
+async function checkAuth() {
+  if (!initSupabase()) {
+    showAuthScreen();
+    return;
+  }
+
+  try {
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+
+    if (session && session.user) {
+      currentUser = session.user;
+      await loadFromCloud();
+      hideLoadingScreen();
+      hideAuthScreen();
+      // Mostrar botón migrar si hay datos locales
+      checkLocalData();
+    } else {
+      hideLoadingScreen();
+      showAuthScreen();
+    }
+  } catch (e) {
+    console.error('Error checking auth:', e);
+    hideLoadingScreen();
+    showAuthScreen();
+  }
+}
+
+function showAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+function hideAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'none';
+}
+function hideLoadingScreen() {
+  document.getElementById('loading-screen').style.display = 'none';
+}
+
+function switchAuthTab(mode) {
+  authMode = mode;
+  const loginTab = document.getElementById('tab-login');
+  const signupTab = document.getElementById('tab-signup');
+  const submitBtn = document.getElementById('auth-submit');
+
+  if (mode === 'login') {
+    loginTab.style.background = 'var(--bg-primary)';
+    loginTab.style.color = 'var(--text-primary)';
+    signupTab.style.background = 'transparent';
+    signupTab.style.color = 'var(--text-secondary)';
+    submitBtn.textContent = 'Iniciar sesión';
+  } else {
+    signupTab.style.background = 'var(--bg-primary)';
+    signupTab.style.color = 'var(--text-primary)';
+    loginTab.style.background = 'transparent';
+    loginTab.style.color = 'var(--text-secondary)';
+    submitBtn.textContent = 'Crear cuenta';
+  }
+  showAuthMessage('', '');
+}
+
+function showAuthMessage(msg, type) {
+  const errEl = document.getElementById('auth-error');
+  const sucEl = document.getElementById('auth-success');
+  errEl.style.display = 'none';
+  sucEl.style.display = 'none';
+  if (!msg) return;
+  if (type === 'error') {
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  } else {
+    sucEl.textContent = msg;
+    sucEl.style.display = 'block';
+  }
+}
+
+async function handleAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const submitBtn = document.getElementById('auth-submit');
+
+  if (!email || !password) {
+    showAuthMessage('Completa email y contraseña', 'error');
+    return;
+  }
+  if (password.length < 6) {
+    showAuthMessage('La contraseña debe tener al menos 6 caracteres', 'error');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Cargando...';
+
+  try {
+    let result;
+    if (authMode === 'login') {
+      result = await supabaseClient.auth.signInWithPassword({ email, password });
+    } else {
+      result = await supabaseClient.auth.signUp({ email, password });
+    }
+
+    if (result.error) throw result.error;
+
+    if (authMode === 'signup') {
+      showAuthMessage('¡Cuenta creada! Iniciando sesión...', 'success');
+      // Auto-login después del signup
+      setTimeout(async () => {
+        const loginResult = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (loginResult.error) throw loginResult.error;
+        currentUser = loginResult.data.user;
+        hideAuthScreen();
+        document.getElementById('loading-screen').style.display = 'flex';
+        await loadFromCloud();
+        hideLoadingScreen();
+        checkLocalData();
+      }, 800);
+    } else {
+      currentUser = result.data.user;
+      hideAuthScreen();
+      document.getElementById('loading-screen').style.display = 'flex';
+      await loadFromCloud();
+      hideLoadingScreen();
+      checkLocalData();
+    }
+  } catch (e) {
+    console.error('Auth error:', e);
+    let msg = e.message || 'Error de autenticación';
+    if (msg.includes('Invalid login')) msg = 'Email o contraseña incorrectos';
+    if (msg.includes('already registered')) msg = 'Este email ya está registrado. Inicia sesión.';
+    if (msg.includes('weak password')) msg = 'Contraseña débil. Usa al menos 6 caracteres.';
+    showAuthMessage(msg, 'error');
+    submitBtn.disabled = false;
+    submitBtn.textContent = authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta';
+  }
+}
+
+async function handleLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  try {
+    await supabaseClient.auth.signOut();
+    currentUser = null;
+    location.reload();
+  } catch (e) {
+    console.error('Logout error:', e);
+  }
+}
+
+async function loadFromCloud() {
+  if (!currentUser || !supabaseClient) return;
+  isLoadingFromCloud = true;
+  try {
+    const { data, error } = await supabaseClient
+      .from('dashboard_data')
+      .select('data')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    if (data && data.data && Object.keys(data.data).length > 0) {
+      // Hay datos en la nube → cargarlos
+      localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(data.data));
+      console.log('✅ Datos cargados desde la nube');
+      updateSyncIndicator('Sincronizado ☁️');
+    } else {
+      // No hay datos en la nube → si hay locales, ofrecemos migrar
+      console.log('No hay datos en la nube todavía');
+      updateSyncIndicator('Cuenta nueva ☁️');
+    }
+  } catch (e) {
+    console.error('Error loading from cloud:', e);
+    updateSyncIndicator('Error al sincronizar ⚠️');
+  }
+  isLoadingFromCloud = false;
+}
+
+async function saveToCloud(data) {
+  if (!currentUser || !supabaseClient || isLoadingFromCloud) return;
+
+  // Debounce: esperar 1.5 segundos antes de guardar
+  if (saveTimeout) clearTimeout(saveTimeout);
+  updateSyncIndicator('Guardando...');
+
+  saveTimeout = setTimeout(async () => {
+    try {
+      const { error } = await supabaseClient
+        .from('dashboard_data')
+        .upsert({
+          user_id: currentUser.id,
+          data: data
+        }, { onConflict: 'user_id' });
+
+      if (error) throw error;
+      updateSyncIndicator('Sincronizado ☁️ ' + new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}));
+    } catch (e) {
+      console.error('Error saving to cloud:', e);
+      updateSyncIndicator('Error al guardar ⚠️');
+    }
+  }, 1500);
+}
+
+function updateSyncIndicator(text) {
+  const el = document.getElementById('sync-indicator');
+  if (el) el.textContent = text;
+}
+
+function checkLocalData() {
+  // Si hay datos locales y se acaba de crear cuenta nueva, mostrar botón migrar
+  const local = localStorage.getItem(STORAGE_KEY_GLOBAL);
+  const migrateBtn = document.getElementById('migrate-btn');
+  if (local && migrateBtn) {
+    try {
+      const parsed = JSON.parse(local);
+      if (parsed && parsed.pockets && parsed.pockets.length > 0) {
+        // Hay datos locales con contenido
+        migrateBtn.style.display = 'inline-flex';
+      }
+    } catch(e) {}
+  }
+}
+
+async function migrateLocalData() {
+  const local = localStorage.getItem(STORAGE_KEY_GLOBAL);
+  if (!local) {
+    alert('No hay datos locales para migrar');
+    return;
+  }
+  if (!confirm('Esto subirá tus datos del navegador a la nube. ¿Continuar?')) return;
+
+  try {
+    const data = JSON.parse(local);
+    const { error } = await supabaseClient
+      .from('dashboard_data')
+      .upsert({
+        user_id: currentUser.id,
+        data: data
+      }, { onConflict: 'user_id' });
+
+    if (error) throw error;
+    alert('✅ Datos migrados exitosamente a la nube');
+    document.getElementById('migrate-btn').style.display = 'none';
+    updateSyncIndicator('Sincronizado ☁️');
+  } catch (e) {
+    console.error('Error migrando:', e);
+    alert('Error al migrar: ' + e.message);
+  }
+}
+
+// Hook al localStorage para sincronizar automáticamente
+const originalSetItem = localStorage.setItem.bind(localStorage);
+localStorage.setItem = function(key, value) {
+  originalSetItem(key, value);
+  if (key === STORAGE_KEY_GLOBAL && currentUser && !isLoadingFromCloud) {
+    try {
+      const data = JSON.parse(value);
+      saveToCloud(data);
+    } catch(e) {
+      console.error('Error parsing for sync:', e);
+    }
+  }
+};
+
+// Iniciar al cargar la página
+window.addEventListener('load', () => {
+  // Pequeño delay para que el DOM esté listo
+  setTimeout(checkAuth, 100);
+});
+
+// Permitir Enter para enviar el formulario de login
+document.addEventListener('DOMContentLoaded', () => {
+  const passInput = document.getElementById('auth-password');
+  const emailInput = document.getElementById('auth-email');
+  if (passInput) {
+    passInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAuth();
+    });
+  }
+  if (emailInput) {
+    emailInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAuth();
+    });
+  }
+});
+
+// Exponer funciones al scope global
+window.handleAuth = handleAuth;
+window.handleLogout = handleLogout;
+window.switchAuthTab = switchAuthTab;
+window.migrateLocalData = migrateLocalData;
+</script>
+
+<script>
 (function() {
-  const STORAGE_KEY = 'finance-dashboard-cristian-v18';
+  const STORAGE_KEY = 'finance-dashboard-cristian-v20';
 
   const CATEGORIES = [
     // FIJOS NO NEGOCIABLES
@@ -1024,30 +1396,59 @@
     currency: 'COP', interestRate: 7.87,
     interestBank: 'Lulo Bank Pro (tasa efectiva real)',
     pockets: [
-      { id: 1, name: 'Fondo de Emergencias', amount: 7560327.94, icon: '🛟' },
-      { id: 2, name: 'Flujo Operativo', amount: 1200813.76, icon: '💰' },
-      { id: 4, name: 'Universidad', amount: 752348.33, icon: '🎓' },
-      { id: 5, name: 'Servicios', amount: 750000, icon: '⚡' },
-      { id: 6, name: 'Vida Social', amount: 400000, icon: '🍻' },
-      { id: 7, name: 'Gastos Fijos del mes', amount: 383432.27, icon: '🏠' },
-      { id: 8, name: 'Zlatan', amount: 245000, icon: '❤️' },
-      { id: 9, name: 'Efectivo', amount: 0, icon: '💵', isCash: true },
-      { id: 10, name: 'Cashback RappiCard', amount: 300693.23, icon: '💳', bank: 'rappi', rate: 9 }
+      { id: 1, name: 'Fondo de Emergencias', amount: 7611643.18, icon: '🛟' },
+      { id: 2, name: 'Flujo Operativo', amount: 3242994.40, icon: '💰' },
+      { id: 4, name: 'Universidad', amount: 755955.95, icon: '🎓' },
+      { id: 5, name: 'Servicios', amount: 507933.58, icon: '⚡' },
+      { id: 6, name: 'Vida Social', amount: 400389.24, icon: '🍻' },
+      { id: 7, name: 'Gastos Fijos del mes', amount: 384843.09, icon: '🏠' },
+      { id: 8, name: 'Zlatan', amount: 478941.24, icon: '❤️' },
+      { id: 1777485097200, name: 'Efectivo', amount: 270000, icon: '💵', isCash: true },
+      { id: 1777485984540, name: 'Cashback RappiCard', amount: 302777.15, icon: '💳', bank: 'rappi', rate: 9 }
     ],
     incomes: [
       { id: 101, name: 'Salario', amount: 2000000, frequency: 'monthly' },
       { id: 102, name: 'Rendimientos Lulo Bank (neto)', amount: 75000, frequency: 'monthly' }
     ],
     debts: [
-      { id: 301, name: 'RappiCard', balance: 114567, rate: 0, payment: 4800000, cutoffDay: 30, brand: 'visa', bank: 'davivienda', lastDigits: '3101' },
-      { id: 302, name: 'Lulo Bank', balance: 365075, rate: 0, payment: 12200000, cutoffDay: 5, brand: 'mastercard', bank: 'lulo', lastDigits: '7310' }
+      { id: 301, name: 'RappiCard', balance: 62775.88, rate: 0, payment: 4800000, cutoffDay: 28, brand: 'visa', bank: 'davivienda', lastDigits: '3101' },
+      { id: 302, name: 'Lulo Bank', balance: 681075, rate: 0, payment: 12200000, cutoffDay: 5, brand: 'mastercard', bank: 'lulo', lastDigits: '7310' }
     ],
     goals: [
-      { id: 401, name: 'Viajes Futuros', target: 1500000, current: 820301.04 }
+      { id: 401, name: 'Viajes Futuros', target: 1500000, current: 825643.17 }
     ],
-    budgets: { [initialMonth]: { ...DEFAULT_BUDGETS } },
-    transactions: {},
-    extraIncomes: {},
+    budgets: {
+      '2026-04': {
+        servicios_casa: 750000, uber: 200000, celular: 45000, gimnasio: 99900,
+        streaming: 47000, comida_fuera: 100000, rappi: 0, salidas_milena: 200000,
+        gasolina: 120000, mascota: 316000, mascota_extra: 0, compras: 0, salud: 0, otros: 0
+      },
+      '2026-05': {
+        servicios_casa: 750000, uber: 200000, celular: 45000, gimnasio: 99900,
+        streaming: 47000, comida_fuera: 100000, rappi: 0, salidas_milena: 200000,
+        gasolina: 120000, mascota: 312500, mascota_extra: 0, compras: 0, salud: 0, otros: 0
+      }
+    },
+    transactions: {
+      '2026-04': [
+        { id: 1777482517123, date: '2026-04-28', desc: 'UBER VALENTINA', amount: 9033, category: 'uber', paymentMethod: 'tarjeta', cardId: 301, cashback: 90.33 },
+        { id: 1777482742296, date: '2026-04-29', desc: 'PAGO CANCHA DE FUTBOL', amount: 12000, category: 'comida_fuera', paymentMethod: 'llave', cardId: null, cashback: 0 },
+        { id: 1777483324893, date: '2026-04-29', desc: 'PAGO MOSVISTAR', amount: 204387, category: 'servicios_casa', paymentMethod: 'llave', cardId: null, cashback: 0 },
+        { id: 1777485429051, date: '2026-04-29', desc: 'PAGO GAS MILENA', amount: 9630, category: 'salidas_milena', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 96.3 },
+        { id: 1777498594504, date: '2026-04-29', desc: 'PAGO DATACREDITO', amount: 14000, category: 'otros', paymentMethod: 'debito', cardId: null, pocketId: 2, cashback: 0 },
+        { id: 1777514521403, date: '2026-04-29', desc: 'PAGO UBER IDA GIMNACIO', amount: 6802, category: 'uber', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 68.02 },
+        { id: 1777514550835, date: '2026-04-29', desc: 'PAGO UBER VUELTA GIMNACIO', amount: 10167, category: 'uber', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 101.67 },
+        { id: 1777563261875, date: '2026-04-30', desc: 'PAGO MEDICAMENTOS ZLATAN', amount: 316000, category: 'mascota', paymentMethod: 'tarjeta', cardId: 302, pocketId: null, cashback: 3160 },
+        { id: 1777563698890, date: '2026-04-30', desc: 'PAGO TARJETA RAPPICARD ABRIL', amount: 180436.16, category: 'otros', paymentMethod: 'debito', cardId: null, pocketId: 2, cashback: 0 },
+        { id: 1777564443688, date: '2026-04-30', desc: 'PAGOS GAS ABRIL', amount: 38330, category: 'servicios_casa', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 383.3 }
+      ]
+    },
+    extraIncomes: {
+      '2026-04': [
+        { id: 1777484464331, date: '2026-04-29', desc: 'REGALO CUMPLEAÑOS', amount: 276000, source: 'regalo', pocketId: 1777485097200 },
+        { id: 1777562631004, date: '2026-04-30', desc: 'PAGO VALENTINA DEUDA', amount: 248300, source: 'prestamo', pocketId: null }
+      ]
+    },
     creditScore: {
       lastReported: 691,
       lastReportedDate: '2026-04-29',
@@ -1149,7 +1550,6 @@
       cardSel.style.display = isCard ? 'block' : 'none';
       if (pocketRow) pocketRow.style.display = isCard ? 'none' : 'block';
 
-      // Si seleccionó efectivo, auto-sugerir el bolsillo de efectivo
       if (isCash && pocketSel) {
         const cashPocket = state.pockets.find(p => p.isCash);
         if (cashPocket && !pocketSel.value) {
@@ -1159,13 +1559,94 @@
       updateCashbackPreview();
     }
 
+    function getRecommendedCard(amount) {
+      if (!state.debts || state.debts.length === 0) return null;
+      const today = new Date();
+      const currentDay = today.getDate();
+      const tasaDiaria = (state.interestRate || 7.87) / 100 / 365;
+
+      const candidates = state.debts.map(d => {
+        if (!d.cutoffDay) return null;
+        let nextCutoff;
+        if (currentDay <= d.cutoffDay) {
+          nextCutoff = new Date(today.getFullYear(), today.getMonth(), d.cutoffDay);
+        } else {
+          nextCutoff = new Date(today.getFullYear(), today.getMonth() + 1, d.cutoffDay);
+        }
+        const daysUntilCutoff = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
+        // Float total = días entre compra y pago (aprox 5 días después del corte)
+        const floatDays = Math.max(1, daysUntilCutoff + 5);
+        const floatGain = amount * tasaDiaria * floatDays;
+        const cashback = amount * 0.01;
+
+        // Verificar si esta compra excedería el 3% utilización
+        const newBalance = d.balance + amount;
+        const newUtilization = d.payment > 0 ? (newBalance / d.payment) * 100 : 0;
+        const exceeds3pct = newUtilization > 3;
+        const exceeds10pct = newUtilization > 10;
+
+        return {
+          card: d,
+          floatDays,
+          floatGain,
+          cashback,
+          totalBenefit: floatGain + cashback,
+          newUtilization,
+          exceeds3pct,
+          exceeds10pct
+        };
+      }).filter(c => c !== null);
+
+      if (candidates.length === 0) return null;
+
+      // Ordenar por mayor beneficio, penalizando si excede 10%
+      candidates.sort((a, b) => {
+        if (a.exceeds10pct && !b.exceeds10pct) return 1;
+        if (!a.exceeds10pct && b.exceeds10pct) return -1;
+        return b.totalBenefit - a.totalBenefit;
+      });
+
+      return candidates;
+    }
+
     function updateCashbackPreview() {
       const isCard = methodSel.value === 'tarjeta';
       const amount = parseFloat(amountInput.value) || 0;
+
       if (isCard && amount > 0) {
-        const cashback = amount * 0.01;
-        cashbackInfo.style.display = 'block';
-        cashbackInfo.innerHTML = `💰 Cashback estimado: <strong>${fmt(cashback)}</strong> (1% del gasto)`;
+        const recommendations = getRecommendedCard(amount);
+        if (recommendations && recommendations.length > 0) {
+          const best = recommendations[0];
+          let html = `💰 <strong>Cashback estimado:</strong> ${fmt(best.cashback)} (1%)`;
+
+          // Mostrar recomendación de tarjeta óptima
+          html += `<div style="margin-top: 8px; padding: 8px 10px; background: var(--info-bg); border-radius: var(--radius-md); color: var(--info-text);">`;
+          html += `<strong>🎯 Recomendación: usa la ${esc(best.card.name)}</strong><br>`;
+          html += `<span style="font-size: 11px;">${best.floatDays} días de float al ${(state.interestRate || 7.87)}% E.A. = +${fmt(best.floatGain)} extra</span><br>`;
+          html += `<span style="font-size: 11px;">Beneficio total: <strong>+${fmt(best.totalBenefit)}</strong></span>`;
+          if (best.exceeds3pct) {
+            html += `<br><span style="font-size: 11px; color: var(--warning-text);">⚠️ Esta compra subirá tu utilización a ${best.newUtilization.toFixed(1)}% (sobre el 3% objetivo)</span>`;
+          }
+          html += `</div>`;
+
+          // Si hay segunda opción, mostrar comparativa
+          if (recommendations.length > 1) {
+            const second = recommendations[1];
+            const diff = best.totalBenefit - second.totalBenefit;
+            html += `<div style="margin-top: 6px; font-size: 11px; color: var(--text-secondary);">vs ${esc(second.card.name)}: ${fmt(second.totalBenefit)} (diferencia: ${fmt(diff)})</div>`;
+          }
+
+          cashbackInfo.style.display = 'block';
+          cashbackInfo.innerHTML = html;
+
+          // Auto-seleccionar la tarjeta óptima si no hay ninguna seleccionada
+          if (!cardSel.value) {
+            cardSel.value = best.card.id;
+          }
+        } else {
+          cashbackInfo.style.display = 'block';
+          cashbackInfo.innerHTML = `💰 Cashback estimado: <strong>${fmt(amount * 0.01)}</strong> (1% del gasto)`;
+        }
       } else {
         cashbackInfo.style.display = 'none';
       }
@@ -1680,10 +2161,27 @@
       // Detalles editables debajo de las tarjetas
       list.innerHTML += state.debts.map(d => {
         const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
-        const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay) : null;
+        const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay, d.balance, d.payment) : null;
         const cardStats = getCardMonthStats(d.id);
         const bank = BANK_INFO[d.bank] || { name: 'Banco' };
         const brand = BRAND_INFO[d.brand] || { name: 'Tarjeta' };
+
+        // Determinar si necesita pago para mantener utilización ≤3%
+        let utilizationAlert = '';
+        if (cutoffInfo && cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
+          const recommendedPayment = cutoffInfo.paymentNeeded;
+          const targetMax = cutoffInfo.targetMaxBalance;
+          utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
+            <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener score óptimo</div>
+            <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
+            <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (3% utilización)</div>
+            <div style="color: var(--success-text); font-weight: 600; margin-top: 4px;">→ Paga <strong>${fmt(recommendedPayment)}</strong> antes del ${cutoffInfo.dateStr}</div>
+          </div>`;
+        } else if (cutoffInfo && !cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
+          utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: var(--success-bg); border-left: 3px solid var(--success-text); border-radius: var(--radius-md); font-size: 12px; color: var(--success-text);">
+            <strong>✅ Utilización óptima:</strong> Tu saldo de ${fmt(d.balance)} (${u}%) está debajo del 3% objetivo. No necesitas pago anticipado.
+          </div>`;
+        }
 
         return `<div class="card-detail-section">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -1694,8 +2192,9 @@
             <span>Utilización: <strong>${u}%</strong></span>
             <span>Disponible: <strong>${fmt(d.payment - d.balance)}</strong></span>
           </div>
-          <div class="progress-bar"><div class="progress-fill ${u > 30 ? 'warning' : 'success'}" style="width: ${Math.min(100, u)}%"></div></div>
+          <div class="progress-bar"><div class="progress-fill ${u > 30 ? 'warning' : (u > 10 ? 'warning' : 'success')}" style="width: ${Math.min(100, u)}%"></div></div>
           ${cutoffInfo ? `<div style="margin-top: 10px; padding: 8px 10px; background: ${cutoffInfo.bg}; color: ${cutoffInfo.color}; border-radius: var(--radius-md); font-size: 12px;">${cutoffInfo.icon} ${cutoffInfo.text}</div>` : ''}
+          ${utilizationAlert}
           ${cardStats.txCount > 0 ? `<div style="margin-top: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 12px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: var(--text-secondary);">📊 Compras este mes:</span><span style="font-weight: 500;">${cardStats.txCount} (${fmt(cardStats.totalSpent)})</span></div>
             <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">💰 Cashback ganado:</span><span style="font-weight: 500; color: var(--success-text);">+${fmt(cardStats.totalCashback)}</span></div>
@@ -1726,7 +2225,7 @@
     return { txCount: cardTxs.length, totalSpent, totalCashback };
   }
 
-  function getCutoffStatus(cutoffDay) {
+  function getCutoffStatus(cutoffDay, cardBalance, cardLimit) {
     const today = new Date();
     const currentDay = today.getDate();
     const currentMonth = today.getMonth();
@@ -1735,25 +2234,43 @@
     // Calcular próxima fecha de corte
     let nextCutoff;
     if (currentDay <= cutoffDay) {
-      // Aún no llega el corte de este mes
       nextCutoff = new Date(currentYear, currentMonth, cutoffDay);
     } else {
-      // Ya pasó el corte, el próximo es el siguiente mes
       nextCutoff = new Date(currentYear, currentMonth + 1, cutoffDay);
     }
 
     const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
     const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
 
+    // Calcular utilización actual y cuánto debe pagar para mantener <3%
+    const TARGET_UTILIZATION = 3; // % objetivo para mantener score óptimo
+    const targetMaxBalance = cardLimit ? (cardLimit * TARGET_UTILIZATION / 100) : 0;
+    const utilization = (cardLimit && cardLimit > 0) ? (cardBalance / cardLimit) * 100 : 0;
+    const needsPayment = cardBalance > targetMaxBalance;
+    const paymentNeeded = needsPayment ? cardBalance - targetMaxBalance : 0;
+
+    let baseInfo;
     if (daysLeft <= 0) {
-      return { icon: '🚨', text: `¡HOY es el corte (${dateStr})! Paga la tarjeta antes del cierre del día.`, bg: 'var(--danger-bg)', color: 'var(--danger-text)' };
+      baseInfo = { icon: '🚨', text: `¡HOY es el corte (${dateStr})!`, bg: 'var(--danger-bg)', color: 'var(--danger-text)', priority: 'high' };
     } else if (daysLeft <= 3) {
-      return { icon: '⚠️', text: `Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Recuerda pagar antes.`, bg: 'var(--warning-bg)', color: 'var(--warning-text)' };
+      baseInfo = { icon: '⚠️', text: `Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr})`, bg: 'var(--warning-bg)', color: 'var(--warning-text)', priority: 'high' };
     } else if (daysLeft <= 7) {
-      return { icon: '🔔', text: `Corte en ${daysLeft} días (${dateStr}). Planifica el pago.`, bg: 'var(--info-bg)', color: 'var(--info-text)' };
+      baseInfo = { icon: '🔔', text: `Corte en ${daysLeft} días (${dateStr})`, bg: 'var(--info-bg)', color: 'var(--info-text)', priority: 'medium' };
     } else {
-      return { icon: '📅', text: `Próximo corte: ${dateStr} (en ${daysLeft} días)`, bg: 'var(--bg-secondary)', color: 'var(--text-secondary)' };
+      baseInfo = { icon: '📅', text: `Próximo corte: ${dateStr} (en ${daysLeft} días)`, bg: 'var(--bg-secondary)', color: 'var(--text-secondary)', priority: 'low' };
     }
+
+    return {
+      ...baseInfo,
+      daysLeft,
+      dateStr,
+      utilization,
+      targetMaxBalance,
+      needsPayment,
+      paymentNeeded,
+      cardBalance,
+      cardLimit
+    };
   }
 
   function renderGoals() {
@@ -2009,12 +2526,36 @@
         const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
         const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
 
+        // Calcular utilización y pago óptimo (objetivo 3%)
+        const TARGET_PCT = 3;
+        const targetMaxBalance = d.payment ? (d.payment * TARGET_PCT / 100) : 0;
+        const utilization = d.payment > 0 ? (d.balance / d.payment) * 100 : 0;
+        const needsPayment = d.balance > targetMaxBalance;
+        const paymentNeeded = needsPayment ? d.balance - targetMaxBalance : 0;
+
+        // ALERTA URGENTE: día del corte
         if (daysLeft <= 0) {
-          a.push({ t: 'danger', x: `🚨 <strong>${d.name}</strong>: ¡HOY es el corte! Paga ${fmt(d.balance)} antes del cierre del día.` });
-        } else if (daysLeft <= 3) {
-          a.push({ t: 'warning', x: `⚠️ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Saldo a pagar: ${fmt(d.balance)}.` });
-        } else if (daysLeft <= 7) {
-          a.push({ t: 'info', x: `🔔 <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Planifica el pago de ${fmt(d.balance)}.` });
+          a.push({ t: 'danger', x: `🚨 <strong>${d.name}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener score óptimo (3%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
+        } 
+        // ALERTA URGENTE: 1-3 días antes del corte
+        else if (daysLeft <= 3) {
+          if (needsPayment) {
+            a.push({ t: 'warning', x: `⚠️ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el 3%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+          } else {
+            a.push({ t: 'info', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤3%). No requiere pago anticipado.` });
+          }
+        }
+        // ALERTA MEDIA: 4-7 días antes del corte
+        else if (daysLeft <= 7) {
+          if (needsPayment) {
+            a.push({ t: 'info', x: `🔔 <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener score óptimo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+          } else {
+            a.push({ t: 'success', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para el score.` });
+          }
+        }
+        // RECORDATORIO LIGERO: 8-14 días antes
+        else if (daysLeft <= 14 && needsPayment) {
+          a.push({ t: 'info', x: `📅 <strong>${d.name}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener el score óptimo.` });
         }
       }
     });
