@@ -1205,15 +1205,44 @@ async function loadFromCloud() {
 
     if (error && error.code !== 'PGRST116') throw error;
 
-    if (data && data.data && Object.keys(data.data).length > 0) {
+    if (data && data.data && Object.keys(data.data).length > 0 && data.data.pockets) {
       // Hay datos en la nube → cargarlos
       localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(data.data));
       console.log('✅ Datos cargados desde la nube');
       updateSyncIndicator('Sincronizado ☁️');
     } else {
-      // No hay datos en la nube → si hay locales, ofrecemos migrar
-      console.log('No hay datos en la nube todavía');
-      updateSyncIndicator('Cuenta nueva ☁️');
+      // No hay datos en la nube → arrancar con datos según el tipo de usuario
+      const ownerEmails = ['cristiancamilo_cc@hotmail.com']; // emails autorizados
+      const isOwner = currentUser.email && ownerEmails.includes(currentUser.email.toLowerCase());
+
+      if (isOwner && typeof MY_STATE !== 'undefined') {
+        // Si es el dueño, cargar sus datos
+        console.log('👑 Cargando datos del propietario');
+        localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(MY_STATE));
+        // Subir inmediatamente a la nube para que queden sincronizados
+        await supabaseClient.from('dashboard_data').upsert({
+          user_id: currentUser.id,
+          data: MY_STATE
+        }, { onConflict: 'user_id' });
+        updateSyncIndicator('Datos cargados ☁️');
+      } else {
+        // Usuario nuevo: arrancar con plantilla vacía
+        console.log('🆕 Usuario nuevo - cargando plantilla vacía');
+        if (typeof EMPTY_STATE !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(EMPTY_STATE));
+          await supabaseClient.from('dashboard_data').upsert({
+            user_id: currentUser.id,
+            data: EMPTY_STATE
+          }, { onConflict: 'user_id' });
+        }
+        updateSyncIndicator('Cuenta nueva ☁️');
+        // Mostrar mensaje de bienvenida después de 1 segundo
+        setTimeout(() => {
+          if (confirm('¡Bienvenido al Tablero Financiero Pro! 🎉\n\nTu cuenta está lista. Empieza por:\n\n1. 👛 Configurar tus bolsillos (pestaña Bolsillos)\n2. 💰 Agregar tus ingresos (pestaña Ingresos)\n3. 💳 Registrar tus tarjetas (pestaña Tarjetas)\n\n¿Quieres ver un tutorial rápido?')) {
+            alert('Tutorial rápido:\n\n📌 BOLSILLOS\nDistribuye tu plata por categorías (emergencia, gastos, ahorro)\n\n📌 PRESUPUESTO\nRegistra tus gastos y ve cuánto te queda en cada categoría\n\n📌 TARJETAS\nAgrega tus tarjetas de crédito con cupo y día de corte\n\n📌 METAS\nDefine objetivos de ahorro\n\n💡 Tip: cada cambio se guarda automáticamente en la nube');
+          }
+        }, 1500);
+      }
     }
   } catch (e) {
     console.error('Error loading from cloud:', e);
@@ -1392,7 +1421,36 @@ window.migrateLocalData = migrateLocalData;
   };
 
   const initialMonth = getCurrentMonthKey();
-  const DEFAULT_STATE = {
+
+  // EMPTY_STATE: estructura genérica para nuevos usuarios
+  const EMPTY_STATE = {
+    currency: 'COP', interestRate: 7.87,
+    interestBank: 'Banco (configurable)',
+    pockets: [
+      { id: 1, name: 'Fondo de Emergencias', amount: 0, icon: '🛟' },
+      { id: 2, name: 'Flujo Operativo', amount: 0, icon: '💰' },
+      { id: 3, name: 'Ahorro Personal', amount: 0, icon: '🎯' },
+      { id: 4, name: 'Gastos Fijos del mes', amount: 0, icon: '🏠' },
+      { id: 5, name: 'Vida Social', amount: 0, icon: '🍻' },
+      { id: 9, name: 'Efectivo', amount: 0, icon: '💵', isCash: true }
+    ],
+    incomes: [
+      { id: 101, name: 'Salario', amount: 0, frequency: 'monthly' }
+    ],
+    debts: [],
+    goals: [],
+    budgets: { [initialMonth]: { ...DEFAULT_BUDGETS } },
+    transactions: {},
+    extraIncomes: {},
+    creditScore: {
+      lastReported: null,
+      lastReportedDate: null,
+      history: []
+    }
+  };
+
+  // MY_STATE: datos personales del dueño (Cristian) - solo se cargan si es el email autorizado
+  const MY_STATE = {
     currency: 'COP', interestRate: 7.87,
     interestBank: 'Lulo Bank Pro (tasa efectiva real)',
     pockets: [
@@ -1458,6 +1516,12 @@ window.migrateLocalData = migrateLocalData;
       ]
     }
   };
+
+  // Email del dueño - solo este recibe MY_STATE como datos por defecto
+  const OWNER_EMAILS = ['cristiancamilo_cc@hotmail.com']; // ← agrega aquí los emails autorizados
+
+  // DEFAULT_STATE inicial es vacío. Se decidirá en runtime cuál cargar
+  const DEFAULT_STATE = EMPTY_STATE;
 
   let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
   let chartPockets = null, chartComparison = null;
