@@ -11,6 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
 <script>
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1101,6 +1103,41 @@
     <div class="raised-card">
       <p class="card-title">📈 Tendencias de los últimos meses</p>
       <div id="trends-content"></div>
+    </div>
+
+    <!-- REPORTES PDF MENSUALES -->
+    <div class="raised-card" style="border: 0.5px solid #7F77DD;">
+      <p class="card-title">📄 Reportes mensuales en PDF</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Genera un PDF profesional con el resumen completo del mes.</p>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Selecciona el mes a reportar</label>
+          <select id="pdf-month-select"></select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button onclick="generateMonthlyPDF()" style="padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 13px;">
+          📄 Generar PDF
+        </button>
+        <button onclick="generateAnnualPDF()" style="padding: 14px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 13px;">
+          📊 Reporte anual
+        </button>
+      </div>
+
+      <details style="font-size: 11px; color: var(--text-secondary); margin-top: 12px;">
+        <summary style="cursor: pointer;">¿Qué incluye el reporte?</summary>
+        <div style="padding: 10px; background: var(--bg-secondary); border-radius: 8px; margin-top: 6px; line-height: 1.6;">
+          <strong>📊 Resumen ejecutivo:</strong> Patrimonio, ingresos, gastos, ahorro<br>
+          <strong>👛 Bolsillos:</strong> Estado actual de todos<br>
+          <strong>💳 Tarjetas:</strong> Saldos, utilización, cashback ganado<br>
+          <strong>📋 Transacciones:</strong> Listado completo con categorías<br>
+          <strong>📊 Análisis:</strong> Gastos por categoría, comparativa<br>
+          <strong>🎯 Score crediticio:</strong> Histórico y proyección<br>
+          <strong>💡 Recomendaciones:</strong> Tips personalizados
+        </div>
+      </details>
     </div>
 
   </div>
@@ -3628,6 +3665,7 @@ document.addEventListener('click', (e) => {
       renderMonthComparison();
       renderAntExpenses();
       renderTrends();
+      populateMonthSelector();
     }, 100);
   }
 });
@@ -3635,7 +3673,704 @@ document.addEventListener('click', (e) => {
 // Setup inicial
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(setupBankImport, 1500);
+  setTimeout(populateMonthSelector, 2000);
 });
+
+// ============================================================
+// REPORTES PDF MENSUALES
+// ============================================================
+
+function populateMonthSelector() {
+  const select = document.getElementById('pdf-month-select');
+  if (!select || select.options.length > 0) return;
+
+  const state = getStateForNotifications();
+  const months = new Set();
+
+  if (state.transactions) {
+    Object.keys(state.transactions).forEach(m => months.add(m));
+  }
+  if (state.budgets) {
+    Object.keys(state.budgets).forEach(m => months.add(m));
+  }
+
+  // Agregar el mes actual y anterior si no están
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const prevDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+  months.add(currentMonth);
+  months.add(prevMonth);
+
+  const sortedMonths = Array.from(months).sort().reverse();
+  select.innerHTML = sortedMonths.map(m => {
+    const [y, mo] = m.split('-');
+    const date = new Date(parseInt(y), parseInt(mo) - 1, 1);
+    const label = date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    const labelCap = label.charAt(0).toUpperCase() + label.slice(1);
+    return `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${labelCap}</option>`;
+  }).join('');
+}
+
+window.generateMonthlyPDF = async function() {
+  const select = document.getElementById('pdf-month-select');
+  if (!select || !select.value) {
+    alert('Selecciona un mes primero');
+    return;
+  }
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('La librería de PDF no se ha cargado. Refresca la página.');
+    return;
+  }
+
+  const monthKey = select.value;
+  const state = getStateForNotifications();
+
+  try {
+    await buildMonthlyPDF(state, monthKey);
+  } catch (e) {
+    console.error('Error generando PDF:', e);
+    alert('Error al generar PDF: ' + e.message);
+  }
+};
+
+window.generateAnnualPDF = async function() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('La librería de PDF no se ha cargado. Refresca la página.');
+    return;
+  }
+
+  const state = getStateForNotifications();
+  const today = new Date();
+  const year = today.getFullYear();
+
+  try {
+    await buildAnnualPDF(state, year);
+  } catch (e) {
+    console.error('Error generando PDF:', e);
+    alert('Error al generar PDF: ' + e.message);
+  }
+};
+
+async function buildMonthlyPDF(state, monthKey) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const [year, monthNum] = monthKey.split('-');
+  const monthDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+  const monthName = monthDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+  const monthNameCap = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  // Colores
+  const primaryColor = [127, 119, 221]; // Morado
+  const successColor = [29, 158, 117]; // Verde
+  const dangerColor = [163, 45, 45];
+  const textPrimary = [44, 44, 42];
+  const textSecondary = [107, 107, 102];
+
+  let y = 0;
+
+  // ===== HEADER (banda superior) =====
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, 210, 35, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Reporte Financiero', 14, 16);
+
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'normal');
+  doc.text(monthNameCap, 14, 24);
+
+  doc.setFontSize(9);
+  doc.text('Generado el ' + new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }), 14, 30);
+
+  // Logo/diamante en esquina derecha
+  doc.setFontSize(20);
+  doc.text('💎', 195, 22);
+
+  y = 45;
+
+  // ===== RESUMEN EJECUTIVO =====
+  doc.setTextColor(...textPrimary);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Resumen ejecutivo', 14, y);
+  y += 8;
+
+  // Calcular métricas
+  const pockets = state.pockets || [];
+  const debts = state.debts || [];
+  const transactions = (state.transactions && state.transactions[monthKey]) || [];
+  const extraIncomes = (state.extraIncomes && state.extraIncomes[monthKey]) || [];
+
+  const totalPockets = pockets.reduce((s, p) => s + (p.amount || 0), 0);
+  const totalDebts = debts.reduce((s, d) => s + (d.balance || 0), 0);
+  const netWorth = totalPockets - totalDebts;
+  const totalExpenses = transactions.reduce((s, t) => s + (t.amount || 0), 0);
+  const totalCashback = transactions.reduce((s, t) => s + (t.cashback || 0), 0);
+  const recurrentIncome = (state.incomes || []).reduce((s, i) => s + (i.amount || 0), 0);
+  const totalExtras = extraIncomes.reduce((s, i) => s + (i.amount || 0), 0);
+  const totalIncome = recurrentIncome + totalExtras;
+  const margin = totalIncome - totalExpenses + totalCashback;
+
+  // Tarjetas de métricas en grid 2x3
+  const cards = [
+    { label: 'Patrimonio total', value: fmt(netWorth), color: primaryColor, sub: `${fmt(totalPockets)} - ${fmt(totalDebts)} deudas` },
+    { label: 'Ingresos del mes', value: fmt(totalIncome), color: successColor, sub: `Salario + extras` },
+    { label: 'Gastos del mes', value: fmt(totalExpenses), color: dangerColor, sub: `${transactions.length} transacciones` },
+    { label: 'Ahorro/Margen', value: fmt(margin), color: margin > 0 ? successColor : dangerColor, sub: totalIncome > 0 ? `${((margin/totalIncome)*100).toFixed(1)}% tasa ahorro` : '' },
+    { label: 'Cashback ganado', value: fmt(totalCashback), color: successColor, sub: `+${transactions.filter(t => t.cashback > 0).length} compras` },
+    { label: 'Score crediticio', value: state.creditScore?.lastReported || 'N/A', color: primaryColor, sub: state.creditScore?.lastReportedDate || 'Sin reporte' }
+  ];
+
+  cards.forEach((c, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = 14 + col * 92;
+    const cardY = y + row * 22;
+
+    doc.setDrawColor(220, 220, 220);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(x, cardY, 88, 20, 2, 2, 'FD');
+
+    doc.setFillColor(...c.color);
+    doc.rect(x, cardY, 2, 20, 'F');
+
+    doc.setTextColor(...textSecondary);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(c.label, x + 5, cardY + 5);
+
+    doc.setTextColor(...c.color);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(c.value), x + 5, cardY + 12);
+
+    if (c.sub) {
+      doc.setTextColor(...textSecondary);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(c.sub, x + 5, cardY + 17);
+    }
+  });
+  y += 70;
+
+  // ===== BOLSILLOS =====
+  if (y > 240) { doc.addPage(); y = 20; }
+  doc.setTextColor(...textPrimary);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Distribución de bolsillos', 14, y);
+  y += 4;
+
+  const bolsillosBody = pockets
+    .filter(p => p.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+    .map(p => [
+      removeEmojis(p.icon + ' ' + p.name),
+      fmt(p.amount),
+      ((p.amount / totalPockets) * 100).toFixed(1) + '%'
+    ]);
+
+  if (bolsillosBody.length > 0) {
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Bolsillo', 'Saldo', '% Total']],
+      body: bolsillosBody,
+      headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // ===== TARJETAS =====
+  if (debts.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tarjetas de crédito', 14, y);
+    y += 4;
+
+    const cardsBody = debts.map(d => {
+      const util = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) + '%' : 'N/A';
+      const utilColor = util === 'N/A' ? '' : (parseFloat(util) > 30 ? '⚠️' : '✓');
+      return [
+        d.name,
+        fmt(d.balance),
+        fmt(d.payment),
+        util,
+        d.cutoffDay ? 'Día ' + d.cutoffDay : '-'
+      ];
+    });
+
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Tarjeta', 'Saldo actual', 'Cupo total', 'Utilización', 'Corte']],
+      body: cardsBody,
+      headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // ===== GASTOS POR CATEGORÍA =====
+  if (transactions.length > 0) {
+    if (y > 220) { doc.addPage(); y = 20; }
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Gastos por categoría', 14, y);
+    y += 4;
+
+    const catLabels = {
+      servicios_casa: 'Servicios + casa', uber: 'Uber', celular: 'Celular',
+      gimnasio: 'Gimnasio', streaming: 'Streaming', comida_fuera: 'Comida fuera',
+      rappi: 'Rappi', salidas_milena: 'Salidas', gasolina: 'Gasolina',
+      mascota: 'Mascota', mascota_extra: 'Mascota extra', compras: 'Compras',
+      salud: 'Salud', otros: 'Otros'
+    };
+
+    const byCategory = {};
+    transactions.forEach(t => {
+      byCategory[t.category] = (byCategory[t.category] || 0) + (t.amount || 0);
+    });
+
+    const catBody = Object.entries(byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amount]) => [
+        catLabels[cat] || cat,
+        fmt(amount),
+        totalExpenses > 0 ? ((amount / totalExpenses) * 100).toFixed(1) + '%' : '0%'
+      ]);
+
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Categoría', 'Total', '% Gastos']],
+      body: catBody,
+      headStyles: { fillColor: dangerColor, textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // ===== TRANSACCIONES =====
+  if (transactions.length > 0) {
+    if (y > 200) { doc.addPage(); y = 20; }
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Transacciones del mes', 14, y);
+    y += 4;
+
+    const PAYMENT_METHODS = {
+      tarjeta: 'Tarjeta', pse: 'PSE', llave: 'Llave/Bre-B',
+      efectivo: 'Efectivo', debito: 'Débito'
+    };
+
+    const txBody = transactions
+      .slice()
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map(t => [
+        t.date.substring(5),
+        removeEmojis(t.desc).substring(0, 30),
+        catLabelOf(t.category),
+        PAYMENT_METHODS[t.paymentMethod] || '-',
+        fmt(t.amount),
+        t.cashback > 0 ? '+' + fmt(t.cashback) : '-'
+      ]);
+
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Fecha', 'Descripción', 'Categoría', 'Método', 'Monto', 'Cashback']],
+      body: txBody,
+      headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // ===== INGRESOS EXTRAS =====
+  if (extraIncomes.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Ingresos extras', 14, y);
+
+    const extrasBody = extraIncomes.map(i => [
+      i.date.substring(5),
+      removeEmojis(i.desc).substring(0, 35),
+      i.source || '-',
+      fmt(i.amount)
+    ]);
+
+    doc.autoTable({
+      startY: y + 4,
+      head: [['Fecha', 'Descripción', 'Origen', 'Monto']],
+      body: extrasBody,
+      headStyles: { fillColor: successColor, textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 3: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // ===== RECOMENDACIONES =====
+  if (y > 230) { doc.addPage(); y = 20; }
+  doc.setTextColor(...textPrimary);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Recomendaciones', 14, y);
+  y += 8;
+
+  const recs = generateRecommendations(state, monthKey, {
+    totalExpenses, totalIncome, margin, totalCashback, transactions, debts
+  });
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  recs.forEach(r => {
+    if (y > 280) { doc.addPage(); y = 20; }
+    doc.setTextColor(...primaryColor);
+    doc.setFont('helvetica', 'bold');
+    doc.text(r.icon + ' ' + r.title, 14, y);
+    y += 5;
+    doc.setTextColor(...textPrimary);
+    doc.setFont('helvetica', 'normal');
+    const lines = doc.splitTextToSize(r.text, 180);
+    lines.forEach(line => {
+      if (y > 285) { doc.addPage(); y = 20; }
+      doc.text(line, 14, y);
+      y += 5;
+    });
+    y += 3;
+  });
+
+  // ===== FOOTER en cada página =====
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFontSize(8);
+    doc.setTextColor(...textSecondary);
+    doc.text('Tablero Financiero Pro - Reporte ' + monthNameCap, 14, 290);
+    doc.text('Página ' + p + ' de ' + totalPages, 195, 290, { align: 'right' });
+  }
+
+  // Descargar
+  doc.save(`Reporte_Financiero_${monthKey}.pdf`);
+}
+
+function fmt(n) {
+  if (n === undefined || n === null || isNaN(n)) return '$ 0';
+  return '$ ' + Math.round(n).toLocaleString('es-CO');
+}
+
+function removeEmojis(str) {
+  if (!str) return '';
+  // Eliminar emojis comunes para evitar problemas de encoding en jsPDF
+  return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
+}
+
+function catLabelOf(catId) {
+  const labels = {
+    servicios_casa: 'Servicios', uber: 'Uber', celular: 'Celular',
+    gimnasio: 'Gym', streaming: 'Streaming', comida_fuera: 'Comida',
+    rappi: 'Rappi', salidas_milena: 'Salidas', gasolina: 'Gasolina',
+    mascota: 'Mascota', mascota_extra: 'Mascota+', compras: 'Compras',
+    salud: 'Salud', otros: 'Otros'
+  };
+  return labels[catId] || catId;
+}
+
+function generateRecommendations(state, monthKey, metrics) {
+  const recs = [];
+  const { totalExpenses, totalIncome, margin, totalCashback, transactions, debts } = metrics;
+
+  // Tasa de ahorro
+  const savingRate = totalIncome > 0 ? (margin / totalIncome) * 100 : 0;
+  if (savingRate >= 30) {
+    recs.push({
+      icon: '*',
+      title: 'Excelente tasa de ahorro',
+      text: `Lograste ahorrar el ${savingRate.toFixed(1)}% de tus ingresos este mes. Estás muy por encima del promedio recomendado del 20%. Sigue así.`
+    });
+  } else if (savingRate >= 15) {
+    recs.push({
+      icon: '+',
+      title: 'Buena tasa de ahorro',
+      text: `Ahorraste ${savingRate.toFixed(1)}% este mes. Estás bien encaminado. La meta es llegar al 30%+ para acelerar el crecimiento de tu patrimonio.`
+    });
+  } else if (savingRate > 0) {
+    recs.push({
+      icon: '!',
+      title: 'Tasa de ahorro baja',
+      text: `Solo ahorraste ${savingRate.toFixed(1)}% este mes. Revisa tus gastos en las categorías más altas y busca oportunidades para reducir.`
+    });
+  } else {
+    recs.push({
+      icon: '!',
+      title: 'Gastos mayores a ingresos',
+      text: `Este mes gastaste más de lo que ingresaste. Revisa urgentemente tu presupuesto.`
+    });
+  }
+
+  // Cashback
+  if (totalCashback > 0) {
+    const lostCashback = transactions
+      .filter(t => t.paymentMethod === 'llave' || t.paymentMethod === 'pse' || t.paymentMethod === 'efectivo')
+      .reduce((s, t) => s + (t.amount * 0.01), 0);
+
+    if (lostCashback > totalCashback * 0.5) {
+      recs.push({
+        icon: '$',
+        title: 'Optimización de cashback',
+        text: `Ganaste ${fmt(totalCashback)} en cashback este mes. Sin embargo, perdiste aproximadamente ${fmt(lostCashback)} pagando por Llave/PSE/efectivo. Si pagaras todo eso con tarjeta de crédito, ganarías ${fmt(totalCashback + lostCashback)} mensuales.`
+      });
+    } else {
+      recs.push({
+        icon: '$',
+        title: 'Buen aprovechamiento de cashback',
+        text: `Ganaste ${fmt(totalCashback)} en cashback. Proyección anual: ${fmt(totalCashback * 12)}. Sigue usando la tarjeta para gastos optimizables.`
+      });
+    }
+  }
+
+  // Utilización de tarjetas
+  if (debts.length > 0) {
+    const totalLimit = debts.reduce((s, d) => s + (d.payment || 0), 0);
+    const totalBalance = debts.reduce((s, d) => s + (d.balance || 0), 0);
+    const util = totalLimit > 0 ? (totalBalance / totalLimit) * 100 : 0;
+
+    if (util < 10) {
+      recs.push({
+        icon: '+',
+        title: 'Utilización óptima de tarjetas',
+        text: `Tu utilización es ${util.toFixed(1)}% (debajo del 10% ideal). Esto suma puntos a tu score crediticio. Mantén este nivel.`
+      });
+    } else if (util < 30) {
+      recs.push({
+        icon: '~',
+        title: 'Utilización aceptable',
+        text: `Tu utilización es ${util.toFixed(1)}%. Para subir tu score, intenta bajar al 10% o menos antes del corte.`
+      });
+    } else {
+      recs.push({
+        icon: '!',
+        title: 'Utilización alta',
+        text: `Tu utilización es ${util.toFixed(1)}%, que penaliza tu score crediticio. Paga antes del corte para bajarla al 10% o menos.`
+      });
+    }
+  }
+
+  // Score crediticio
+  if (state.creditScore && state.creditScore.lastReported) {
+    const score = state.creditScore.lastReported;
+    if (score >= 750) {
+      recs.push({
+        icon: '*',
+        title: 'Score crediticio "Muy Bueno"',
+        text: `Score de ${score}. Estás en una excelente categoría. Para llegar a Excelente (850+), considera diversificar con un crédito hipotecario o vehicular cuando sea oportuno.`
+      });
+    } else if (score >= 670) {
+      recs.push({
+        icon: '+',
+        title: 'Score crediticio "Bueno"',
+        text: `Score de ${score}. Para subir a Muy Bueno (751+), considera abrir un CDT pequeño ($1-2M), no abrir nuevas tarjetas en 6-12 meses, y mantener utilización debajo del 10%.`
+      });
+    } else {
+      recs.push({
+        icon: '~',
+        title: 'Score crediticio en construcción',
+        text: `Score de ${score}. Enfócate en pagar a tiempo, mantener utilización baja, y no cerrar cuentas viejas.`
+      });
+    }
+  }
+
+  return recs;
+}
+
+async function buildAnnualPDF(state, year) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const primaryColor = [127, 119, 221];
+  const successColor = [29, 158, 117];
+  const dangerColor = [163, 45, 45];
+  const textPrimary = [44, 44, 42];
+  const textSecondary = [107, 107, 102];
+
+  // ===== HEADER =====
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, 210, 35, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Reporte Anual', 14, 16);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(year), 14, 24);
+  doc.setFontSize(9);
+  doc.text('Generado el ' + new Date().toLocaleDateString('es-CO'), 14, 30);
+  doc.setFontSize(20);
+  doc.text('💎', 195, 22);
+
+  let y = 45;
+
+  // Filtrar transacciones del año
+  const monthsOfYear = [];
+  for (let m = 1; m <= 12; m++) {
+    const key = `${year}-${String(m).padStart(2, '0')}`;
+    if (state.transactions && state.transactions[key]) {
+      monthsOfYear.push({ key, txs: state.transactions[key], extras: (state.extraIncomes && state.extraIncomes[key]) || [] });
+    }
+  }
+
+  if (monthsOfYear.length === 0) {
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(12);
+    doc.text('Aún no hay transacciones registradas en ' + year, 14, y);
+    doc.save(`Reporte_Anual_${year}.pdf`);
+    return;
+  }
+
+  // Resumen anual
+  let totalAnnualExpense = 0;
+  let totalAnnualCashback = 0;
+  let totalAnnualExtras = 0;
+  monthsOfYear.forEach(m => {
+    m.txs.forEach(t => {
+      totalAnnualExpense += t.amount || 0;
+      totalAnnualCashback += t.cashback || 0;
+    });
+    m.extras.forEach(e => totalAnnualExtras += e.amount || 0);
+  });
+
+  const recurrentMonthly = (state.incomes || []).reduce((s, i) => s + (i.amount || 0), 0);
+  const totalAnnualIncome = recurrentMonthly * monthsOfYear.length + totalAnnualExtras + totalAnnualCashback;
+
+  doc.setTextColor(...textPrimary);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Resumen anual', 14, y);
+  y += 8;
+
+  const annualCards = [
+    { label: 'Ingresos del año', value: fmt(totalAnnualIncome), color: successColor },
+    { label: 'Gastos del año', value: fmt(totalAnnualExpense), color: dangerColor },
+    { label: 'Ahorro del año', value: fmt(totalAnnualIncome - totalAnnualExpense), color: primaryColor },
+    { label: 'Cashback ganado', value: fmt(totalAnnualCashback), color: successColor }
+  ];
+
+  annualCards.forEach((c, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = 14 + col * 92;
+    const cardY = y + row * 22;
+
+    doc.setDrawColor(220, 220, 220);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(x, cardY, 88, 20, 2, 2, 'FD');
+    doc.setFillColor(...c.color);
+    doc.rect(x, cardY, 2, 20, 'F');
+
+    doc.setTextColor(...textSecondary);
+    doc.setFontSize(8);
+    doc.text(c.label, x + 5, cardY + 6);
+
+    doc.setTextColor(...c.color);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(c.value), x + 5, cardY + 14);
+  });
+  y += 50;
+
+  // Tabla por mes
+  doc.setTextColor(...textPrimary);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Desglose por mes', 14, y);
+
+  const monthBody = monthsOfYear.map(m => {
+    const monthName = new Date(m.key + '-01').toLocaleDateString('es-CO', { month: 'long' });
+    const expenses = m.txs.reduce((s, t) => s + (t.amount || 0), 0);
+    const cashback = m.txs.reduce((s, t) => s + (t.cashback || 0), 0);
+    const extras = m.extras.reduce((s, e) => s + (e.amount || 0), 0);
+    return [
+      monthName.charAt(0).toUpperCase() + monthName.slice(1),
+      m.txs.length,
+      fmt(expenses),
+      fmt(cashback),
+      fmt(extras)
+    ];
+  });
+
+  doc.autoTable({
+    startY: y + 4,
+    head: [['Mes', 'Trans.', 'Gastos', 'Cashback', 'Ingresos extras']],
+    body: monthBody,
+    headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: [248, 248, 248] },
+    margin: { left: 14, right: 14 },
+    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+  });
+
+  // Score crediticio histórico
+  if (state.creditScore && state.creditScore.history && state.creditScore.history.length > 0) {
+    let yScore = doc.lastAutoTable.finalY + 12;
+    if (yScore > 240) { doc.addPage(); yScore = 20; }
+
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Histórico Score Crediticio', 14, yScore);
+
+    const scoreBody = state.creditScore.history
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(h => [h.date, h.score, h.source || 'DataCrédito']);
+
+    doc.autoTable({
+      startY: yScore + 4,
+      head: [['Fecha', 'Puntaje', 'Fuente']],
+      body: scoreBody,
+      headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      margin: { left: 14, right: 14 },
+      columnStyles: { 1: { halign: 'right' } }
+    });
+  }
+
+  // Footer
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFontSize(8);
+    doc.setTextColor(...textSecondary);
+    doc.text(`Tablero Financiero Pro - Reporte Anual ${year}`, 14, 290);
+    doc.text('Página ' + p + ' de ' + totalPages, 195, 290, { align: 'right' });
+  }
+
+  doc.save(`Reporte_Anual_${year}.pdf`);
+}
 </script>
 
 <script>
