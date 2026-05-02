@@ -10,7 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
+  :root, html.theme-light {
     --bg-primary: #ffffff;
     --bg-secondary: #f5f4ef;
     --bg-tertiary: #faf9f5;
@@ -32,8 +32,19 @@
     --radius-md: 8px;
     --radius-lg: 12px;
   }
+  html.theme-dark {
+    --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f;
+    --text-primary: #e8e6df; --text-secondary: #a8a8a0; --text-tertiary: #757570;
+    --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
+    --success-bg: #173404; --success-text: #c0dd97;
+    --danger-bg: #501313; --danger-text: #f09595;
+    --warning-bg: #412402; --warning-text: #fac775;
+    --info-bg: #042c53; --info-text: #85b7eb;
+    --purple-bg: #26215c; --purple-text: #cecbf6;
+  }
+  /* Solo se aplica si no hay clase manual (auto basado en sistema) */
   @media (prefers-color-scheme: dark) {
-    :root {
+    html:not(.theme-light):not(.theme-dark) {
       --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f;
       --text-primary: #e8e6df; --text-secondary: #a8a8a0; --text-tertiary: #757570;
       --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
@@ -693,6 +704,7 @@
     </div>
     <div class="hero-controls">
       <select id="currency-select"><option value="COP" selected>COP $</option></select>
+      <button onclick="toggleTheme()" id="theme-toggle-btn" class="btn-icon" title="Cambiar tema">🌗</button>
       <button onclick="exportData()" class="btn-icon" title="Exportar datos">📥 Exportar</button>
       <button onclick="importData()" class="btn-icon" title="Importar datos">📤 Importar</button>
       <button onclick="migrateLocalData()" class="btn-icon" title="Migrar datos del navegador a la nube" id="migrate-btn" style="display: none;">☁️ Subir local</button>
@@ -1085,6 +1097,25 @@
           <div id="profile-email-display" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;"></div>
           <div id="profile-since" style="font-size: 11px; color: var(--text-tertiary);"></div>
         </div>
+      </div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">🎨 Apariencia</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Elige el tema visual del dashboard.</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+        <button onclick="setTheme('light')" id="theme-btn-light" style="padding: 14px 8px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <span style="font-size: 24px;">☀️</span>
+          <span style="font-size: 12px; font-weight: 500;">Claro</span>
+        </button>
+        <button onclick="setTheme('dark')" id="theme-btn-dark" style="padding: 14px 8px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <span style="font-size: 24px;">🌙</span>
+          <span style="font-size: 12px; font-weight: 500;">Oscuro</span>
+        </button>
+        <button onclick="setTheme('auto')" id="theme-btn-auto" style="padding: 14px 8px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <span style="font-size: 24px;">🌗</span>
+          <span style="font-size: 12px; font-weight: 500;">Auto</span>
+        </button>
       </div>
     </div>
 
@@ -2045,6 +2076,497 @@ window.viewDocument = viewDocument;
 window.deleteDocument = deleteDocument;
 window.changePasswordPrompt = changePasswordPrompt;
 window.deleteAccountPrompt = deleteAccountPrompt;
+
+// ============================================================
+// SEMANA 1 - MEJORAS: TEMA, NOTIFICACIONES, CATEGORIZACIÓN, BÚSQUEDA
+// ============================================================
+
+// === 1. SISTEMA DE TEMA (claro/oscuro/auto) ===
+const THEME_KEY = 'dashboard-theme-preference';
+
+function setTheme(theme) {
+  const html = document.documentElement;
+  html.classList.remove('theme-light', 'theme-dark');
+  if (theme === 'light' || theme === 'dark') {
+    html.classList.add('theme-' + theme);
+  }
+  // Si es 'auto', no agregamos clase y respeta @media prefers-color-scheme
+  localStorage.setItem(THEME_KEY, theme);
+  updateThemeButtons(theme);
+  updateThemeToggleIcon();
+}
+
+function updateThemeButtons(activeTheme) {
+  ['light', 'dark', 'auto'].forEach(t => {
+    const btn = document.getElementById('theme-btn-' + t);
+    if (btn) {
+      if (t === activeTheme) {
+        btn.style.background = 'linear-gradient(135deg, #7F77DD22, #1D9E7522)';
+        btn.style.border = '2px solid var(--info-text)';
+      } else {
+        btn.style.background = 'var(--bg-secondary)';
+        btn.style.border = '1px solid var(--border)';
+      }
+    }
+  });
+}
+
+function updateThemeToggleIcon() {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  const current = localStorage.getItem(THEME_KEY) || 'auto';
+  const icons = { light: '☀️', dark: '🌙', auto: '🌗' };
+  btn.textContent = icons[current];
+}
+
+function toggleTheme() {
+  const current = localStorage.getItem(THEME_KEY) || 'auto';
+  const next = current === 'light' ? 'dark' : (current === 'dark' ? 'auto' : 'light');
+  setTheme(next);
+}
+
+// Aplicar tema guardado al cargar
+(function applyStoredTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'auto';
+  setTheme(saved);
+})();
+
+// === 2. SISTEMA DE NOTIFICACIONES INTELIGENTES ===
+const NOTIFICATIONS_KEY = 'dashboard-notifications-shown';
+
+function getStateForNotifications() {
+  try {
+    return JSON.parse(localStorage.getItem('finance-dashboard-cristian-v20') || '{}');
+  } catch(e) { return {}; }
+}
+
+function checkSmartNotifications() {
+  const state = getStateForNotifications();
+  if (!state.debts) return [];
+
+  const notifications = [];
+  const today = new Date();
+  const todayKey = today.toISOString().split('T')[0];
+
+  // Notificaciones ya mostradas hoy (para no spamear)
+  let shownToday = {};
+  try {
+    shownToday = JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) || '{}');
+    if (shownToday.date !== todayKey) shownToday = { date: todayKey, ids: [] };
+  } catch(e) { shownToday = { date: todayKey, ids: [] }; }
+
+  // 1. Alertas de cortes de tarjetas
+  state.debts.forEach(d => {
+    if (!d.cutoffDay) return;
+    let nextCutoff;
+    if (today.getDate() <= d.cutoffDay) {
+      nextCutoff = new Date(today.getFullYear(), today.getMonth(), d.cutoffDay);
+    } else {
+      nextCutoff = new Date(today.getFullYear(), today.getMonth() + 1, d.cutoffDay);
+    }
+    const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
+
+    // Calcular utilización
+    const util = d.payment > 0 ? (d.balance / d.payment) * 100 : 0;
+    const targetMax = d.payment * 0.03;
+    const needsPay = d.balance > targetMax;
+    const payAmount = needsPay ? d.balance - targetMax : 0;
+
+    if (daysLeft >= 1 && daysLeft <= 3 && needsPay) {
+      const id = 'cutoff_' + d.id + '_' + daysLeft;
+      if (!shownToday.ids.includes(id)) {
+        notifications.push({
+          id, type: 'warning', icon: '⚠️',
+          title: `${d.name}: corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''}`,
+          msg: `Tu utilización es ${util.toFixed(1)}%. Para mantener score óptimo (3%), paga $${Math.round(payAmount).toLocaleString('es-CO')} antes del corte.`
+        });
+      }
+    } else if (daysLeft === 0) {
+      const id = 'cutoff_today_' + d.id;
+      if (!shownToday.ids.includes(id)) {
+        notifications.push({
+          id, type: 'danger', icon: '🚨',
+          title: `${d.name}: ¡HOY es el corte!`,
+          msg: `Saldo: $${Math.round(d.balance).toLocaleString('es-CO')}. ${needsPay ? 'Paga ahora para mantener score' : 'Utilización ya está óptima.'}`
+        });
+      }
+    }
+  });
+
+  // 2. Notificación de transacciones por método ineficiente
+  const monthKey = todayKey.substring(0, 7);
+  const monthTx = (state.transactions && state.transactions[monthKey]) || [];
+  const llaveTx = monthTx.filter(t => t.paymentMethod === 'llave' || t.paymentMethod === 'pse');
+  const totalLlave = llaveTx.reduce((s, t) => s + (t.amount || 0), 0);
+  if (totalLlave > 100000) {
+    const id = 'llave_warn_' + monthKey;
+    if (!shownToday.ids.includes(id)) {
+      const lostCashback = totalLlave * 0.01;
+      notifications.push({
+        id, type: 'info', icon: '💡',
+        title: 'Optimización de cashback',
+        msg: `Este mes pagaste $${Math.round(totalLlave).toLocaleString('es-CO')} por Llave/PSE. Si lo hubieras hecho con tarjeta de crédito, habrías ganado $${Math.round(lostCashback).toLocaleString('es-CO')} en cashback.`
+      });
+    }
+  }
+
+  // 3. Notificación de inactividad (no registras gastos hace mucho)
+  const lastTx = monthTx.length > 0 ? new Date(monthTx[monthTx.length - 1].date) : null;
+  if (lastTx) {
+    const daysSinceLast = Math.floor((today - lastTx) / (1000 * 60 * 60 * 24));
+    if (daysSinceLast >= 5) {
+      const id = 'inactive_' + todayKey;
+      if (!shownToday.ids.includes(id)) {
+        notifications.push({
+          id, type: 'info', icon: '📝',
+          title: 'Te falta registrar gastos',
+          msg: `Llevas ${daysSinceLast} días sin registrar transacciones. ¿Has tenido gastos pendientes de registrar?`
+        });
+      }
+    }
+  }
+
+  // 4. Felicitación por buen score
+  if (state.creditScore && state.creditScore.lastReported >= 670) {
+    const id = 'score_good_' + (state.creditScore.lastReportedDate || '');
+    if (!shownToday.ids.includes(id) && state.creditScore.history && state.creditScore.history.length >= 2) {
+      const sorted = [...state.creditScore.history].sort((a, b) => a.date.localeCompare(b.date));
+      const last = sorted[sorted.length - 1];
+      const prev = sorted[sorted.length - 2];
+      if (last.score > prev.score) {
+        notifications.push({
+          id, type: 'success', icon: '🎉',
+          title: '¡Tu score subió!',
+          msg: `De ${prev.score} a ${last.score} (+${last.score - prev.score} puntos). Sigue así.`
+        });
+      }
+    }
+  }
+
+  return notifications;
+}
+
+function showNotificationsPanel() {
+  const notifs = checkSmartNotifications();
+  if (notifs.length === 0) return;
+
+  let panel = document.getElementById('notifications-panel');
+  if (panel) panel.remove();
+
+  panel = document.createElement('div');
+  panel.id = 'notifications-panel';
+  panel.style.cssText = 'position: fixed; top: 80px; right: 20px; width: 340px; max-width: calc(100vw - 40px); z-index: 998; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 100px); overflow-y: auto;';
+
+  notifs.forEach(n => {
+    const colors = {
+      danger: ['var(--danger-bg)', 'var(--danger-text)', '#A32D2D'],
+      warning: ['var(--warning-bg)', 'var(--warning-text)', '#854f0b'],
+      info: ['var(--info-bg)', 'var(--info-text)', '#185fa5'],
+      success: ['var(--success-bg)', 'var(--success-text)', '#3b6d11']
+    };
+    const [bg, text, border] = colors[n.type] || colors.info;
+
+    const card = document.createElement('div');
+    card.style.cssText = `padding: 14px; background: var(--bg-primary); border: 1px solid var(--border); border-left: 4px solid ${border}; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); animation: slideIn 0.3s ease;`;
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">${n.icon}</span>
+          <strong style="font-size: 13px; color: var(--text-primary);">${n.title}</strong>
+        </div>
+        <button onclick="dismissNotification('${n.id}')" style="background: transparent; border: none; cursor: pointer; padding: 0; color: var(--text-tertiary); font-size: 16px;">×</button>
+      </div>
+      <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">${n.msg}</div>
+    `;
+    panel.appendChild(card);
+  });
+
+  document.body.appendChild(panel);
+
+  // Auto-marcar como mostradas
+  const todayKey = new Date().toISOString().split('T')[0];
+  const shown = { date: todayKey, ids: notifs.map(n => n.id) };
+  try {
+    const existing = JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) || '{}');
+    if (existing.date === todayKey) {
+      shown.ids = [...new Set([...existing.ids, ...shown.ids])];
+    }
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(shown));
+  } catch(e) {}
+}
+
+function dismissNotification(id) {
+  const panel = document.getElementById('notifications-panel');
+  if (!panel) return;
+  // Encontrar y eliminar la card específica
+  panel.querySelectorAll('div').forEach(div => {
+    if (div.innerHTML.includes(`dismissNotification('${id}')`)) {
+      div.style.animation = 'slideOut 0.2s ease forwards';
+      setTimeout(() => {
+        div.remove();
+        if (panel.children.length === 0) panel.remove();
+      }, 200);
+    }
+  });
+}
+
+// Inyectar animaciones
+const styleEl = document.createElement('style');
+styleEl.textContent = `
+  @keyframes slideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes slideOut { to { opacity: 0; transform: translateX(100%); } }
+`;
+document.head.appendChild(styleEl);
+
+// === 3. CATEGORIZACIÓN AUTOMÁTICA INTELIGENTE ===
+const SMART_CATEGORIES = {
+  'uber': 'uber', 'didi': 'uber', 'cabify': 'uber', 'taxi': 'uber',
+  'rappi': 'rappi', 'didi food': 'comida_fuera', 'mcdonalds': 'comida_fuera',
+  'movistar': 'servicios_casa', 'claro': 'servicios_casa', 'tigo': 'celular',
+  'wom': 'celular', 'etb': 'servicios_casa', 'codensa': 'servicios_casa',
+  'enel': 'servicios_casa', 'gas natural': 'servicios_casa', 'vanti': 'servicios_casa',
+  'acueducto': 'servicios_casa', 'epm': 'servicios_casa',
+  'netflix': 'streaming', 'spotify': 'streaming', 'disney': 'streaming',
+  'youtube': 'streaming', 'hbo': 'streaming', 'amazon prime': 'streaming',
+  'gym': 'gimnasio', 'gimnasio': 'gimnasio', 'smart fit': 'gimnasio', 'bodytech': 'gimnasio',
+  'terpel': 'gasolina', 'esso': 'gasolina', 'mobil': 'gasolina', 'shell': 'gasolina',
+  'gasolina': 'gasolina', 'biomax': 'gasolina',
+  'farmacia': 'salud', 'cruz verde': 'salud', 'colsubsidio': 'salud', 'eps': 'salud',
+  'medicina': 'salud', 'doctor': 'salud', 'medicamentos': 'mascota', 'veterinari': 'mascota',
+  'zlatan': 'mascota', 'mascota': 'mascota',
+  'cafe': 'comida_fuera', 'restaurante': 'comida_fuera', 'almuerzo': 'comida_fuera',
+  'cancha': 'salidas_milena', 'milena': 'salidas_milena', 'valentina': 'otros',
+  'datacredito': 'otros', 'pago tarjeta': 'otros', 'transferencia': 'otros'
+};
+
+function suggestCategory(description) {
+  if (!description || typeof description !== 'string') return null;
+  const desc = description.toLowerCase().trim();
+  // Buscar coincidencia exacta primero
+  for (const keyword in SMART_CATEGORIES) {
+    if (desc.includes(keyword)) {
+      return SMART_CATEGORIES[keyword];
+    }
+  }
+  return null;
+}
+
+function setupSmartCategorization() {
+  const descInput = document.getElementById('tx-desc');
+  const catSelect = document.getElementById('tx-category');
+  if (!descInput || !catSelect) return;
+
+  let suggestion = null;
+  descInput.addEventListener('input', () => {
+    suggestion = suggestCategory(descInput.value);
+    showCategorySuggestion(suggestion, descInput, catSelect);
+  });
+}
+
+function showCategorySuggestion(catId, descInput, catSelect) {
+  let hint = document.getElementById('category-suggestion-hint');
+  if (!catId) {
+    if (hint) hint.remove();
+    return;
+  }
+
+  const option = catSelect.querySelector(`option[value="${catId}"]`);
+  if (!option) {
+    if (hint) hint.remove();
+    return;
+  }
+
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'category-suggestion-hint';
+    hint.style.cssText = 'margin-top: 4px; padding: 6px 10px; background: var(--info-bg); color: var(--info-text); border-radius: 8px; font-size: 11px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;';
+    descInput.parentElement.insertBefore(hint, descInput.nextSibling);
+  }
+
+  hint.innerHTML = `
+    <span>💡 Sugerencia: <strong>${option.textContent}</strong></span>
+    <button onclick="acceptCategorySuggestion('${catId}')" style="padding: 2px 8px; font-size: 10px; background: var(--info-text); color: white; border: none; border-radius: 4px; cursor: pointer;">Usar</button>
+  `;
+}
+
+window.acceptCategorySuggestion = function(catId) {
+  const catSelect = document.getElementById('tx-category');
+  if (catSelect) {
+    catSelect.value = catId;
+    const hint = document.getElementById('category-suggestion-hint');
+    if (hint) hint.remove();
+  }
+};
+
+// === 4. BÚSQUEDA Y FILTROS DE TRANSACCIONES ===
+let transactionFilters = {
+  search: '',
+  category: 'all',
+  paymentMethod: 'all',
+  cardId: 'all',
+  startDate: null,
+  endDate: null
+};
+
+function injectTransactionFilters() {
+  const txList = document.getElementById('tx-list-container') || document.getElementById('transaction-list');
+  if (!txList) return;
+
+  // Solo agregar si no existen los filtros
+  if (document.getElementById('tx-filters-bar')) return;
+
+  const filtersBar = document.createElement('div');
+  filtersBar.id = 'tx-filters-bar';
+  filtersBar.className = 'raised-card';
+  filtersBar.style.marginBottom = '12px';
+  filtersBar.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; cursor: pointer;" onclick="toggleFiltersPanel()">
+      <p class="card-title" style="margin: 0;">🔍 Buscar y filtrar transacciones</p>
+      <span id="filters-toggle-icon" style="font-size: 14px; color: var(--text-secondary);">▼</span>
+    </div>
+    <div id="tx-filters-panel" style="display: none;">
+      <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px;">
+        <input type="text" id="tx-filter-search" placeholder="🔍 Buscar por descripción..." />
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+        <select id="tx-filter-category"><option value="all">Todas las categorías</option></select>
+        <select id="tx-filter-method">
+          <option value="all">Todos los métodos</option>
+          <option value="tarjeta">💳 Tarjeta</option>
+          <option value="pse">🏦 PSE</option>
+          <option value="llave">🔑 Llave/Bre-B</option>
+          <option value="efectivo">💵 Efectivo</option>
+          <option value="debito">💳 Débito</option>
+        </select>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+        <input type="date" id="tx-filter-start" placeholder="Desde" />
+        <input type="date" id="tx-filter-end" placeholder="Hasta" />
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <button onclick="clearFilters()" style="font-size: 11px; padding: 6px 12px;">🗑️ Limpiar filtros</button>
+        <span id="filter-results-count" style="font-size: 12px; color: var(--text-secondary);"></span>
+      </div>
+    </div>
+  `;
+  txList.parentElement.insertBefore(filtersBar, txList);
+
+  // Llenar opciones de categorías
+  const catSelect = document.getElementById('tx-filter-category');
+  if (catSelect && typeof CATEGORIES !== 'undefined') {
+    // CATEGORIES está dentro del IIFE, accedemos por el select original
+    const origCatSelect = document.getElementById('tx-category');
+    if (origCatSelect) {
+      Array.from(origCatSelect.options).forEach(opt => {
+        catSelect.innerHTML += `<option value="${opt.value}">${opt.textContent}</option>`;
+      });
+    }
+  }
+
+  // Listeners
+  ['tx-filter-search', 'tx-filter-category', 'tx-filter-method', 'tx-filter-start', 'tx-filter-end'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', applyTransactionFilters);
+      el.addEventListener('change', applyTransactionFilters);
+    }
+  });
+}
+
+window.toggleFiltersPanel = function() {
+  const panel = document.getElementById('tx-filters-panel');
+  const icon = document.getElementById('filters-toggle-icon');
+  if (panel) {
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    if (icon) icon.textContent = isHidden ? '▲' : '▼';
+  }
+};
+
+window.clearFilters = function() {
+  ['tx-filter-search', 'tx-filter-category', 'tx-filter-method', 'tx-filter-start', 'tx-filter-end'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = (el.tagName === 'SELECT' ? 'all' : '');
+  });
+  applyTransactionFilters();
+};
+
+window.applyTransactionFilters = function() {
+  const search = (document.getElementById('tx-filter-search')?.value || '').toLowerCase().trim();
+  const category = document.getElementById('tx-filter-category')?.value || 'all';
+  const method = document.getElementById('tx-filter-method')?.value || 'all';
+  const startDate = document.getElementById('tx-filter-start')?.value;
+  const endDate = document.getElementById('tx-filter-end')?.value;
+
+  let visibleCount = 0;
+  let totalCount = 0;
+
+  document.querySelectorAll('.tx-row, [data-tx-id]').forEach(row => {
+    totalCount++;
+    let show = true;
+
+    const desc = (row.getAttribute('data-tx-desc') || row.textContent || '').toLowerCase();
+    const cat = row.getAttribute('data-tx-category') || '';
+    const meth = row.getAttribute('data-tx-method') || '';
+    const date = row.getAttribute('data-tx-date') || '';
+
+    if (search && !desc.includes(search)) show = false;
+    if (category !== 'all' && cat !== category) show = false;
+    if (method !== 'all' && meth !== method) show = false;
+    if (startDate && date < startDate) show = false;
+    if (endDate && date > endDate) show = false;
+
+    row.style.display = show ? '' : 'none';
+    if (show) visibleCount++;
+  });
+
+  const counter = document.getElementById('filter-results-count');
+  if (counter) {
+    if (search || category !== 'all' || method !== 'all' || startDate || endDate) {
+      counter.textContent = `${visibleCount} de ${totalCount} transacciones`;
+    } else {
+      counter.textContent = '';
+    }
+  }
+};
+
+window.setTheme = setTheme;
+window.toggleTheme = toggleTheme;
+window.dismissNotification = dismissNotification;
+
+// Activar todo cuando esté el dashboard cargado
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    setupSmartCategorization();
+    injectTransactionFilters();
+    // Mostrar notificaciones después de 2 segundos para no abrumar al cargar
+    setTimeout(() => {
+      if (currentUser) showNotificationsPanel();
+    }, 2000);
+  }, 1500);
+
+  // Inicializar tema buttons cuando se entre a perfil
+  setTimeout(() => {
+    const saved = localStorage.getItem(THEME_KEY) || 'auto';
+    updateThemeButtons(saved);
+    updateThemeToggleIcon();
+  }, 500);
+});
+
+// Re-aplicar filtros cada vez que se renderice
+const observer = new MutationObserver(() => {
+  if (document.getElementById('tx-filters-bar')) {
+    applyTransactionFilters();
+  } else {
+    injectTransactionFilters();
+  }
+});
+setTimeout(() => {
+  const txContainer = document.getElementById('section-presupuesto');
+  if (txContainer) {
+    observer.observe(txContainer, { childList: true, subtree: true });
+  }
+}, 2000);
 </script>
 
 <script>
@@ -3140,7 +3662,7 @@ window.deleteAccountPrompt = deleteAccountPrompt;
         methodStr = `${method.icon} ${method.label}`;
       }
 
-      return `<div class="tx-row">
+      return `<div class="tx-row" data-tx-id="${t.id}" data-tx-desc="${esc(t.desc).toLowerCase()}" data-tx-category="${t.category}" data-tx-method="${t.paymentMethod || ''}" data-tx-date="${t.date}">
         <div class="tx-date">${ds}</div>
         <div>${esc(t.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span></div>
         <div style="color: var(--danger-text); font-weight: 500;">${fmt(t.amount)}</div>
