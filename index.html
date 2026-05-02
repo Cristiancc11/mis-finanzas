@@ -2743,14 +2743,158 @@ async function extractTextFromPDF(file) {
 
 function parsePDFText(text, bank) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  // Si es Lulo Bank, usar parser específico
+  if (bank === 'lulo') {
+    return parseLuloBankPDF(lines);
+  }
+
+  // Parser genérico para otros bancos
+  return parseGenericPDF(lines, bank);
+}
+
+function parseLuloBankPDF(lines) {
+  const movements = [];
+  const monthMap = {
+    ene: '01', feb: '02', mar: '03', abr: '04', may: '05', jun: '06',
+    jul: '07', ago: '08', sep: '09', oct: '10', nov: '11', dic: '12'
+  };
+
+  // Patrón específico de Lulo: [ID] [fecha op] [fecha aut] [descripción] [monto]
+  // Formato fecha: "01 abr. 2026"
+  // Formato monto: "+6,000.00" o "-368,000.00"
+
+  // Regex para línea típica:
+  // ID(8-10 dígitos) DD MES. YYYY DD MES. YYYY DESCRIPCIÓN +/-MONTO
+  const luloLineRegex = /^(\d{8,})\s+(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?\s+(\d{4})\s+(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?\s+(\d{4})\s+(.+?)\s+([+\-]\s?[\d.,]+)\s*$/i;
+
+  // Patrones para los nombres de bolsillos (secciones que NO debemos procesar como movimientos generales)
+  // El extracto de Lulo tiene: cuenta principal + "Bolsillos flex" + cada bolsillo
+  // Solo queremos los de la cuenta principal (primera sección antes de "Bolsillos flex")
+
+  let currentSection = 'main'; // 'main' o 'bolsillo:NOMBRE'
+  let processingBolsillos = false;
+  const bolsilloNames = ['flujo operativo', 'universidad', 'servicios', 'viajes futuros',
+                          'fondo de emergencias', 'vida social', 'zlatan', 'gastos fijos del mes',
+                          'efectivo', 'cashback rappicard'];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lowerLine = line.toLowerCase().trim();
+
+    // Detectar inicio de "Bolsillos flex" para dejar de procesar
+    if (lowerLine === 'bolsillos flex' || lowerLine.startsWith('bolsillos flex')) {
+      processingBolsillos = true;
+      continue;
+    }
+
+    // Si ya estamos en bolsillos, NO procesar (porque son movimientos internos, no gastos reales)
+    if (processingBolsillos) continue;
+
+    // Saltar líneas de cabeceras y resumen
+    if (lowerLine.startsWith('saldo') || lowerLine.startsWith('rendimientos') ||
+        lowerLine.startsWith('extracto') || lowerLine.startsWith('no. cuenta') ||
+        lowerLine.startsWith('movimientos') || lowerLine.startsWith('resumen') ||
+        lowerLine.startsWith('ingresos') || lowerLine.startsWith('gastos') ||
+        lowerLine.startsWith('operaciones') || lowerLine.startsWith('intereses') ||
+        lowerLine.startsWith('impuestos') || lowerLine.startsWith('---') ||
+        lowerLine.startsWith('en lulo bank') || lowerLine.startsWith('defensor') ||
+        lowerLine.startsWith('carrera') || lowerLine.startsWith('conoce')) {
+      continue;
+    }
+
+    // Aplicar regex
+    const m = line.match(luloLineRegex);
+    if (!m) continue;
+
+    const [_, id, day, monthStr, year, dayAuth, monthAuthStr, yearAuth, descRaw, amountRaw] = m;
+    const monthNum = monthMap[monthStr.toLowerCase().substring(0, 3)];
+    if (!monthNum) continue;
+
+    const date = `${year}-${monthNum}-${day.padStart(2, '0')}`;
+    const desc = descRaw.trim().replace(/\s+/g, ' ');
+
+    // Parsear monto
+    const amountStr = amountRaw.replace(/\s/g, '');
+    const isNegative = amountStr.startsWith('-');
+    const amountValue = parseAmount(amountStr.replace(/^[+\-]/, ''));
+    if (amountValue === null || amountValue === 0) continue;
+
+    // Filtrar movimientos internos que NO son gastos reales:
+    // - "Retiro bolsillo" → es transferencia interna entre cuenta y bolsillo (NO gasto)
+    // - "Transferencia bolsillo" → similar (NO gasto)
+    // - "Abono intereses" → es ingreso pasivo
+    // - "Retención en la Fuente" → impuesto pequeño (lo ignoramos)
+    const lowerDesc = desc.toLowerCase();
+    if (lowerDesc.includes('retiro bolsillo') || 
+        lowerDesc.includes('transferencia bolsillo') ||
+        lowerDesc.includes('recarga bolsillo') ||
+        lowerDesc.includes('abono intereses') ||
+        lowerDesc.includes('retención en la fuente') ||
+        lowerDesc.includes('abono de cashback') ||
+        lowerDesc.includes('depósito ach') ||
+        lowerDesc.includes('deposito ach')) {
+      continue;
+    }
+
+    // Determinar si es ingreso o gasto basado en la descripción
+    let isExpense = isNegative;
+
+    // Las "Transferencias Bre-B" pueden ser ingresos (+) o gastos (-)
+    // Los "Pagos PSE" siempre son gastos
+    // Los "Pagos de tarjeta de crédito" son gastos
+
+    // Sugerir categoría con detección mejorada
+    let category = suggestCategory(desc) || 'otros';
+
+    // Mapeo específico para Lulo
+    if (lowerDesc.includes('pago pse banco davivienda')) {
+      category = 'otros'; // pago de tarjeta
+    } else if (lowerDesc.includes('pago pse claro')) {
+      category = 'celular';
+    } else if (lowerDesc.includes('pago pse pg colombia')) {
+      category = 'streaming'; // PG Colombia es para Spotify/streaming
+    } else if (lowerDesc.includes('pago pse experian')) {
+      category = 'otros'; // DataCrédito
+    } else if (lowerDesc.includes('pago pse gou payments')) {
+      category = 'compras'; // Pasarela de pagos genérica
+    } else if (lowerDesc.includes('pago de tarjeta de crédito') || lowerDesc.includes('pago de tarjeta de credito')) {
+      category = 'otros'; // pagos de tarjeta
+    } else if (lowerDesc.includes('transferencia bre-b')) {
+      // Transferencias Bre-B sin contexto: las marcamos como otros
+      // El usuario decidirá si las incluye o no
+      category = 'otros';
+    }
+
+    movements.push({
+      date,
+      desc: desc.substring(0, 80),
+      amount: amountValue,
+      isExpense,
+      suggestedCategory: category,
+      include: isExpense // por defecto solo gastos
+    });
+  }
+
+  // Eliminar duplicados
+  const seen = new Set();
+  return movements.filter(m => {
+    const key = `${m.date}-${m.desc}-${m.amount}-${m.isExpense}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function parseGenericPDF(lines, bank) {
   const movements = [];
 
   // Patrones de fechas
   const datePatterns = [
     /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/, // DD/MM/YYYY
     /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,   // YYYY-MM-DD
-    /^(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\s*\.?\s*(\d{2,4})?/i, // 28 abr 2026
-    /^(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?\s+(\d{1,2})/i, // abr 28
+    /^(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?\s*(\d{2,4})?/i,
+    /^(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?\s+(\d{1,2})/i,
   ];
 
   const monthMap = {
@@ -2758,9 +2902,7 @@ function parsePDFText(text, bank) {
     jul: '07', ago: '08', sep: '09', oct: '10', nov: '11', dic: '12'
   };
 
-  // Año actual / del extracto
   let inferredYear = new Date().getFullYear();
-  // Buscar año en las primeras líneas
   for (let i = 0; i < Math.min(20, lines.length); i++) {
     const m = lines[i].match(/(20\d{2})/);
     if (m) { inferredYear = parseInt(m[1]); break; }
@@ -2772,12 +2914,10 @@ function parsePDFText(text, bank) {
     let date = null;
     let restOfLine = line;
 
-    // Intentar cada patrón
     for (const pattern of datePatterns) {
       const m = line.match(pattern);
       if (m) {
         if (pattern === datePatterns[0]) {
-          // DD/MM/YYYY
           let [_, d, mo, y] = m;
           if (y.length === 2) y = '20' + y;
           if (y.length === 4) {
@@ -2785,19 +2925,16 @@ function parsePDFText(text, bank) {
             restOfLine = line.substring(m[0].length).trim();
           }
         } else if (pattern === datePatterns[1]) {
-          // YYYY-MM-DD
           const [_, y, mo, d] = m;
           date = `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
           restOfLine = line.substring(m[0].length).trim();
         } else if (pattern === datePatterns[2]) {
-          // 28 abr 2026
           const [_, d, monStr, y] = m;
           const mo = monthMap[monStr.toLowerCase().substring(0,3)];
           const year = y || inferredYear;
           date = `${year}-${mo}-${d.padStart(2,'0')}`;
           restOfLine = line.substring(m[0].length).trim();
         } else if (pattern === datePatterns[3]) {
-          // abr 28
           const [_, monStr, d] = m;
           const mo = monthMap[monStr.toLowerCase().substring(0,3)];
           date = `${inferredYear}-${mo}-${d.padStart(2,'0')}`;
@@ -2809,15 +2946,8 @@ function parsePDFText(text, bank) {
 
     if (!date) return;
 
-    // Buscar montos en la línea (todos los números con formato de plata)
-    const amountRegex = /[\$\-]?\s*[\d\.,]+\s*(?:cop|usd)?/gi;
+    const amountMatches = restOfLine.match(/[\-\+]?\s?\$?\s?[\d]{1,3}(?:[\.,][\d]{3})*(?:[\.,][\d]{1,2})?(?!\d)/g) || [];
     const numbers = [];
-    let match;
-    const cleanLine = restOfLine;
-
-    // Buscar patrones tipo: $1.234.567,89 / 1,234,567.89 / 1234567 / -45.000
-    const amountMatches = cleanLine.match(/[\-\+]?\s?\$?\s?[\d]{1,3}(?:[\.,][\d]{3})*(?:[\.,][\d]{1,2})?(?!\d)/g) || [];
-
     amountMatches.forEach(m => {
       const v = parseAmount(m);
       if (v !== null && Math.abs(v) >= 100 && Math.abs(v) < 100000000) {
@@ -2827,19 +2957,14 @@ function parsePDFText(text, bank) {
 
     if (numbers.length === 0) return;
 
-    // Tomar el último número que normalmente es el monto del movimiento
-    // o el primero significativo
     const amount = numbers[numbers.length - 1];
-
-    // Limpiar la descripción quitando los números
     let desc = restOfLine;
     amountMatches.forEach(m => { desc = desc.replace(m, ''); });
     desc = desc.replace(/\s+/g, ' ').trim();
 
     if (!desc || desc.length < 2) return;
-    if (/^\d+$/.test(desc)) return; // pura numerología
+    if (/^\d+$/.test(desc)) return;
 
-    // Determinar si es gasto: heurísticas
     let isExpense = true;
     const lowerDesc = desc.toLowerCase();
     if (amount.isNegative) isExpense = true;
@@ -2850,7 +2975,6 @@ function parsePDFText(text, bank) {
       isExpense = false;
     }
 
-    // Filtrar saldos y totales
     if (lowerDesc.includes('saldo anterior') || lowerDesc.includes('saldo final') ||
         lowerDesc.includes('total ') || lowerDesc.includes('disponible')) return;
 
@@ -2864,7 +2988,6 @@ function parsePDFText(text, bank) {
     });
   });
 
-  // Limpiar duplicados
   const seen = new Set();
   return movements.filter(m => {
     const key = `${m.date}-${m.desc}-${m.amount}`;
