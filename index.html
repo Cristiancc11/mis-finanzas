@@ -2846,24 +2846,34 @@ function parseLuloBankPDF(lines) {
 
     // Sugerir categoría con detección mejorada
     let category = suggestCategory(desc) || 'otros';
+    let shouldIncludeByDefault = isExpense; // por defecto, gastos se importan
 
     // Mapeo específico para Lulo
     if (lowerDesc.includes('pago pse banco davivienda')) {
-      category = 'otros'; // pago de tarjeta
+      category = 'otros';
+      // Estos son pagos a tarjeta Davivienda (RappiCard) - son pagos internos, NO gastos reales
+      shouldIncludeByDefault = false;
     } else if (lowerDesc.includes('pago pse claro')) {
       category = 'celular';
+      shouldIncludeByDefault = true; // SÍ es gasto real
     } else if (lowerDesc.includes('pago pse pg colombia')) {
-      category = 'streaming'; // PG Colombia es para Spotify/streaming
+      category = 'streaming';
+      shouldIncludeByDefault = true; // SÍ es gasto real (Spotify/streaming)
     } else if (lowerDesc.includes('pago pse experian')) {
-      category = 'otros'; // DataCrédito
-    } else if (lowerDesc.includes('pago pse gou payments')) {
-      category = 'compras'; // Pasarela de pagos genérica
-    } else if (lowerDesc.includes('pago de tarjeta de crédito') || lowerDesc.includes('pago de tarjeta de credito')) {
-      category = 'otros'; // pagos de tarjeta
-    } else if (lowerDesc.includes('transferencia bre-b')) {
-      // Transferencias Bre-B sin contexto: las marcamos como otros
-      // El usuario decidirá si las incluye o no
       category = 'otros';
+      shouldIncludeByDefault = true; // SÍ es gasto real (DataCrédito)
+    } else if (lowerDesc.includes('pago pse gou payments')) {
+      category = 'compras';
+      shouldIncludeByDefault = true;
+    } else if (lowerDesc.includes('pago de tarjeta de crédito') || lowerDesc.includes('pago de tarjeta de credito')) {
+      category = 'otros';
+      // Pago a tarjeta propia = transferencia interna, NO gasto real
+      shouldIncludeByDefault = false;
+    } else if (lowerDesc.includes('transferencia bre-b')) {
+      // Bre-B sin contexto: marcamos como "otros" pero NO incluimos por defecto
+      // El usuario decide caso por caso
+      category = 'otros';
+      shouldIncludeByDefault = false;
     }
 
     movements.push({
@@ -2872,7 +2882,7 @@ function parseLuloBankPDF(lines) {
       amount: amountValue,
       isExpense,
       suggestedCategory: category,
-      include: isExpense // por defecto solo gastos
+      include: shouldIncludeByDefault
     });
   }
 
@@ -3151,8 +3161,10 @@ function showImportPreview(movements) {
 
   card.style.display = 'block';
 
-  let html = `<div style="margin-bottom: 10px; padding: 8px 12px; background: var(--info-bg); border-radius: 8px; font-size: 12px; color: var(--info-text);">`;
-  html += `📊 ${movements.length} movimientos encontrados. Marca solo los que quieras importar.`;
+  let html = `<div style="margin-bottom: 10px; padding: 10px 12px; background: var(--info-bg); border-radius: 8px; font-size: 12px; color: var(--info-text);">`;
+  html += `📊 <strong>${movements.length} movimientos encontrados.</strong><br>`;
+  html += `✅ Marcamos automáticamente solo los gastos identificables (PSE Claro, PSE Spotify, etc.)<br>`;
+  html += `⚠️ Las "Transferencia Bre-B" y "Pago de tarjeta" están desmarcadas por defecto para evitar duplicados.`;
   html += `</div>`;
 
   html += `<div style="display: flex; gap: 8px; margin-bottom: 10px;">`;
