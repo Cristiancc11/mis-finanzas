@@ -710,6 +710,8 @@
     <button class="fin-tab" data-tab="ingresos">💰 Ingresos</button>
     <button class="fin-tab" data-tab="deudas">💳 Tarjetas</button>
     <button class="fin-tab" data-tab="metas">🎯 Metas</button>
+    <button class="fin-tab" data-tab="documentos">📄 Documentos</button>
+    <button class="fin-tab" data-tab="perfil">👤 Perfil</button>
   </div>
 
   <div class="fin-section active" id="section-resumen">
@@ -1009,6 +1011,119 @@
       </div>
     </div>
     <div class="raised-card"><p class="card-title">Mis metas</p><div id="goal-list"></div></div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECCIÓN DOCUMENTOS                            -->
+  <!-- ============================================ -->
+  <div class="fin-section" id="section-documentos">
+    <div class="raised-card">
+      <p class="card-title">📊 Reportes de DataCrédito</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Sube tus reportes para ir registrando tu histórico crediticio.</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <div>
+          <label style="font-size: 11px; color: var(--text-secondary);">Puntaje de este reporte</label>
+          <input type="number" id="cr-score-upload" placeholder="ej. 691" min="150" max="950" />
+        </div>
+        <div>
+          <label style="font-size: 11px; color: var(--text-secondary);">Fecha del reporte</label>
+          <input type="date" id="cr-date-upload" />
+        </div>
+      </div>
+      <input type="file" id="cr-file-input" accept="image/*,.pdf" style="display: none;" />
+      <button onclick="document.getElementById('cr-file-input').click()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer;">
+        📤 Subir reporte de DataCrédito
+      </button>
+      <div id="cr-upload-status" style="margin-top: 8px; font-size: 12px;"></div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">📁 Mis reportes guardados</p>
+      <div id="credit-reports-list"></div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">📑 Otros documentos financieros</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Guarda contratos, estados de cuenta, comprobantes, etc.</p>
+      <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px;">
+        <select id="other-doc-type">
+          <option value="contract">📜 Contrato</option>
+          <option value="statement">📊 Estado de cuenta</option>
+          <option value="receipt">🧾 Comprobante</option>
+          <option value="other">📄 Otro</option>
+        </select>
+        <input type="text" id="other-doc-desc" placeholder="Descripción (ej. Contrato Lulo Bank 2026)" />
+      </div>
+      <input type="file" id="other-file-input" accept="image/*,.pdf,.doc,.docx" style="display: none;" />
+      <button onclick="document.getElementById('other-file-input').click()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px dashed var(--border); border-radius: 10px; cursor: pointer; color: var(--text-secondary);">
+        📎 Subir documento
+      </button>
+      <div id="other-upload-status" style="margin-top: 8px; font-size: 12px;"></div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">📚 Mis documentos guardados</p>
+      <div id="other-docs-list"></div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECCIÓN PERFIL                                -->
+  <!-- ============================================ -->
+  <div class="fin-section" id="section-perfil">
+    <div class="raised-card" style="background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));">
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+        <div style="position: relative; flex-shrink: 0;">
+          <div id="profile-avatar" style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #7F77DD, #1D9E75); display: flex; align-items: center; justify-content: center; font-size: 36px; color: white; overflow: hidden;">
+            👤
+          </div>
+          <input type="file" id="avatar-input" accept="image/*" style="display: none;" />
+          <button onclick="document.getElementById('avatar-input').click()" style="position: absolute; bottom: 0; right: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--bg-primary); border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;" title="Cambiar foto">📷</button>
+        </div>
+        <div style="flex: 1; min-width: 200px;">
+          <div id="profile-name-display" style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Cargando...</div>
+          <div id="profile-email-display" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;"></div>
+          <div id="profile-since" style="font-size: 11px; color: var(--text-tertiary);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">⚙️ Datos personales</p>
+      <div style="display: grid; gap: 12px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Nombre completo</label>
+          <input type="text" id="profile-full-name" placeholder="Tu nombre completo" />
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Teléfono</label>
+            <input type="tel" id="profile-phone" placeholder="+57 300 000 0000" />
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Ciudad</label>
+            <input type="text" id="profile-city" placeholder="Bogotá" />
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Fecha de nacimiento</label>
+          <input type="date" id="profile-birth-date" />
+        </div>
+        <button onclick="saveProfile()" style="padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; margin-top: 4px;">💾 Guardar cambios</button>
+      </div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">📊 Mis estadísticas</p>
+      <div id="profile-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
+    </div>
+
+    <div class="raised-card" style="border: 0.5px solid var(--danger-text);">
+      <p class="card-title" style="color: var(--danger-text);">⚠️ Zona peligrosa</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Acciones que no se pueden deshacer.</p>
+      <button onclick="changePasswordPrompt()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 8px;">🔑 Cambiar contraseña</button>
+      <button onclick="deleteAccountPrompt()" style="width: 100%; padding: 10px; background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); border-radius: 8px; cursor: pointer;">🗑️ Eliminar cuenta</button>
+    </div>
   </div>
 
   <div class="footer-note">
@@ -1364,6 +1479,572 @@ window.handleAuth = handleAuth;
 window.handleLogout = handleLogout;
 window.switchAuthTab = switchAuthTab;
 window.migrateLocalData = migrateLocalData;
+
+// ============================================================
+// PERFIL Y DOCUMENTOS
+// ============================================================
+
+let userProfile = null;
+let userDocuments = [];
+
+async function loadUserProfile() {
+  if (!currentUser || !supabaseClient) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    if (data) {
+      userProfile = data;
+    } else {
+      // Crear perfil si no existe
+      const { data: newProfile } = await supabaseClient
+        .from('user_profiles')
+        .insert({ user_id: currentUser.id, full_name: currentUser.email.split('@')[0] })
+        .select()
+        .single();
+      userProfile = newProfile;
+    }
+    renderProfile();
+  } catch (e) {
+    console.error('Error cargando perfil:', e);
+  }
+}
+
+function renderProfile() {
+  if (!userProfile || !currentUser) return;
+
+  const nameDisplay = document.getElementById('profile-name-display');
+  const emailDisplay = document.getElementById('profile-email-display');
+  const sinceDisplay = document.getElementById('profile-since');
+  const avatarEl = document.getElementById('profile-avatar');
+
+  if (nameDisplay) nameDisplay.textContent = userProfile.full_name || currentUser.email.split('@')[0];
+  if (emailDisplay) emailDisplay.textContent = currentUser.email;
+  if (sinceDisplay) {
+    const since = new Date(userProfile.created_at || currentUser.created_at);
+    sinceDisplay.textContent = '📅 Miembro desde: ' + since.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+  }
+
+  // Avatar
+  if (avatarEl) {
+    if (userProfile.avatar_url) {
+      avatarEl.innerHTML = `<img src="${userProfile.avatar_url}" style="width: 100%; height: 100%; object-fit: cover;" />`;
+    } else {
+      const initials = (userProfile.full_name || currentUser.email).substring(0, 2).toUpperCase();
+      avatarEl.innerHTML = initials;
+    }
+  }
+
+  // Llenar formulario
+  const fullNameInput = document.getElementById('profile-full-name');
+  const phoneInput = document.getElementById('profile-phone');
+  const cityInput = document.getElementById('profile-city');
+  const birthInput = document.getElementById('profile-birth-date');
+
+  if (fullNameInput) fullNameInput.value = userProfile.full_name || '';
+  if (phoneInput) phoneInput.value = userProfile.phone || '';
+  if (cityInput) cityInput.value = userProfile.city || '';
+  if (birthInput) birthInput.value = userProfile.birth_date || '';
+
+  renderProfileStats();
+}
+
+function renderProfileStats() {
+  const container = document.getElementById('profile-stats');
+  if (!container) return;
+
+  // Cargar datos del state
+  let stats = {
+    patrimonio: 0,
+    bolsillos: 0,
+    transactions: 0,
+    cashback: 0,
+    score: 'N/A'
+  };
+
+  try {
+    const stateRaw = localStorage.getItem(STORAGE_KEY_GLOBAL);
+    if (stateRaw) {
+      const s = JSON.parse(stateRaw);
+      if (s.pockets) {
+        stats.patrimonio = s.pockets.reduce((sum, p) => sum + (p.amount || 0), 0);
+        stats.bolsillos = s.pockets.length;
+      }
+      if (s.transactions) {
+        Object.values(s.transactions).forEach(arr => {
+          if (Array.isArray(arr)) {
+            stats.transactions += arr.length;
+            arr.forEach(t => stats.cashback += (t.cashback || 0));
+          }
+        });
+      }
+      if (s.creditScore && s.creditScore.lastReported) {
+        stats.score = s.creditScore.lastReported;
+      }
+    }
+  } catch(e) {}
+
+  const fmt = (n) => '$ ' + Math.round(n).toLocaleString('es-CO');
+
+  container.innerHTML = `
+    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+      <div style="font-size: 11px; color: var(--text-secondary);">💎 Patrimonio total</div>
+      <div style="font-size: 18px; font-weight: 600; color: var(--success-text);">${fmt(stats.patrimonio)}</div>
+    </div>
+    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+      <div style="font-size: 11px; color: var(--text-secondary);">📊 Score crediticio</div>
+      <div style="font-size: 18px; font-weight: 600;">${stats.score}</div>
+    </div>
+    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+      <div style="font-size: 11px; color: var(--text-secondary);">👛 Bolsillos activos</div>
+      <div style="font-size: 18px; font-weight: 600;">${stats.bolsillos}</div>
+    </div>
+    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+      <div style="font-size: 11px; color: var(--text-secondary);">💰 Cashback total</div>
+      <div style="font-size: 18px; font-weight: 600; color: var(--success-text);">${fmt(stats.cashback)}</div>
+    </div>
+    <div style="grid-column: span 2; padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+      <div style="font-size: 11px; color: var(--text-secondary);">📝 Transacciones registradas</div>
+      <div style="font-size: 18px; font-weight: 600;">${stats.transactions}</div>
+    </div>
+  `;
+}
+
+async function saveProfile() {
+  if (!currentUser || !supabaseClient) return;
+
+  const profileData = {
+    full_name: document.getElementById('profile-full-name').value.trim(),
+    phone: document.getElementById('profile-phone').value.trim(),
+    city: document.getElementById('profile-city').value.trim(),
+    birth_date: document.getElementById('profile-birth-date').value || null,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error } = await supabaseClient
+      .from('user_profiles')
+      .update(profileData)
+      .eq('user_id', currentUser.id);
+
+    if (error) throw error;
+    Object.assign(userProfile, profileData);
+    renderProfile();
+    alert('✅ Perfil actualizado');
+  } catch (e) {
+    console.error('Error guardando perfil:', e);
+    alert('Error al guardar: ' + e.message);
+  }
+}
+
+async function uploadAvatar(file) {
+  if (!currentUser || !supabaseClient || !file) return;
+
+  try {
+    const ext = file.name.split('.').pop();
+    const filePath = `${currentUser.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from('user-files')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = await supabaseClient.storage
+      .from('user-files')
+      .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 año
+
+    const avatar_url = urlData.signedUrl;
+
+    await supabaseClient
+      .from('user_profiles')
+      .update({ avatar_url })
+      .eq('user_id', currentUser.id);
+
+    userProfile.avatar_url = avatar_url;
+    renderProfile();
+    alert('✅ Foto actualizada');
+  } catch (e) {
+    console.error('Error subiendo avatar:', e);
+    alert('Error al subir foto: ' + e.message);
+  }
+}
+
+async function uploadCreditReport(file) {
+  if (!currentUser || !supabaseClient || !file) return;
+
+  const score = parseInt(document.getElementById('cr-score-upload').value);
+  const date = document.getElementById('cr-date-upload').value;
+
+  if (!score || score < 150 || score > 950) {
+    alert('Ingresa un puntaje válido (150-950)');
+    return;
+  }
+  if (!date) {
+    alert('Selecciona la fecha del reporte');
+    return;
+  }
+
+  const status = document.getElementById('cr-upload-status');
+  status.innerHTML = '⏳ Subiendo...';
+  status.style.color = 'var(--info-text)';
+
+  try {
+    const ext = file.name.split('.').pop();
+    const fileName = `credit_report_${date}_${Date.now()}.${ext}`;
+    const filePath = `${currentUser.id}/credit_reports/${fileName}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from('user-files')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { error: dbError } = await supabaseClient
+      .from('user_documents')
+      .insert({
+        user_id: currentUser.id,
+        file_path: filePath,
+        file_name: file.name,
+        file_size: file.size,
+        doc_type: 'credit_report',
+        description: `Reporte DataCrédito - Puntaje ${score}`,
+        metadata: { score, report_date: date }
+      });
+
+    if (dbError) throw dbError;
+
+    // También actualizar el creditScore en el state principal
+    try {
+      const stateRaw = localStorage.getItem(STORAGE_KEY_GLOBAL);
+      if (stateRaw) {
+        const s = JSON.parse(stateRaw);
+        if (!s.creditScore) s.creditScore = { history: [] };
+        if (!s.creditScore.history) s.creditScore.history = [];
+        // Solo agregar si no existe ya esta fecha
+        const exists = s.creditScore.history.some(h => h.date === date);
+        if (!exists) {
+          s.creditScore.history.push({ date, score, source: 'DataCrédito' });
+          s.creditScore.history.sort((a, b) => a.date.localeCompare(b.date));
+        }
+        s.creditScore.lastReported = score;
+        s.creditScore.lastReportedDate = date;
+        localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(s));
+      }
+    } catch(e) { console.warn(e); }
+
+    status.innerHTML = '✅ Reporte subido y registrado en tu histórico';
+    status.style.color = 'var(--success-text)';
+
+    document.getElementById('cr-score-upload').value = '';
+    document.getElementById('cr-date-upload').value = '';
+    document.getElementById('cr-file-input').value = '';
+
+    await loadUserDocuments();
+
+    setTimeout(() => { status.innerHTML = ''; }, 4000);
+  } catch (e) {
+    console.error('Error:', e);
+    status.innerHTML = '❌ Error: ' + e.message;
+    status.style.color = 'var(--danger-text)';
+  }
+}
+
+async function uploadOtherDocument(file) {
+  if (!currentUser || !supabaseClient || !file) return;
+
+  const docType = document.getElementById('other-doc-type').value;
+  const desc = document.getElementById('other-doc-desc').value.trim();
+
+  if (!desc) {
+    alert('Ingresa una descripción');
+    return;
+  }
+
+  const status = document.getElementById('other-upload-status');
+  status.innerHTML = '⏳ Subiendo...';
+
+  try {
+    const ext = file.name.split('.').pop();
+    const fileName = `${docType}_${Date.now()}.${ext}`;
+    const filePath = `${currentUser.id}/documents/${fileName}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from('user-files')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { error: dbError } = await supabaseClient
+      .from('user_documents')
+      .insert({
+        user_id: currentUser.id,
+        file_path: filePath,
+        file_name: file.name,
+        file_size: file.size,
+        doc_type: docType,
+        description: desc
+      });
+
+    if (dbError) throw dbError;
+
+    status.innerHTML = '✅ Documento subido';
+    status.style.color = 'var(--success-text)';
+
+    document.getElementById('other-doc-desc').value = '';
+    document.getElementById('other-file-input').value = '';
+
+    await loadUserDocuments();
+    setTimeout(() => { status.innerHTML = ''; }, 3000);
+  } catch (e) {
+    console.error('Error:', e);
+    status.innerHTML = '❌ Error: ' + e.message;
+    status.style.color = 'var(--danger-text)';
+  }
+}
+
+async function loadUserDocuments() {
+  if (!currentUser || !supabaseClient) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from('user_documents')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('uploaded_at', { ascending: false });
+
+    if (error) throw error;
+    userDocuments = data || [];
+    renderDocuments();
+  } catch (e) {
+    console.error('Error cargando documentos:', e);
+  }
+}
+
+async function getSignedUrl(filePath) {
+  const { data, error } = await supabaseClient.storage
+    .from('user-files')
+    .createSignedUrl(filePath, 60 * 60); // 1 hora
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+function renderDocuments() {
+  const creditList = document.getElementById('credit-reports-list');
+  const otherList = document.getElementById('other-docs-list');
+  if (!creditList || !otherList) return;
+
+  const creditReports = userDocuments.filter(d => d.doc_type === 'credit_report');
+  const otherDocs = userDocuments.filter(d => d.doc_type !== 'credit_report');
+
+  // CREDIT REPORTS con análisis automático
+  if (creditReports.length === 0) {
+    creditList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-tertiary); font-size: 13px;">Aún no has subido ningún reporte. Sube el primero arriba ☝️</div>';
+  } else {
+    let html = '';
+    creditReports.forEach((doc, idx) => {
+      const meta = doc.metadata || {};
+      const score = meta.score || 'N/A';
+      const reportDate = meta.report_date || doc.uploaded_at;
+      let category = 'Bueno', color = '#378ADD', icon = '✓';
+      if (score >= 850) { category = 'Excelente'; color = '#1D9E75'; icon = '🌟'; }
+      else if (score >= 751) { category = 'Muy Bueno'; color = '#639922'; icon = '✨'; }
+      else if (score >= 671) { category = 'Bueno'; color = '#378ADD'; icon = '✓'; }
+      else if (score >= 580) { category = 'Regular'; color = '#BA7517'; icon = '⚠️'; }
+      else { category = 'Pobre'; color = '#A32D2D'; icon = '🔴'; }
+
+      // Comparar con anterior
+      let trend = '';
+      if (idx < creditReports.length - 1) {
+        const prevScore = creditReports[idx + 1].metadata?.score;
+        if (prevScore) {
+          const diff = score - prevScore;
+          const arrow = diff > 0 ? '↑' : (diff < 0 ? '↓' : '→');
+          const tColor = diff > 0 ? 'var(--success-text)' : (diff < 0 ? 'var(--danger-text)' : 'var(--text-secondary)');
+          trend = `<span style="color: ${tColor}; font-weight: 500; font-size: 12px;">${arrow} ${Math.abs(diff)}</span>`;
+        }
+      }
+
+      html += `<div style="padding: 14px; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 8px; border-left: 4px solid ${color};">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+          <div>
+            <div style="font-size: 11px; color: var(--text-secondary);">📅 ${new Date(reportDate + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+            <div style="font-size: 24px; font-weight: 600; color: ${color};">${score} ${trend}</div>
+            <div style="font-size: 12px;">${icon} ${category}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <button onclick="viewDocument('${doc.file_path}')" style="padding: 6px 12px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">👁️ Ver</button>
+            <button onclick="deleteDocument('${doc.id}', '${doc.file_path}')" style="padding: 6px 12px; font-size: 11px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 6px; cursor: pointer;">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+    });
+
+    // Tip automático basado en última utilización
+    if (creditReports.length > 0) {
+      const lastScore = creditReports[0].metadata?.score || 0;
+      const tip = generateCreditTip(lastScore);
+      html += `<div style="margin-top: 12px; padding: 14px; background: var(--info-bg); border-radius: 12px; color: var(--info-text); font-size: 12px;">${tip}</div>`;
+    }
+
+    creditList.innerHTML = html;
+  }
+
+  // OTROS DOCUMENTOS
+  if (otherDocs.length === 0) {
+    otherList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-tertiary); font-size: 13px;">Sin documentos guardados aún.</div>';
+  } else {
+    const typeIcons = { contract: '📜', statement: '📊', receipt: '🧾', other: '📄' };
+    let html = '';
+    otherDocs.forEach(doc => {
+      const sizeKB = (doc.file_size / 1024).toFixed(0);
+      html += `<div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 500;">${typeIcons[doc.doc_type] || '📄'} ${escapeHTML(doc.description)}</div>
+          <div style="font-size: 11px; color: var(--text-tertiary);">${escapeHTML(doc.file_name)} · ${sizeKB} KB · ${new Date(doc.uploaded_at).toLocaleDateString('es-CO')}</div>
+        </div>
+        <div style="display: flex; gap: 4px;">
+          <button onclick="viewDocument('${doc.file_path}')" style="padding: 6px 10px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">👁️</button>
+          <button onclick="deleteDocument('${doc.id}', '${doc.file_path}')" style="padding: 6px 10px; font-size: 11px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 6px; cursor: pointer;">🗑️</button>
+        </div>
+      </div>`;
+    });
+    otherList.innerHTML = html;
+  }
+}
+
+function escapeHTML(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function generateCreditTip(score) {
+  // Calcular utilización actual de tarjetas
+  let totalDebt = 0, totalLimit = 0;
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY_GLOBAL) || '{}');
+    if (s.debts) {
+      s.debts.forEach(d => {
+        totalDebt += d.balance || 0;
+        totalLimit += d.payment || 0;
+      });
+    }
+  } catch(e) {}
+
+  const utilization = totalLimit > 0 ? (totalDebt / totalLimit) * 100 : 0;
+
+  let html = '<strong>💡 Análisis automático de tu situación:</strong><br><br>';
+
+  // Análisis utilización
+  if (utilization < 10) {
+    html += `✅ <strong>Utilización excelente</strong> (${utilization.toFixed(1)}%): estás en el rango óptimo. Esto suma puntos a tu score.<br><br>`;
+  } else if (utilization < 30) {
+    html += `🟡 <strong>Utilización buena</strong> (${utilization.toFixed(1)}%): podrías mejorar bajando al ≤10% para acelerar tu score.<br><br>`;
+  } else {
+    html += `⚠️ <strong>Utilización alta</strong> (${utilization.toFixed(1)}%): este es el factor #1 que más penaliza tu puntaje. Bájala urgentemente.<br><br>`;
+  }
+
+  // Tips por categoría de score
+  if (score < 580) {
+    html += `<strong>🚨 Categoría: Pobre.</strong> Prioridades:<br>1. Pagar al día todas las deudas<br>2. Bajar utilización debajo del 30%<br>3. No abrir nuevas tarjetas<br>4. Revisar el reporte por errores`;
+  } else if (score < 670) {
+    html += `<strong>⚠️ Categoría: Regular.</strong> Para subir:<br>1. Mantén utilización <10%<br>2. Paga todo a 1 cuota<br>3. Considera abrir un CDT pequeño<br>4. Tiempo: las cuentas viejas suman puntos`;
+  } else if (score < 750) {
+    html += `<strong>✓ Categoría: Bueno.</strong> Para llegar a Muy Bueno (751+):<br>1. Mantén tu utilización óptima<br>2. Abrir CDT a plazo fijo (+10-20 pts)<br>3. NO abrir tarjetas nuevas en 6-12 meses<br>4. Considera crédito vehículo/hipotecario`;
+  } else if (score < 850) {
+    html += `<strong>✨ Categoría: Muy Bueno.</strong> Para llegar a Excelente (850+):<br>1. Mantén impecable historial<br>2. Diversifica con productos de plazo fijo<br>3. Crédito hipotecario es la última pieza<br>4. Tiempo y consistencia son clave`;
+  } else {
+    html += `<strong>🌟 Categoría: Excelente.</strong> ¡Lo lograste! Mantén:<br>1. Misma disciplina<br>2. Diversificación de productos<br>3. Sin nuevas aperturas innecesarias<br>4. Aprovecha tu score para mejores tasas`;
+  }
+
+  return html;
+}
+
+async function viewDocument(filePath) {
+  try {
+    const url = await getSignedUrl(filePath);
+    window.open(url, '_blank');
+  } catch (e) {
+    alert('Error al abrir documento: ' + e.message);
+  }
+}
+
+async function deleteDocument(docId, filePath) {
+  if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
+  try {
+    await supabaseClient.storage.from('user-files').remove([filePath]);
+    await supabaseClient.from('user_documents').delete().eq('id', docId);
+    await loadUserDocuments();
+  } catch (e) {
+    alert('Error al eliminar: ' + e.message);
+  }
+}
+
+async function changePasswordPrompt() {
+  const newPass = prompt('Nueva contraseña (mínimo 6 caracteres):');
+  if (!newPass || newPass.length < 6) {
+    alert('Contraseña inválida');
+    return;
+  }
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password: newPass });
+    if (error) throw error;
+    alert('✅ Contraseña actualizada');
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+async function deleteAccountPrompt() {
+  if (!confirm('⚠️ Esto BORRARÁ tu cuenta y TODOS tus datos permanentemente. ¿Continuar?')) return;
+  if (!confirm('¿Estás 100% seguro? Esta acción NO se puede deshacer.')) return;
+  alert('Para eliminar tu cuenta completamente, contacta a soporte. Por ahora se cerrará tu sesión.');
+  await handleLogout();
+}
+
+// Event listeners para inputs de archivos
+document.addEventListener('DOMContentLoaded', () => {
+  const avatarInput = document.getElementById('avatar-input');
+  const crFileInput = document.getElementById('cr-file-input');
+  const otherFileInput = document.getElementById('other-file-input');
+
+  if (avatarInput) {
+    avatarInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) uploadAvatar(e.target.files[0]);
+    });
+  }
+  if (crFileInput) {
+    crFileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) uploadCreditReport(e.target.files[0]);
+    });
+  }
+  if (otherFileInput) {
+    otherFileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) uploadOtherDocument(e.target.files[0]);
+    });
+  }
+});
+
+// Cargar perfil y documentos cuando se autentique
+const originalLoadFromCloud = loadFromCloud;
+loadFromCloud = async function() {
+  await originalLoadFromCloud.apply(this, arguments);
+  if (currentUser) {
+    await loadUserProfile();
+    await loadUserDocuments();
+  }
+};
+
+// Exponer al scope global
+window.saveProfile = saveProfile;
+window.viewDocument = viewDocument;
+window.deleteDocument = deleteDocument;
+window.changePasswordPrompt = changePasswordPrompt;
+window.deleteAccountPrompt = deleteAccountPrompt;
 </script>
 
 <script>
