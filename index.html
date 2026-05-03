@@ -173,6 +173,8 @@
   .budget-fill.ok { background: var(--success-text); }
   .budget-fill.warn { background: var(--warning-text); }
   .budget-fill.over { background: var(--danger-text); }
+  .budget-fill.tracking { background: linear-gradient(90deg, var(--text-tertiary), var(--text-secondary)); opacity: 0.5; }
+  .budget-status.tracking { color: var(--text-tertiary); }
   .budget-status { font-size: 11px; }
   .budget-status.ok { color: var(--success-text); }
   .budget-status.warn { color: var(--warning-text); }
@@ -900,7 +902,7 @@
     </div>
     <div class="raised-card">
       <p class="card-title">Editar presupuestos</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Define cuánto quieres gastar como máximo en cada categoría</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Define un límite máximo por categoría (opcional). Deja en 0 para solo hacer seguimiento sin alertas.</p>
       <div id="budget-edit"></div>
     </div>
   </div>
@@ -1234,6 +1236,14 @@
           <span style="font-size: 12px; font-weight: 500;">Auto</span>
         </button>
       </div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">📚 Ayuda</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">¿Necesitas un recordatorio de cómo empezar?</p>
+      <button onclick="showWelcomeTutorialAgain()" style="width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px;">
+        🎓 Ver guía de inicio rápido
+      </button>
     </div>
 
     <div class="raised-card">
@@ -2193,6 +2203,125 @@ window.viewDocument = viewDocument;
 window.deleteDocument = deleteDocument;
 window.changePasswordPrompt = changePasswordPrompt;
 window.deleteAccountPrompt = deleteAccountPrompt;
+
+// ============================================================
+// TUTORIAL DE BIENVENIDA PARA NUEVOS USUARIOS
+// ============================================================
+
+function showWelcomeTutorial() {
+  // Verificar si es nuevo usuario
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (!stateRaw) return;
+    const state = JSON.parse(stateRaw);
+    if (!state.isNewUser) return;
+
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.id = 'welcome-tutorial';
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; backdrop-filter: blur(4px);';
+
+    modal.innerHTML = `
+      <div style="background: var(--bg-primary); border-radius: 16px; max-width: 500px; width: 100%; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="font-size: 48px; margin-bottom: 8px;">💎</div>
+          <h2 style="font-size: 22px; font-weight: 600; margin: 0 0 4px;">¡Bienvenido a tu dashboard financiero!</h2>
+          <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">Te ayudamos a tomar el control de tus finanzas</p>
+        </div>
+
+        <div style="background: var(--bg-secondary); padding: 14px; border-radius: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.6;">
+          <p style="margin: 0 0 8px; font-weight: 500;">📋 Para que arranques bien, sigue estos 4 pasos:</p>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="background: var(--info-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">1</span>
+              <div>
+                <strong style="font-size: 13px;">👛 Configura tus Bolsillos</strong>
+                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Te dejamos algunos como ejemplo. Edita los nombres y montos según tus cuentas reales (Nequi, Lulo, Bancolombia, etc.)</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="background: var(--success-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">2</span>
+              <div>
+                <strong style="font-size: 13px;">💰 Agrega tus Ingresos</strong>
+                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Define tu salario u otros ingresos recurrentes para calcular bien tu margen mensual</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="background: var(--warning-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">3</span>
+              <div>
+                <strong style="font-size: 13px;">💳 Registra tus Tarjetas</strong>
+                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Agrega tus tarjetas de crédito con el cupo, día de corte y cashback. Te ayudaremos a optimizarlas.</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="background: var(--purple-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">4</span>
+              <div>
+                <strong style="font-size: 13px;">📝 Empieza a registrar gastos</strong>
+                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Cada vez que pagas algo, regístralo en "Presupuesto". El sistema te sugiere la categoría automáticamente.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: var(--info-bg); color: var(--info-text); padding: 12px 14px; border-radius: 10px; font-size: 12px; line-height: 1.5; margin-bottom: 16px;">
+          💡 <strong>Tip:</strong> Los bolsillos, ingreso y categorías que ves son <strong>solo ejemplos</strong>. Edítalos, elimínalos o agrega los tuyos según tu situación.
+        </div>
+
+        <button onclick="dismissWelcomeTutorial()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
+          ¡Empecemos! 🚀
+        </button>
+
+        <p style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin: 12px 0 0;">Puedes volver a ver esta guía desde tu Perfil</p>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  } catch(e) {
+    console.error('Error mostrando tutorial:', e);
+  }
+}
+
+window.dismissWelcomeTutorial = function() {
+  const modal = document.getElementById('welcome-tutorial');
+  if (modal) modal.remove();
+
+  // Marcar como ya visto
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (stateRaw) {
+      const state = JSON.parse(stateRaw);
+      state.isNewUser = false;
+      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+    }
+  } catch(e) {}
+};
+
+window.showWelcomeTutorialAgain = function() {
+  // Permitir mostrarlo manualmente desde Perfil
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (stateRaw) {
+      const state = JSON.parse(stateRaw);
+      state.isNewUser = true;
+      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+      showWelcomeTutorial();
+    }
+  } catch(e) {}
+};
+
+// Mostrar tutorial automáticamente 1.5 segundos después del login
+document.addEventListener('DOMContentLoaded', () => {
+  // Verificar periódicamente si el usuario ya hizo login y es nuevo
+  const checkInterval = setInterval(() => {
+    if (window.currentUser) {
+      clearInterval(checkInterval);
+      setTimeout(showWelcomeTutorial, 1500);
+    }
+  }, 500);
+
+  // Después de 30 segundos, dejar de revisar
+  setTimeout(() => clearInterval(checkInterval), 30000);
+});
 
 // ============================================================
 // SEMANA 1 - MEJORAS: TEMA, NOTIFICACIONES, CATEGORIZACIÓN, BÚSQUEDA
@@ -4408,19 +4537,17 @@ async function buildAnnualPDF(state, year) {
   }
 
   const DEFAULT_BUDGETS = {
-    // Fijos
-    servicios_casa: 750000,
-    // Estilo de vida (valores reales del usuario)
-    uber: 200000,
-    celular: 45000,
-    gimnasio: 99900,
-    streaming: 47000,
-    // Variables (valores reales del usuario)
-    comida_fuera: 100000,
+    // Por defecto todos en 0 - el usuario decide qué controlar
+    servicios_casa: 0,
+    uber: 0,
+    celular: 0,
+    gimnasio: 0,
+    streaming: 0,
+    comida_fuera: 0,
     rappi: 0,
-    salidas_milena: 200000,
-    gasolina: 120000,
-    mascota: 312500,
+    salidas_milena: 0,
+    gasolina: 0,
+    mascota: 0,
     mascota_extra: 0,
     compras: 0,
     salud: 0,
@@ -4431,13 +4558,13 @@ async function buildAnnualPDF(state, year) {
 
   // EMPTY_STATE: estructura genérica para nuevos usuarios
   const EMPTY_STATE = {
-    currency: 'COP', interestRate: 7.87,
-    interestBank: 'Banco (configurable)',
+    currency: 'COP', interestRate: 0,
+    interestBank: 'Sin configurar',
     pockets: [
       { id: 1, name: 'Fondo de Emergencias', amount: 0, icon: '🛟' },
       { id: 2, name: 'Flujo Operativo', amount: 0, icon: '💰' },
       { id: 3, name: 'Ahorro Personal', amount: 0, icon: '🎯' },
-      { id: 4, name: 'Gastos Fijos del mes', amount: 0, icon: '🏠' },
+      { id: 4, name: 'Gastos Fijos', amount: 0, icon: '🏠' },
       { id: 5, name: 'Vida Social', amount: 0, icon: '🍻' },
       { id: 9, name: 'Efectivo', amount: 0, icon: '💵', isCash: true }
     ],
@@ -4452,8 +4579,11 @@ async function buildAnnualPDF(state, year) {
     creditScore: {
       lastReported: null,
       lastReportedDate: null,
-      history: []
-    }
+      history: [],
+      reportData: null
+    },
+    // Marca para mostrar tutorial de bienvenida
+    isNewUser: true
   };
 
   // MY_STATE: datos personales del dueño (Cristian) - solo se cargan si es el email autorizado
@@ -4484,14 +4614,14 @@ async function buildAnnualPDF(state, year) {
     ],
     budgets: {
       '2026-04': {
-        servicios_casa: 750000, uber: 200000, celular: 45000, gimnasio: 99900,
-        streaming: 47000, comida_fuera: 100000, rappi: 0, salidas_milena: 200000,
-        gasolina: 120000, mascota: 316000, mascota_extra: 0, compras: 0, salud: 0, otros: 0
+        servicios_casa: 0, uber: 0, celular: 0, gimnasio: 0,
+        streaming: 0, comida_fuera: 0, rappi: 0, salidas_milena: 0,
+        gasolina: 0, mascota: 0, mascota_extra: 0, compras: 0, salud: 0, otros: 0
       },
       '2026-05': {
-        servicios_casa: 750000, uber: 200000, celular: 45000, gimnasio: 99900,
-        streaming: 47000, comida_fuera: 100000, rappi: 0, salidas_milena: 200000,
-        gasolina: 120000, mascota: 312500, mascota_extra: 0, compras: 0, salud: 0, otros: 0
+        servicios_casa: 0, uber: 0, celular: 0, gimnasio: 0,
+        streaming: 0, comida_fuera: 0, rappi: 0, salidas_milena: 0,
+        gasolina: 0, mascota: 0, mascota_extra: 0, compras: 0, salud: 0, otros: 0
       }
     },
     transactions: {
@@ -4520,7 +4650,21 @@ async function buildAnnualPDF(state, year) {
       history: [
         { date: '2026-02-09', score: 678, source: 'DataCrédito' },
         { date: '2026-04-29', score: 691, source: 'DataCrédito' }
-      ]
+      ],
+      reportData: {
+        utilization: 4.2,
+        pendingPercent: 0.04,
+        cardsBehavior: 'estable',
+        hasFixedLoan: false,
+        hasMortgage: false,
+        mora30: 0,
+        mora60: 0,
+        currentMora: 0,
+        experienceYears: 6,
+        openProducts: 6,
+        newLoans: 0,
+        monthsSinceLastOpen: 10
+      }
     }
   };
 
@@ -5386,29 +5530,40 @@ async function buildAnnualPDF(state, year) {
       const bg = b[cat.id] || 0;
       const sp = spentByCategory(cat.id);
       const av = bg - sp;
-      const pct = bg > 0 ? Math.min(100, (sp / bg) * 100) : 0;
+      const hasBudget = bg > 0;
+      const pct = hasBudget ? Math.min(100, (sp / bg) * 100) : 0;
       tBudget += bg; tSpent += sp;
       let cls = 'ok';
-      if (pct >= 100) cls = 'over';
-      else if (pct >= 80) cls = 'warn';
-      const status = pct >= 100 ? `Excediste ${fmt(sp - bg)}` : `${pct.toFixed(0)}% usado`;
+      if (hasBudget && pct >= 100) cls = 'over';
+      else if (hasBudget && pct >= 80) cls = 'warn';
+      
+      let status;
+      if (!hasBudget) {
+        status = sp > 0 ? 'Sin límite (solo seguimiento)' : 'Sin gastos';
+      } else {
+        status = pct >= 100 ? `Excediste ${fmt(sp - bg)}` : `${pct.toFixed(0)}% usado`;
+      }
+
+      // Si no hay presupuesto pero sí hay gastos, mostrar barra neutral
+      const barWidth = hasBudget ? pct : (sp > 0 ? 100 : 0);
+      const barClass = hasBudget ? cls : 'tracking';
 
       html += `<div class="budget-row">
         <div>${cat.icon} ${cat.label}</div>
-        <div>${fmt(bg)}</div>
+        <div>${hasBudget ? fmt(bg) : '<span style="color: var(--text-tertiary); font-style: italic; font-size: 12px;">Sin límite</span>'}</div>
         <div class="budget-bar-cell">
           <span>${fmt(sp)}</span>
-          <div class="budget-bar"><div class="budget-fill ${cls}" style="width: ${pct}%"></div></div>
-          <span class="budget-status ${cls}">${status}</span>
+          <div class="budget-bar"><div class="budget-fill ${barClass}" style="width: ${barWidth}%"></div></div>
+          <span class="budget-status ${barClass}" style="font-size: 11px;">${status}</span>
         </div>
-        <div style="text-align: right; font-weight: 500;" class="${av < 0 ? 'balance-negative' : 'balance-positive'}">${fmt(av)}</div>
+        <div style="text-align: right; font-weight: 500;" class="${hasBudget && av < 0 ? 'balance-negative' : (hasBudget ? 'balance-positive' : '')}">${hasBudget ? fmt(av) : '—'}</div>
       </div>`;
 
       editHtml += `<div class="form-row-budget">
         <span style="font-size: 13px;">${cat.icon} ${cat.label}</span>
-        <input type="number" value="${bg}" min="0" step="1000" onchange="updateBudget('${cat.id}', this.value)" />
-        <span style="font-size: 11px; color: var(--text-tertiary);">sugerido: ${fmt(DEFAULT_BUDGETS[cat.id])}</span>
-        <button onclick="updateBudget('${cat.id}', ${DEFAULT_BUDGETS[cat.id]})" style="font-size: 11px !important; padding: 4px 10px !important;">Reset</button>
+        <input type="number" value="${bg}" min="0" step="1000" onchange="updateBudget('${cat.id}', this.value)" placeholder="Sin límite (0)" />
+        <span style="font-size: 11px; color: var(--text-secondary);">${sp > 0 ? 'Gastado: ' + fmt(sp) : 'Sin gastos'}</span>
+        <button onclick="updateBudget('${cat.id}', 0)" style="font-size: 11px !important; padding: 4px 10px !important;" title="Quitar límite">×</button>
       </div>`;
     });
 
@@ -5581,93 +5736,121 @@ async function buildAnnualPDF(state, year) {
     const c = document.getElementById('alerts-container');
     const a = [];
 
+    // Cargar alertas descartadas (con expiración por día)
+    const todayKey = new Date().toISOString().split('T')[0];
+    let dismissed = {};
+    try {
+      const raw = localStorage.getItem('dashboard-dismissed-alerts');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.date === todayKey) dismissed = parsed.ids || {};
+      }
+    } catch(e) {}
+
     // 1. ALERTAS DE FECHAS DE CORTE DE TARJETAS (prioridad alta)
     state.debts.forEach(d => {
       if (d.cutoffDay) {
         const today = new Date();
         const currentDay = today.getDate();
-        const currentMonth = today.getMonth();
+        const currentMonthIdx = today.getMonth();
         const currentYear = today.getFullYear();
         let nextCutoff;
         if (currentDay <= d.cutoffDay) {
-          nextCutoff = new Date(currentYear, currentMonth, d.cutoffDay);
+          nextCutoff = new Date(currentYear, currentMonthIdx, d.cutoffDay);
         } else {
-          nextCutoff = new Date(currentYear, currentMonth + 1, d.cutoffDay);
+          nextCutoff = new Date(currentYear, currentMonthIdx + 1, d.cutoffDay);
         }
         const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
         const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
 
-        // Calcular utilización y pago óptimo (objetivo 3%)
         const TARGET_PCT = 3;
         const targetMaxBalance = d.payment ? (d.payment * TARGET_PCT / 100) : 0;
         const utilization = d.payment > 0 ? (d.balance / d.payment) * 100 : 0;
         const needsPayment = d.balance > targetMaxBalance;
         const paymentNeeded = needsPayment ? d.balance - targetMaxBalance : 0;
 
-        // ALERTA URGENTE: día del corte
+        const baseId = `cutoff-${d.id}-${daysLeft}`;
+
         if (daysLeft <= 0) {
-          a.push({ t: 'danger', x: `🚨 <strong>${d.name}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener score óptimo (3%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
+          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>${d.name}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener score óptimo (3%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
         } 
-        // ALERTA URGENTE: 1-3 días antes del corte
         else if (daysLeft <= 3) {
           if (needsPayment) {
-            a.push({ t: 'warning', x: `⚠️ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el 3%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el 3%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
           } else {
-            a.push({ t: 'info', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤3%). No requiere pago anticipado.` });
+            a.push({ id: baseId, t: 'info', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤3%). No requiere pago anticipado.` });
           }
         }
-        // ALERTA MEDIA: 4-7 días antes del corte
         else if (daysLeft <= 7) {
           if (needsPayment) {
-            a.push({ t: 'info', x: `🔔 <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener score óptimo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'info', x: `🔔 <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener score óptimo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
           } else {
-            a.push({ t: 'success', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para el score.` });
+            a.push({ id: baseId, t: 'success', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para el score.` });
           }
         }
-        // RECORDATORIO LIGERO: 8-14 días antes
         else if (daysLeft <= 14 && needsPayment) {
-          a.push({ t: 'info', x: `📅 <strong>${d.name}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener el score óptimo.` });
+          a.push({ id: baseId, t: 'info', x: `📅 <strong>${d.name}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener el score óptimo.` });
         }
       }
     });
 
-    // 2. ALERTAS DE PRESUPUESTO
+    // 2. ALERTAS DE PRESUPUESTO (solo si tiene presupuesto definido)
     const budgets = state.budgets[currentMonth] || {};
     CATEGORIES.forEach(cat => {
       const budget = budgets[cat.id] || 0;
       const spent = spentByCategory(cat.id);
+      // Solo alertar si hay un presupuesto > 0 (el usuario quiere control en esta categoría)
       if (budget > 0 && spent > 0) {
         const pct = (spent / budget) * 100;
+        const baseId = `budget-${cat.id}-${currentMonth}`;
         if (pct >= 100) {
-          a.push({ t: 'danger', x: `🚨 <strong>Excediste presupuesto en ${cat.label}</strong>: gastaste ${fmt(spent)} de ${fmt(budget)} (excedido por ${fmt(spent - budget)}).` });
+          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>Excediste presupuesto en ${cat.label}</strong>: gastaste ${fmt(spent)} de ${fmt(budget)} (excedido por ${fmt(spent - budget)}).` });
         } else if (pct >= 80) {
-          a.push({ t: 'warning', x: `⚠️ <strong>${cat.label} al ${pct.toFixed(0)}%</strong> del presupuesto. Te quedan ${fmt(budget - spent)} este mes.` });
+          a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${cat.label} al ${pct.toFixed(0)}%</strong> del presupuesto. Te quedan ${fmt(budget - spent)} este mes.` });
         }
       }
     });
 
-    // 3. ALERTAS GENERALES
+    // 3. ALERTAS GENERALES (descartables)
     if (inc > 0 && bal < 0) {
-      a.push({ t: 'danger', x: `Déficit mensual de ${fmt(Math.abs(bal))}. Revisa Presupuesto para optimizar.` });
+      a.push({ id: `deficit-${currentMonth}`, t: 'danger', x: `Déficit mensual de ${fmt(Math.abs(bal))}. Revisa Presupuesto para optimizar.` });
     } else if (inc > 0 && bal >= 0 && bal < 200000) {
-      a.push({ t: 'warning', x: `Margen apretado: ${fmt(bal)}/mes.` });
+      a.push({ id: `tight-${currentMonth}`, t: 'warning', x: `Margen apretado: ${fmt(bal)}/mes.` });
     } else if (inc > 0 && bal >= 200000) {
-      a.push({ t: 'success', x: `Margen saludable de ${fmt(bal)}/mes. Aprovecha para invertir.` });
+      a.push({ id: `healthy-margin-${currentMonth}`, t: 'success', x: `Margen saludable de ${fmt(bal)}/mes. Aprovecha para invertir.` });
     }
 
     if (exp > 0) {
       const m = sav / exp;
-      if (m >= 6) a.push({ t: 'success', x: `Fondo cubre ${m.toFixed(1)} meses de gastos. Excelente colchón.` });
-      else if (m >= 3) a.push({ t: 'info', x: `Fondo cubre ${m.toFixed(1)} meses. Saludable.` });
+      if (m >= 6) a.push({ id: `fund-excellent-${currentMonth}`, t: 'success', x: `Fondo cubre ${m.toFixed(1)} meses de gastos. Excelente colchón.` });
+      else if (m >= 3) a.push({ id: `fund-good-${currentMonth}`, t: 'info', x: `Fondo cubre ${m.toFixed(1)} meses. Saludable.` });
     }
 
     if (debt > 0 && totalLimit() > 0) {
       const u = (debt / totalLimit()) * 100;
-      if (u < 30) a.push({ t: 'success', x: `Utilización de crédito en ${u.toFixed(1)}%. Excelente.` });
+      if (u < 30) a.push({ id: `util-good-${currentMonth}`, t: 'success', x: `Utilización de crédito en ${u.toFixed(1)}%. Excelente.` });
     }
 
-    c.innerHTML = a.map(x => `<div class="alert alert-${x.t}">${x.x}</div>`).join('');
+    // Filtrar las descartadas y renderizar
+    const visible = a.filter(x => !dismissed[x.id]);
+    c.innerHTML = visible.map(x => `<div class="alert alert-${x.t}" style="position: relative; padding-right: 36px;">${x.x}<button onclick="dismissAlert('${x.id}')" style="position: absolute; top: 50%; right: 8px; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; padding: 4px 8px; font-size: 16px; color: inherit; opacity: 0.6;" title="Descartar">×</button></div>`).join('');
   }
+
+  window.dismissAlert = function(id) {
+    const todayKey = new Date().toISOString().split('T')[0];
+    let dismissed = { date: todayKey, ids: {} };
+    try {
+      const raw = localStorage.getItem('dashboard-dismissed-alerts');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.date === todayKey) dismissed = parsed;
+      }
+    } catch(e) {}
+    dismissed.ids[id] = true;
+    localStorage.setItem('dashboard-dismissed-alerts', JSON.stringify(dismissed));
+    // Re-renderizar inmediatamente
+    if (typeof renderResumen === 'function') renderResumen();
+  };
 
   function renderSummary(sav, inc, exp, debt, bal, nw) {
     const c = document.getElementById('summary-content');
@@ -5756,13 +5939,14 @@ async function buildAnnualPDF(state, year) {
     const c = document.getElementById('credit-score-content');
     if (!c) return;
 
-    const cs = state.creditScore || { lastReported: 691, lastReportedDate: '2026-04-29', history: [] };
-    const lastScore = cs.lastReported || 691;
-    const lastDate = cs.lastReportedDate ? new Date(cs.lastReportedDate + 'T00:00:00') : new Date();
+    const cs = state.creditScore || { lastReported: null, lastReportedDate: null, history: [], reportData: null };
+    const lastScore = cs.lastReported;
+    const lastDate = cs.lastReportedDate ? new Date(cs.lastReportedDate + 'T00:00:00') : null;
     const history = (cs.history || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    const reportData = cs.reportData || null;
 
     // Calcular tasa de mejora real basada en historial
-    let pointsPerMonth = 5; // valor por defecto
+    let pointsPerMonth = 5;
     let totalGrowth = 0;
     if (history.length >= 2) {
       const first = history[0];
@@ -5780,139 +5964,351 @@ async function buildAnnualPDF(state, year) {
       if (score >= 580) return { label: 'Regular', color: '#BA7517', icon: '⚠️' };
       return { label: 'Pobre', color: '#A32D2D', icon: '🔴' };
     }
-    const cat = getCategory(lastScore);
-
-    // Posición en barra (150-950)
-    const minS = 150, maxS = 950;
-    const lastPos = ((lastScore - minS) / (maxS - minS)) * 100;
-
-    // Calcular utilización actual
-    const debt = totalDebt();
-    const limit = totalLimit();
-    const util = limit > 0 ? (debt / limit) * 100 : 0;
 
     let h = '';
 
-    // Header con puntaje principal
-    h += `<div class="metric-card" style="border-left: 4px solid ${cat.color}; background: linear-gradient(135deg, var(--bg-secondary), ${cat.color}15); margin-bottom: 14px;">`;
-    h += `<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">`;
-    h += `<div>`;
-    h += `<div class="metric-label">Puntaje actual reportado</div>`;
-    h += `<p class="metric-value" style="font-size: 36px; color: ${cat.color}; margin: 4px 0;">${lastScore}</p>`;
-    h += `<div class="metric-sub">${cat.icon} ${cat.label} · Reportado ${lastDate.toLocaleDateString('es-CO', {day: '2-digit', month: 'short', year: 'numeric'})}</div>`;
+    // ============================================
+    // BLOQUE 1: GUÍA - CÓMO OBTENER TU REPORTE
+    // ============================================
+    h += `<details ${lastScore ? '' : 'open'} style="margin-bottom: 16px; padding: 14px; background: linear-gradient(135deg, var(--info-bg), var(--purple-bg)); border-radius: 12px; border-left: 4px solid var(--info-text);">`;
+    h += `<summary style="cursor: pointer; font-weight: 600; color: var(--info-text); font-size: 14px;">📚 ¿Cómo obtengo mi reporte de crédito?</summary>`;
+    h += `<div style="margin-top: 12px; font-size: 12px; line-height: 1.6; color: var(--text-primary);">`;
+    h += `<p style="margin: 0 0 10px;"><strong>DataCrédito</strong> es la principal central de riesgo crediticio en Colombia. Tu puntaje (Score) refleja qué tan confiable eres como deudor para los bancos.</p>`;
+    h += `<div style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin: 10px 0;">`;
+    h += `<p style="margin: 0 0 8px; font-weight: 600;">📥 Cómo descargar tu reporte completo:</p>`;
+    h += `<ol style="margin: 0; padding-left: 20px;">`;
+    h += `<li>Ve a <a href="https://usuario.midatacredito.com/login?product=os" target="_blank" rel="noopener" style="color: var(--info-text); font-weight: 500;">midatacredito.com</a></li>`;
+    h += `<li>Crea tu cuenta o inicia sesión</li>`;
+    h += `<li>Compra el producto "Reporte completo" (pago único, generalmente $20.000 - $30.000 COP)</li>`;
+    h += `<li>Una vez pagado, podrás <strong>descargarlo cuantas veces quieras durante 30 días</strong></li>`;
+    h += `<li>Te llega un PDF con tu puntaje y los factores que lo afectan</li>`;
+    h += `</ol>`;
     h += `</div>`;
-    if (totalGrowth > 0) {
-      h += `<div style="text-align: right;">`;
-      h += `<div style="font-size: 11px; color: var(--text-secondary);">Crecimiento total</div>`;
-      h += `<div style="font-size: 20px; color: var(--success-text); font-weight: 500;">+${totalGrowth} puntos</div>`;
-      h += `<div style="font-size: 11px; color: var(--text-secondary);">~${pointsPerMonth.toFixed(1)} pts/mes</div>`;
+    h += `<div style="background: var(--success-bg); color: var(--success-text); padding: 10px 12px; border-radius: 8px; margin-top: 8px;">`;
+    h += `💡 <strong>Tip:</strong> Consultar tu propio reporte <strong>NO baja tu puntaje</strong>. Solo lo baja cuando un banco lo consulta para evaluarte para un crédito nuevo.`;
+    h += `</div>`;
+    h += `<div style="background: var(--info-bg); color: var(--info-text); padding: 10px 12px; border-radius: 8px; margin-top: 8px;">`;
+    h += `🎁 <strong>Alternativa gratuita:</strong> Las apps de <strong>Nequi</strong> y <strong>Bancolombia</strong> a veces muestran tu puntaje sin costo. Búscalo en la sección de "Crédito" o "Mi perfil financiero".`;
+    h += `</div>`;
+    h += `</div>`;
+    h += `</details>`;
+
+    // ============================================
+    // BLOQUE 2: ESTADO ACTUAL
+    // ============================================
+    if (lastScore) {
+      const cat = getCategory(lastScore);
+      const minS = 150, maxS = 950;
+      const lastPos = ((lastScore - minS) / (maxS - minS)) * 100;
+
+      // Header con puntaje principal
+      h += `<div class="metric-card" style="border-left: 4px solid ${cat.color}; background: linear-gradient(135deg, var(--bg-secondary), ${cat.color}15); margin-bottom: 14px;">`;
+      h += `<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">`;
+      h += `<div>`;
+      h += `<div class="metric-label">Tu puntaje actual</div>`;
+      h += `<p class="metric-value" style="font-size: 36px; color: ${cat.color}; margin: 4px 0;">${lastScore}</p>`;
+      h += `<div class="metric-sub">${cat.icon} ${cat.label} · Reportado ${lastDate.toLocaleDateString('es-CO', {day: '2-digit', month: 'short', year: 'numeric'})}</div>`;
+      h += `</div>`;
+      if (totalGrowth !== 0) {
+        const growthColor = totalGrowth > 0 ? 'var(--success-text)' : 'var(--danger-text)';
+        const sign = totalGrowth > 0 ? '+' : '';
+        h += `<div style="text-align: right;">`;
+        h += `<div style="font-size: 11px; color: var(--text-secondary);">Crecimiento total</div>`;
+        h += `<div style="font-size: 20px; color: ${growthColor}; font-weight: 500;">${sign}${totalGrowth} puntos</div>`;
+        h += `<div style="font-size: 11px; color: var(--text-secondary);">~${pointsPerMonth.toFixed(1)} pts/mes</div>`;
+        h += `</div>`;
+      }
+      h += `</div></div>`;
+
+      // Barra visual
+      h += `<div style="margin: 16px 0;">`;
+      h += `<div style="position: relative; height: 30px; background: linear-gradient(to right, #A32D2D 0%, #A32D2D 25%, #BA7517 25%, #BA7517 45%, #378ADD 45%, #378ADD 60%, #639922 60%, #639922 80%, #1D9E75 80%, #1D9E75 100%); border-radius: 6px;">`;
+      history.forEach((h_item, idx) => {
+        const pos = ((h_item.score - minS) / (maxS - minS)) * 100;
+        const isLast = idx === history.length - 1;
+        const size = isLast ? 4 : 2;
+        const height = isLast ? 46 : 38;
+        const offset = isLast ? -8 : -4;
+        const color = isLast ? cat.color : 'rgba(0,0,0,0.4)';
+        const shadow = isLast ? `box-shadow: 0 0 8px ${cat.color};` : '';
+        h += `<div style="position: absolute; top: ${offset}px; left: ${pos}%; width: ${size}px; height: ${height}px; background: ${color}; transform: translateX(-50%); border-radius: 2px; ${shadow}" title="${h_item.date}: ${h_item.score}"></div>`;
+      });
+      h += `</div>`;
+      h += `<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary); margin-top: 4px;"><span>150</span><span>580</span><span>670</span><span>750</span><span>850</span><span>950</span></div>`;
+      h += `<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary);"><span>Pobre</span><span>Regular</span><span>Bueno</span><span>Muy Bueno</span><span>Excelente</span></div>`;
+      h += `</div>`;
+
+      // Histórico
+      if (history.length > 0) {
+        h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">📈 Historial de consultas</p>`;
+        h += `<table style="width: 100%; font-size: 12px;">`;
+        h += `<thead><tr style="border-bottom: 0.5px solid var(--border);"><th style="text-align: left; padding: 6px 4px; color: var(--text-secondary);">Fecha</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Puntaje</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Cambio</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Categoría</th></tr></thead>`;
+        history.forEach((h_item, idx) => {
+          const change = idx > 0 ? h_item.score - history[idx-1].score : null;
+          const itemCat = getCategory(h_item.score);
+          const dateF = new Date(h_item.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+          const changeStr = change === null ? '—' : (change >= 0 ? `+${change}` : change);
+          const changeColor = change === null ? 'var(--text-tertiary)' : (change > 0 ? 'var(--success-text)' : 'var(--danger-text)');
+          h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">${dateF}</td><td style="text-align: right; font-weight: 500;">${h_item.score}</td><td style="text-align: right; color: ${changeColor}; font-weight: 500;">${changeStr}</td><td style="text-align: right; color: ${itemCat.color};">${itemCat.icon} ${itemCat.label}</td></tr>`;
+        });
+        h += `</table>`;
+      }
+    } else {
+      // Sin puntaje aún
+      h += `<div style="padding: 30px 20px; text-align: center; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 16px;">`;
+      h += `<div style="font-size: 40px; margin-bottom: 8px;">📊</div>`;
+      h += `<p style="font-weight: 500; margin: 0 0 6px;">Aún no has registrado tu puntaje crediticio</p>`;
+      h += `<p style="font-size: 12px; color: var(--text-secondary); margin: 0;">Sigue las instrucciones de arriba para obtener tu reporte y úsalo en el formulario de abajo.</p>`;
       h += `</div>`;
     }
-    h += `</div></div>`;
 
-    // Barra visual
-    h += `<div style="margin: 16px 0;">`;
-    h += `<div style="position: relative; height: 30px; background: linear-gradient(to right, #A32D2D 0%, #A32D2D 25%, #BA7517 25%, #BA7517 45%, #378ADD 45%, #378ADD 60%, #639922 60%, #639922 80%, #1D9E75 80%, #1D9E75 100%); border-radius: 6px;">`;
+    // ============================================
+    // BLOQUE 3: ANÁLISIS PERSONALIZADO (si tiene reportData)
+    // ============================================
+    if (reportData) {
+      h += renderCreditAnalysis(reportData, lastScore);
+    }
 
-    // Marcadores históricos
-    history.forEach((h_item, idx) => {
-      const pos = ((h_item.score - minS) / (maxS - minS)) * 100;
-      const isLast = idx === history.length - 1;
-      const size = isLast ? 4 : 2;
-      const height = isLast ? 46 : 38;
-      const offset = isLast ? -8 : -4;
-      const color = isLast ? cat.color : 'rgba(0,0,0,0.4)';
-      const shadow = isLast ? `box-shadow: 0 0 8px ${cat.color};` : '';
-      h += `<div style="position: absolute; top: ${offset}px; left: ${pos}%; width: ${size}px; height: ${height}px; background: ${color}; transform: translateX(-50%); border-radius: 2px; ${shadow}" title="${h_item.date}: ${h_item.score}"></div>`;
-    });
-
-    h += `</div>`;
-    h += `<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary); margin-top: 4px;"><span>150</span><span>580</span><span>670</span><span>750</span><span>850</span><span>950</span></div>`;
-    h += `<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary);"><span>Pobre</span><span>Regular</span><span>Bueno</span><span>Muy Bueno</span><span>Excelente</span></div>`;
-    h += `</div>`;
-
-    // Histórico
-    if (history.length > 0) {
-      h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">📈 Historial de consultas</p>`;
+    // ============================================
+    // BLOQUE 4: PROYECCIÓN
+    // ============================================
+    if (lastScore) {
+      h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">🎯 Proyección con tu ritmo actual (${pointsPerMonth >= 0 ? '+' : ''}${pointsPerMonth.toFixed(1)} pts/mes)</p>`;
       h += `<table style="width: 100%; font-size: 12px;">`;
-      h += `<thead><tr style="border-bottom: 0.5px solid var(--border);"><th style="text-align: left; padding: 6px 4px; color: var(--text-secondary);">Fecha</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Puntaje</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Cambio</th><th style="text-align: right; padding: 6px 4px; color: var(--text-secondary);">Categoría</th></tr></thead>`;
-      history.forEach((h_item, idx) => {
-        const change = idx > 0 ? h_item.score - history[idx-1].score : null;
-        const itemCat = getCategory(h_item.score);
-        const dateF = new Date(h_item.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-        const changeStr = change === null ? '—' : (change >= 0 ? `+${change}` : change);
-        const changeColor = change === null ? 'var(--text-tertiary)' : (change > 0 ? 'var(--success-text)' : 'var(--danger-text)');
-        h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">${dateF}</td><td style="text-align: right; font-weight: 500;">${h_item.score}</td><td style="text-align: right; color: ${changeColor}; font-weight: 500;">${changeStr}</td><td style="text-align: right; color: ${itemCat.color};">${itemCat.icon} ${itemCat.label}</td></tr>`;
+      [1, 3, 6, 12, 24].forEach(m => {
+        const proj = Math.min(820, Math.max(150, Math.round(lastScore + m * pointsPerMonth)));
+        const projCat = getCategory(proj);
+        const futureDate = new Date();
+        futureDate.setMonth(futureDate.getMonth() + m);
+        const dateLabel = futureDate.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+        h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">En ${m} mes${m > 1 ? 'es' : ''} (${dateLabel})</td><td style="text-align: right; color: ${projCat.color}; font-weight: 500;">${proj} (${projCat.label})</td></tr>`;
       });
       h += `</table>`;
     }
 
-    // Análisis del último reporte (29/04/2026)
-    h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">📋 Análisis de tu reporte</p>`;
-    h += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">`;
-    h += `<div style="padding: 10px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md);">`;
-    h += `<strong>🟢 Lo que ya haces bien:</strong><br>`;
-    h += `• Utilización: ${util.toFixed(1)}% (excelente)<br>`;
-    h += `• 0 moras en 48 meses<br>`;
-    h += `• Comportamiento estable<br>`;
-    h += `• 0 nuevas obligaciones`;
-    h += `</div>`;
-    h += `<div style="padding: 10px 12px; background: var(--warning-bg); color: var(--warning-text); border-radius: var(--radius-md);">`;
-    h += `<strong>🟡 Lo que te limita:</strong><br>`;
-    h += `• No tienes crédito hipotecario<br>`;
-    h += `• No tienes préstamos a plazo fijo<br>`;
-    h += `• Solo tienes tarjetas (poca diversidad)`;
-    h += `</div>`;
+    // ============================================
+    // BLOQUE 5: FORMULARIO PARA REGISTRAR REPORTE
+    // ============================================
+    h += `<details ${!lastScore ? 'open' : ''} style="margin-top: 18px; padding: 14px; background: var(--bg-secondary); border-radius: 12px; border: 1px dashed var(--border);">`;
+    h += `<summary style="cursor: pointer; font-weight: 500; font-size: 13px;">📝 ${lastScore ? 'Actualizar mi reporte de crédito' : 'Registrar mi primer reporte'}</summary>`;
+    h += `<div style="margin-top: 12px;">`;
+    h += `<p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Ingresa los datos exactos de tu reporte DataCrédito para obtener un análisis personalizado.</p>`;
+
+    // Datos básicos
+    h += `<p style="font-size: 12px; font-weight: 500; margin: 12px 0 6px;">Datos básicos</p>`;
+    h += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">`;
+    h += `<div><label style="font-size: 11px; color: var(--text-secondary);">Puntaje</label><input type="number" id="cs-score" placeholder="Ej: 691" min="150" max="950" value="${lastScore || ''}" /></div>`;
+    h += `<div><label style="font-size: 11px; color: var(--text-secondary);">Fecha del reporte</label><input type="date" id="cs-date" value="${cs.lastReportedDate || ''}" /></div>`;
     h += `</div>`;
 
-    // Proyección basada en tendencia REAL
-    h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">🎯 Proyección con tu ritmo actual (+${pointsPerMonth.toFixed(1)} pts/mes)</p>`;
-    h += `<table style="width: 100%; font-size: 12px;">`;
-    [1, 3, 6, 12, 24].forEach(m => {
-      const proj = Math.min(820, Math.round(lastScore + m * pointsPerMonth));
-      const projCat = getCategory(proj);
-      const futureDate = new Date();
-      futureDate.setMonth(futureDate.getMonth() + m);
-      const dateLabel = futureDate.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-      h += `<tr style="border-top: 0.5px solid var(--border);"><td style="padding: 6px 4px;">En ${m} mes${m > 1 ? 'es' : ''} (${dateLabel})</td><td style="text-align: right; color: ${projCat.color}; font-weight: 500;">${proj} (${projCat.label})</td></tr>`;
-    });
-    h += `</table>`;
+    // Sección Endeudamiento
+    h += `<details style="margin: 12px 0; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 0.5px solid var(--border);">`;
+    h += `<summary style="cursor: pointer; font-size: 12px; font-weight: 500;">💳 Endeudamiento (opcional)</summary>`;
+    h += `<div style="margin-top: 10px;">`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Utilización en tarjetas (%)</label><input type="number" id="rd-util" placeholder="Ej: 4.2" step="0.1" min="0" max="100" value="${reportData?.utilization || ''}" /></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">% pendiente por pagar (saldo total)</label><input type="number" id="rd-pending" placeholder="Ej: 0.04" step="0.01" min="0" max="100" value="${reportData?.pendingPercent || ''}" /></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Comportamiento de tarjetas</label>`;
+    h += `<select id="rd-cards-behavior"><option value="">Selecciona</option>`;
+    h += `<option value="estable" ${reportData?.cardsBehavior === 'estable' ? 'selected' : ''}>Estable y consistente</option>`;
+    h += `<option value="volatil" ${reportData?.cardsBehavior === 'volatil' ? 'selected' : ''}>Volátil/cambiante</option>`;
+    h += `</select></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;"><input type="checkbox" id="rd-has-fixed-loan" ${reportData?.hasFixedLoan ? 'checked' : ''}> Tengo crédito a plazo fijo (CDT, libranza, libre inversión)</label></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;"><input type="checkbox" id="rd-has-mortgage" ${reportData?.hasMortgage ? 'checked' : ''}> Tengo crédito hipotecario o leasing</label></div>`;
+    h += `</div></details>`;
 
-    // Tips para acelerar
-    h += `<div style="margin-top: 16px; padding: 12px 14px; background: var(--info-bg); border-radius: var(--radius-md); font-size: 12px; color: var(--info-text);">`;
-    h += `<strong>💡 Para acelerar el crecimiento:</strong><br>`;
-    h += `• <strong>Diversifica productos</strong>: abrir un CDT pequeño ($1M-$3M a 6 meses) suma puntos en "tipos de crédito"<br>`;
-    h += `• <strong>Mantén utilización <10%</strong> (estás en ${util.toFixed(1)}% — perfecto)<br>`;
-    h += `• <strong>Sigue pagando todo a 1 cuota</strong> completa<br>`;
-    h += `• <strong>NO abras nuevas tarjetas</strong> en 6-12 meses (penaliza temporalmente)<br>`;
-    h += `• <strong>Si en algún momento</strong> tomas un crédito de vehículo o vivienda y lo pagas bien, tu score saltará 30-50 puntos`;
-    h += `</div>`;
+    // Sección Hábito de pago
+    h += `<details style="margin: 12px 0; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 0.5px solid var(--border);">`;
+    h += `<summary style="cursor: pointer; font-size: 12px; font-weight: 500;">⏰ Hábito de pago (opcional)</summary>`;
+    h += `<div style="margin-top: 10px;">`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Productos con mora 30 días (últimos 12 meses)</label><input type="number" id="rd-mora30" placeholder="0" min="0" value="${reportData?.mora30 ?? ''}" /></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Productos con mora 60+ días (últimos 48 meses)</label><input type="number" id="rd-mora60" placeholder="0" min="0" value="${reportData?.mora60 ?? ''}" /></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Productos actualmente en mora</label><input type="number" id="rd-currentMora" placeholder="0" min="0" value="${reportData?.currentMora ?? ''}" /></div>`;
+    h += `</div></details>`;
 
-    // Actualizar
-    h += `<div style="margin-top: 14px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md);">`;
-    h += `<p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 8px;">📝 Cuando consultes tu reporte real, actualízalo aquí:</p>`;
-    h += `<div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px;">`;
-    h += `<input type="number" id="cs-score" placeholder="Puntaje real" min="150" max="950" value="${lastScore}" />`;
-    h += `<input type="date" id="cs-date" value="${cs.lastReportedDate || ''}" />`;
-    h += `<button onclick="updateCreditScore()">Actualizar</button>`;
-    h += `</div>`;
-    h += `</div>`;
+    // Sección Experiencia y portafolio
+    h += `<details style="margin: 12px 0; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 0.5px solid var(--border);">`;
+    h += `<summary style="cursor: pointer; font-size: 12px; font-weight: 500;">📋 Experiencia y portafolio (opcional)</summary>`;
+    h += `<div style="margin-top: 10px;">`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Años de experiencia crediticia</label><input type="number" id="rd-experience" placeholder="Ej: 6" min="0" value="${reportData?.experienceYears ?? ''}" /></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Productos abiertos al día</label><input type="number" id="rd-open-products" placeholder="Ej: 8" min="0" value="${reportData?.openProducts ?? ''}" /></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Nuevas obligaciones (últimos 6 meses)</label><input type="number" id="rd-new-loans" placeholder="Ej: 3" min="0" value="${reportData?.newLoans ?? ''}" /></div>`;
+    h += `<div style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--text-secondary); display: block;">Meses desde apertura más reciente</label><input type="number" id="rd-recent-opening" placeholder="Ej: 5" min="0" value="${reportData?.monthsSinceLastOpen ?? ''}" /></div>`;
+    h += `</div></details>`;
+
+    h += `<button onclick="updateCreditScoreFull()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; font-size: 13px; margin-top: 8px;">💾 Guardar y analizar</button>`;
+    h += `</div></details>`;
 
     c.innerHTML = h;
   }
 
-  window.updateCreditScore = function() {
+  // Análisis personalizado tipo "consultor financiero"
+  function renderCreditAnalysis(rd, score) {
+    let h = `<div style="margin: 16px 0; padding: 14px; background: linear-gradient(135deg, var(--purple-bg), var(--info-bg)); border-radius: 12px; border-left: 4px solid var(--purple-text);">`;
+    h += `<p style="font-weight: 600; font-size: 14px; color: var(--purple-text); margin: 0 0 10px;">🤖 Tu análisis personalizado</p>`;
+
+    // Generar análisis basado en datos
+    const positives = [];
+    const negatives = [];
+    const tips = [];
+
+    // ANÁLISIS DE UTILIZACIÓN
+    if (rd.utilization !== undefined && rd.utilization !== null && rd.utilization !== '') {
+      const u = parseFloat(rd.utilization);
+      if (u < 10) positives.push(`Utilización en ${u}% — está en el rango ÓPTIMO (debajo del 10%)`);
+      else if (u < 30) {
+        positives.push(`Utilización en ${u}% — saludable (debajo del 30%)`);
+        tips.push(`Bajar utilización a menos del 10% puede sumarte +20-30 puntos en próximos reportes`);
+      } else if (u < 50) {
+        negatives.push(`Utilización en ${u}% — está alta (sobre el 30%)`);
+        tips.push(`Pagar antes del corte para bajar utilización al 10% o menos. Esto solo puede subir tu puntaje 30-50 puntos`);
+      } else {
+        negatives.push(`Utilización en ${u}% — MUY ALTA, está perjudicando seriamente tu puntaje`);
+        tips.push(`URGENTE: bajar utilización inmediatamente. Es el factor más importante después del hábito de pago`);
+      }
+    }
+
+    // ANÁLISIS DE PAGOS
+    if (rd.mora30 !== undefined && rd.mora30 !== null && rd.mora30 !== '') {
+      const m30 = parseInt(rd.mora30);
+      if (m30 === 0) positives.push(`0 productos con mora de 30 días en últimos 12 meses — historial impecable`);
+      else negatives.push(`${m30} producto(s) con mora 30 días — afecta tu puntaje significativamente`);
+    }
+    if (rd.mora60 !== undefined && rd.mora60 !== null && rd.mora60 !== '') {
+      const m60 = parseInt(rd.mora60);
+      if (m60 === 0) positives.push(`0 productos con mora 60+ días en últimos 48 meses — excelente disciplina a largo plazo`);
+      else negatives.push(`${m60} producto(s) con mora 60+ días — esto pesa MUCHO y tarda años en limpiarse`);
+    }
+    if (rd.currentMora !== undefined && rd.currentMora !== null && rd.currentMora !== '') {
+      const cm = parseInt(rd.currentMora);
+      if (cm === 0) positives.push(`Actualmente sin productos en mora — al día con todas tus obligaciones`);
+      else negatives.push(`${cm} producto(s) actualmente en mora — PRIORIDAD #1: ponerse al día YA`);
+    }
+
+    // ANÁLISIS DE COMPORTAMIENTO
+    if (rd.cardsBehavior === 'estable') {
+      positives.push(`Comportamiento estable de tarjetas — DataCrédito te ve como predecible y confiable`);
+    } else if (rd.cardsBehavior === 'volatil') {
+      negatives.push(`Comportamiento volátil de tarjetas — los cambios bruscos en uso bajan el puntaje`);
+      tips.push(`Mantén un nivel consistente de uso de tarjetas mes a mes para mejorar`);
+    }
+
+    // ANÁLISIS DE DIVERSIDAD DE CRÉDITO
+    if (!rd.hasFixedLoan && !rd.hasMortgage) {
+      negatives.push(`Solo tienes tarjetas de crédito — falta diversidad en tipos de crédito`);
+      tips.push(`Considera abrir un CDT o crédito a plazo fijo pequeño ($1M-$3M, 6-12 meses): suma diversidad de productos y puede dar +10-20 puntos`);
+    } else if (rd.hasFixedLoan && !rd.hasMortgage) {
+      positives.push(`Tienes diversidad básica con préstamos a plazo fijo`);
+      tips.push(`A largo plazo, un crédito hipotecario/vehículo bien manejado puede sumar +30-50 puntos`);
+    } else if (rd.hasMortgage) {
+      positives.push(`Tienes crédito hipotecario o vehicular — máxima diversidad de productos`);
+    }
+
+    // ANÁLISIS DE EXPERIENCIA
+    if (rd.experienceYears !== undefined && rd.experienceYears !== null && rd.experienceYears !== '') {
+      const exp = parseInt(rd.experienceYears);
+      if (exp >= 10) positives.push(`${exp} años de experiencia crediticia — historial maduro`);
+      else if (exp >= 5) positives.push(`${exp} años de experiencia crediticia — buen recorrido`);
+      else {
+        negatives.push(`Solo ${exp} año(s) de experiencia crediticia — el tiempo trabajará a tu favor`);
+        tips.push(`Mantén las cuentas activas (no las cierres). Cada año que pasa suma a tu antigüedad y por ende a tu puntaje`);
+      }
+    }
+
+    // ANÁLISIS DE NUEVAS APERTURAS
+    if (rd.newLoans !== undefined && rd.newLoans !== null && rd.newLoans !== '') {
+      const nl = parseInt(rd.newLoans);
+      if (nl === 0) positives.push(`Sin nuevas aperturas en últimos 6 meses — estabilidad`);
+      else if (nl >= 3) {
+        negatives.push(`${nl} nuevas obligaciones en 6 meses — DataCrédito ve esto como "hambre de crédito"`);
+        tips.push(`Evita abrir tarjetas/créditos nuevos en los próximos 6-12 meses para que esto deje de penalizarte`);
+      }
+    }
+
+    // ANÁLISIS DE APERTURA RECIENTE
+    if (rd.monthsSinceLastOpen !== undefined && rd.monthsSinceLastOpen !== null && rd.monthsSinceLastOpen !== '') {
+      const m = parseInt(rd.monthsSinceLastOpen);
+      if (m >= 12) positives.push(`Han pasado ${m} meses desde tu última apertura — el efecto negativo ya se diluyó`);
+      else if (m < 6) {
+        tips.push(`Tu última apertura fue hace ${m} meses. Esperar 12+ meses elimina la penalización por "nueva apertura"`);
+      }
+    }
+
+    // RENDERIZAR
+    if (positives.length > 0) {
+      h += `<div style="margin-bottom: 12px;">`;
+      h += `<p style="font-size: 12px; font-weight: 600; color: var(--success-text); margin: 0 0 6px;">✅ Lo que estás haciendo BIEN (${positives.length}):</p>`;
+      h += `<ul style="margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7;">`;
+      positives.forEach(p => h += `<li>${p}</li>`);
+      h += `</ul></div>`;
+    }
+
+    if (negatives.length > 0) {
+      h += `<div style="margin-bottom: 12px;">`;
+      h += `<p style="font-size: 12px; font-weight: 600; color: var(--warning-text); margin: 0 0 6px;">⚠️ Lo que te está LIMITANDO (${negatives.length}):</p>`;
+      h += `<ul style="margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7;">`;
+      negatives.forEach(n => h += `<li>${n}</li>`);
+      h += `</ul></div>`;
+    }
+
+    if (tips.length > 0) {
+      h += `<div style="margin-top: 12px; padding: 10px 12px; background: var(--bg-primary); border-radius: 8px; border-left: 3px solid var(--info-text);">`;
+      h += `<p style="font-size: 12px; font-weight: 600; color: var(--info-text); margin: 0 0 6px;">💡 Tus próximos pasos para SUBIR el puntaje:</p>`;
+      h += `<ol style="margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7;">`;
+      tips.forEach(t => h += `<li>${t}</li>`);
+      h += `</ol></div>`;
+    }
+
+    if (positives.length === 0 && negatives.length === 0 && tips.length === 0) {
+      h += `<p style="font-size: 12px; color: var(--text-secondary);">Aún no has llenado los datos del reporte. Llena el formulario abajo para obtener un análisis detallado.</p>`;
+    }
+
+    h += `</div>`;
+    return h;
+  }
+
+  window.updateCreditScoreFull = function() {
     const score = parseInt(document.getElementById('cs-score').value);
     const date = document.getElementById('cs-date').value || new Date().toISOString().split('T')[0];
     if (!score || score < 150 || score > 950) return alert('Ingresa un puntaje válido (150-950)');
+
     if (!state.creditScore) state.creditScore = { history: [] };
     state.creditScore.lastReported = score;
     state.creditScore.lastReportedDate = date;
+
     if (!state.creditScore.history) state.creditScore.history = [];
-    state.creditScore.history.push({ date, score, source: 'DataCrédito' });
+    // No duplicar misma fecha
+    const existingIdx = state.creditScore.history.findIndex(h => h.date === date);
+    if (existingIdx >= 0) {
+      state.creditScore.history[existingIdx] = { date, score, source: 'DataCrédito' };
+    } else {
+      state.creditScore.history.push({ date, score, source: 'DataCrédito' });
+    }
+
+    // Capturar datos del reporte
+    const reportData = {
+      utilization: parseFloat(document.getElementById('rd-util').value) || null,
+      pendingPercent: parseFloat(document.getElementById('rd-pending').value) || null,
+      cardsBehavior: document.getElementById('rd-cards-behavior').value || null,
+      hasFixedLoan: document.getElementById('rd-has-fixed-loan').checked,
+      hasMortgage: document.getElementById('rd-has-mortgage').checked,
+      mora30: document.getElementById('rd-mora30').value !== '' ? parseInt(document.getElementById('rd-mora30').value) : null,
+      mora60: document.getElementById('rd-mora60').value !== '' ? parseInt(document.getElementById('rd-mora60').value) : null,
+      currentMora: document.getElementById('rd-currentMora').value !== '' ? parseInt(document.getElementById('rd-currentMora').value) : null,
+      experienceYears: document.getElementById('rd-experience').value !== '' ? parseInt(document.getElementById('rd-experience').value) : null,
+      openProducts: document.getElementById('rd-open-products').value !== '' ? parseInt(document.getElementById('rd-open-products').value) : null,
+      newLoans: document.getElementById('rd-new-loans').value !== '' ? parseInt(document.getElementById('rd-new-loans').value) : null,
+      monthsSinceLastOpen: document.getElementById('rd-recent-opening').value !== '' ? parseInt(document.getElementById('rd-recent-opening').value) : null
+    };
+
+    state.creditScore.reportData = reportData;
     saveState();
     renderCreditScore();
-    alert('Puntaje actualizado');
+    alert('✅ Reporte guardado y análisis generado');
+  };
+
+  // Mantener compatibilidad con función anterior
+  window.updateCreditScore = function() {
+    window.updateCreditScoreFull();
   };
 
   function renderCharts() {
