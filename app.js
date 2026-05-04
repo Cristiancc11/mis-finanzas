@@ -2693,6 +2693,7 @@ function renderFinancialCalendar() {
   });
 
   let html = `<div style="font-weight: 500; margin-bottom: 12px; text-transform: capitalize; text-align: center;">${monthName}</div>`;
+  html += `<div class="calendar-container" style="position: relative; width: 100%; max-width: 100%; overflow: hidden;">`;
   html += `<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;">`;
   ['L','M','X','J','V','S','D'].forEach(d => {
     html += `<div style="text-align: center; font-size: 11px; color: var(--text-tertiary); padding: 4px;">${d}</div>`;
@@ -2717,10 +2718,10 @@ function renderFinancialCalendar() {
       bg = 'var(--info-bg)';
     }
 
-    html += `<div style="position: relative; aspect-ratio: 1; padding: 4px; background: ${bg}; border: ${border}; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start;">`;
+    html += `<div style="position: relative; aspect-ratio: 1; padding: 4px; background: ${bg}; border: ${border}; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden;">`;
     html += `<div style="font-size: 11px; font-weight: ${isToday ? '600' : '400'}; color: ${isToday ? 'var(--info-text)' : 'var(--text-secondary)'};">${day}</div>`;
     if (dayEvents.length > 0) {
-      html += `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
+      html += `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px; min-width: 0;">`;
       dayEvents.slice(0, 3).forEach(e => {
         html += `<span title="${e.label}" style="font-size: 10px; opacity: ${e.subtle ? '0.6' : '1'};">${e.icon}</span>`;
       });
@@ -2729,10 +2730,11 @@ function renderFinancialCalendar() {
     html += `</div>`;
   }
   html += `</div>`;
+  html += `</div>`; // cierre calendar-container
 
-  // Listado de eventos del mes
-  html += `<div style="margin-top: 16px;">`;
-  html += `<p style="font-size: 13px; font-weight: 500; margin: 0 0 8px;">📋 Eventos importantes del mes</p>`;
+  // Listado de eventos del mes (CLARAMENTE SEPARADO)
+  html += `<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">`;
+  html += `<p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">📋 Eventos importantes del mes</p>`;
   const sortedDays = Object.keys(events).map(Number).sort((a, b) => a - b);
   sortedDays.forEach(d => {
     events[d].filter(e => !e.subtle).forEach(e => {
