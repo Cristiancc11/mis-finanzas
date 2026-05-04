@@ -2556,3 +2556,425 @@ button.btn-loading.btn-secondary::after {
     margin-bottom: 0 !important;
   }
 }
+
+/* ========================================
+   ONBOARDING CHECKLIST (Resumen)
+   ======================================== */
+
+.onboarding-checklist {
+  background: linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06));
+  border: 1.5px solid rgba(127, 119, 221, 0.25);
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+  margin-bottom: 16px;
+  position: relative;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.onboarding-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.onboarding-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 2px;
+  color: var(--text-primary);
+}
+
+.onboarding-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.onboarding-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.onboarding-dismiss:hover {
+  color: var(--text-primary);
+}
+
+/* Barra de progreso */
+.onboarding-progress-bar {
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.onboarding-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7F77DD, #1D9E75);
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 8px rgba(127, 119, 221, 0.4);
+}
+
+/* Pasos */
+.onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.onboarding-step:hover {
+  border-color: rgba(127, 119, 221, 0.4);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(127, 119, 221, 0.1);
+}
+
+.onboarding-step:active {
+  transform: scale(0.99);
+}
+
+/* Step COMPLETADO */
+.onboarding-step.completed {
+  background: var(--success-bg);
+  border-color: var(--success-text);
+  opacity: 0.7;
+}
+
+.onboarding-step.completed .onboarding-step-title {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.onboarding-step.completed .onboarding-step-desc {
+  display: none;
+}
+
+.onboarding-step.completed .onboarding-step-check {
+  background: var(--success-text);
+  color: white;
+  border-color: var(--success-text);
+}
+
+.onboarding-step.completed .onboarding-step-check::after {
+  content: '✓';
+  font-weight: 700;
+}
+
+.onboarding-step.completed .onboarding-step-check span {
+  display: none;
+}
+
+/* Checkbox circular */
+.onboarding-step-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  color: transparent;
+  transition: all 0.3s;
+}
+
+.onboarding-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-step-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+.onboarding-step-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.onboarding-step-arrow {
+  font-size: 18px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.onboarding-step:hover .onboarding-step-arrow {
+  color: var(--info-text);
+  transform: translateX(3px);
+}
+
+/* Celebración */
+.onboarding-celebration {
+  margin-top: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--success-bg), rgba(29, 158, 117, 0.15));
+  border-radius: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--success-text);
+  line-height: 1.5;
+  animation: fadeInScale 0.5s ease-out;
+}
+
+/* ========================================
+   HIGHLIGHT (cuando se navega desde checklist)
+   ======================================== */
+
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(127, 119, 221, 0.6),
+                0 0 0 0 rgba(29, 158, 117, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(127, 119, 221, 0.2),
+                0 0 20px 6px rgba(29, 158, 117, 0.3);
+  }
+}
+
+.onboarding-highlight {
+  animation: highlightPulse 1.2s ease-in-out 3;
+  border-color: #7F77DD !important;
+  position: relative;
+  z-index: 5;
+}
+
+/* Tooltip de highlight */
+.onboarding-tooltip {
+  position: absolute;
+  background: linear-gradient(135deg, #7F77DD, #1D9E75);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 999;
+  box-shadow: 0 8px 24px rgba(127, 119, 221, 0.4);
+  max-width: 280px;
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onboarding-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 24px;
+  border: 8px solid transparent;
+  border-bottom-color: #7F77DD;
+}
+
+/* ========================================
+   TUTORIAL MULTI-PASO MEJORADO
+   ======================================== */
+
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fadeIn 0.3s ease;
+}
+
+.tutorial-card {
+  background: var(--bg-primary);
+  border-radius: 20px;
+  max-width: 460px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Header del tutorial con gradiente */
+.tutorial-header {
+  background: linear-gradient(135deg, #7F77DD 0%, #1D9E75 100%);
+  padding: 28px 24px 20px;
+  text-align: center;
+  border-radius: 20px 20px 0 0;
+  position: relative;
+}
+
+.tutorial-icon-big {
+  font-size: 56px;
+  margin-bottom: 8px;
+  display: block;
+  animation: floatGently 3s ease-in-out infinite;
+}
+
+.tutorial-title {
+  margin: 0 0 4px;
+  color: white;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.tutorial-subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+}
+
+/* Indicador de pasos */
+.tutorial-step-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.tutorial-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 0.3s;
+}
+
+.tutorial-step-dot.active {
+  background: white;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.tutorial-step-dot.completed {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Body */
+.tutorial-body {
+  padding: 24px 24px 8px;
+}
+
+.tutorial-step-content {
+  animation: fadeIn 0.4s ease;
+}
+
+.tutorial-step-content h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tutorial-step-content p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.tutorial-tip-box {
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--info-bg);
+  border-radius: 10px;
+  border-left: 3px solid var(--info-text);
+}
+
+.tutorial-tip-box p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--info-text);
+  line-height: 1.5;
+}
+
+/* Footer con botones */
+.tutorial-footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px 24px;
+}
+
+.tutorial-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.tutorial-btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.tutorial-btn-secondary:active {
+  transform: scale(0.97);
+  background: var(--bg-tertiary);
+}
+
+.tutorial-btn-primary {
+  background: linear-gradient(135deg, #7F77DD, #1D9E75);
+  color: white;
+  box-shadow: 0 4px 12px rgba(127, 119, 221, 0.3);
+}
+
+.tutorial-btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(127, 119, 221, 0.4);
+}
+
+.tutorial-skip {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.tutorial-skip:active {
+  background: rgba(255, 255, 255, 0.3);
+}
