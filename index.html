@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="styles.css?v=7">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -922,6 +922,106 @@
       </div>
     </div>
 
+    <!-- ============== PERSONALIZACIÓN VISUAL ============== -->
+    <div class="raised-card">
+      <p class="card-title">🎨 Personalización visual</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 16px;">Personaliza tu dashboard a tu estilo</p>
+
+      <!-- Selector de color principal -->
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 500;">🎨 Color principal</label>
+        <div class="color-picker-grid">
+          <button class="color-option active" data-theme="default" onclick="setColorTheme('default')" title="Morado-Verde (clásico)">
+            <span class="color-preview" style="background: linear-gradient(135deg, #7F77DD, #1D9E75);"></span>
+            <span class="color-name">Clásico</span>
+            <span class="color-check">✓</span>
+          </button>
+          <button class="color-option" data-theme="blue" onclick="setColorTheme('blue')" title="Azul océano">
+            <span class="color-preview" style="background: linear-gradient(135deg, #3b82f6, #06b6d4);"></span>
+            <span class="color-name">Océano</span>
+            <span class="color-check">✓</span>
+          </button>
+          <button class="color-option" data-theme="pink" onclick="setColorTheme('pink')" title="Rosa coral">
+            <span class="color-preview" style="background: linear-gradient(135deg, #ec4899, #f43f5e);"></span>
+            <span class="color-name">Coral</span>
+            <span class="color-check">✓</span>
+          </button>
+          <button class="color-option" data-theme="orange" onclick="setColorTheme('orange')" title="Naranja sunset">
+            <span class="color-preview" style="background: linear-gradient(135deg, #f97316, #eab308);"></span>
+            <span class="color-name">Sunset</span>
+            <span class="color-check">✓</span>
+          </button>
+          <button class="color-option" data-theme="green" onclick="setColorTheme('green')" title="Verde bosque">
+            <span class="color-preview" style="background: linear-gradient(135deg, #10b981, #059669);"></span>
+            <span class="color-name">Bosque</span>
+            <span class="color-check">✓</span>
+          </button>
+          <button class="color-option" data-theme="purple" onclick="setColorTheme('purple')" title="Púrpura royal">
+            <span class="color-preview" style="background: linear-gradient(135deg, #a855f7, #6366f1);"></span>
+            <span class="color-name">Royal</span>
+            <span class="color-check">✓</span>
+          </button>
+          <button class="color-option" data-theme="rose" onclick="setColorTheme('rose')" title="Rosa-Lavanda">
+            <span class="color-preview" style="background: linear-gradient(135deg, #f472b6, #c084fc);"></span>
+            <span class="color-name">Lavanda</span>
+            <span class="color-check">✓</span>
+          </button>
+          <button class="color-option" data-theme="mono" onclick="setColorTheme('mono')" title="Monocromo elegante">
+            <span class="color-preview" style="background: linear-gradient(135deg, #525252, #262626);"></span>
+            <span class="color-name">Mono</span>
+            <span class="color-check">✓</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Selector de tema (claro/oscuro/auto) -->
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 500;">🌗 Modo</label>
+        <div class="theme-mode-selector">
+          <button class="theme-mode-btn" data-mode="light" onclick="setThemeMode('light')">
+            <span class="theme-mode-icon">☀️</span>
+            <span>Claro</span>
+          </button>
+          <button class="theme-mode-btn" data-mode="dark" onclick="setThemeMode('dark')">
+            <span class="theme-mode-icon">🌙</span>
+            <span>Oscuro</span>
+          </button>
+          <button class="theme-mode-btn active" data-mode="auto" onclick="setThemeMode('auto')">
+            <span class="theme-mode-icon">⚙️</span>
+            <span>Auto</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Selector de densidad -->
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 500;">📐 Densidad de información</label>
+        <div class="density-selector">
+          <button class="density-btn" data-density="compact" onclick="setDensity('compact')">
+            <span class="density-icon">≡</span>
+            <span class="density-label">Compacto</span>
+            <span class="density-desc">Más info en pantalla</span>
+          </button>
+          <button class="density-btn active" data-density="normal" onclick="setDensity('normal')">
+            <span class="density-icon">═</span>
+            <span class="density-label">Normal</span>
+            <span class="density-desc">Recomendado</span>
+          </button>
+          <button class="density-btn" data-density="comfortable" onclick="setDensity('comfortable')">
+            <span class="density-icon">▭</span>
+            <span class="density-label">Espacioso</span>
+            <span class="density-desc">Más cómodo</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Botón restablecer -->
+      <button onclick="resetVisualPreferences()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span>↺</span>
+        <span>Restablecer a valores por defecto</span>
+      </button>
+    </div>
+
     <div class="raised-card">
       <p class="card-title">⚙️ Datos personales</p>
       <div style="display: grid; gap: 12px;">
@@ -975,6 +1075,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

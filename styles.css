@@ -2978,3 +2978,392 @@ button.btn-loading.btn-secondary::after {
 .tutorial-skip:active {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* ========================================
+   PERSONALIZACIÓN VISUAL - Selector de Color
+   ======================================== */
+
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .color-picker-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.color-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.color-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.color-option:active {
+  transform: scale(0.97);
+}
+
+.color-option.active {
+  border-color: var(--accent-from, #7F77DD);
+  background: linear-gradient(135deg, rgba(127, 119, 221, 0.05), rgba(29, 158, 117, 0.05));
+}
+
+.color-preview {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s;
+}
+
+.color-option:hover .color-preview {
+  transform: scale(1.05);
+}
+
+.color-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.color-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  background: var(--accent-from, #7F77DD);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.color-option.active .color-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ========================================
+   THEME MODE SELECTOR
+   ======================================== */
+
+.theme-mode-selector,
+.density-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.theme-mode-btn,
+.density-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.theme-mode-btn:hover,
+.density-btn:hover {
+  background: rgba(127, 119, 221, 0.08);
+}
+
+.theme-mode-btn.active,
+.density-btn.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.theme-mode-icon {
+  font-size: 18px;
+}
+
+.density-icon {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-from, #7F77DD);
+}
+
+.density-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.density-desc {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+/* ========================================
+   TEMAS DE COLOR
+   Variables que se redefinen según el tema
+   ======================================== */
+
+/* Tema CLÁSICO (default) - Morado/Verde */
+html, html.color-default {
+  --accent-from: #7F77DD;
+  --accent-to: #1D9E75;
+  --accent-from-light: #9B95E8;
+  --accent-to-light: #34c89c;
+  --accent-glow: rgba(127, 119, 221, 0.3);
+}
+
+/* Tema OCÉANO - Azul */
+html.color-blue {
+  --accent-from: #3b82f6;
+  --accent-to: #06b6d4;
+  --accent-from-light: #60a5fa;
+  --accent-to-light: #22d3ee;
+  --accent-glow: rgba(59, 130, 246, 0.3);
+}
+
+/* Tema CORAL - Rosa */
+html.color-pink {
+  --accent-from: #ec4899;
+  --accent-to: #f43f5e;
+  --accent-from-light: #f472b6;
+  --accent-to-light: #fb7185;
+  --accent-glow: rgba(236, 72, 153, 0.3);
+}
+
+/* Tema SUNSET - Naranja */
+html.color-orange {
+  --accent-from: #f97316;
+  --accent-to: #eab308;
+  --accent-from-light: #fb923c;
+  --accent-to-light: #facc15;
+  --accent-glow: rgba(249, 115, 22, 0.3);
+}
+
+/* Tema BOSQUE - Verde */
+html.color-green {
+  --accent-from: #10b981;
+  --accent-to: #059669;
+  --accent-from-light: #34d399;
+  --accent-to-light: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.3);
+}
+
+/* Tema ROYAL - Púrpura */
+html.color-purple {
+  --accent-from: #a855f7;
+  --accent-to: #6366f1;
+  --accent-from-light: #c084fc;
+  --accent-to-light: #818cf8;
+  --accent-glow: rgba(168, 85, 247, 0.3);
+}
+
+/* Tema LAVANDA - Rosa Lavanda */
+html.color-rose {
+  --accent-from: #f472b6;
+  --accent-to: #c084fc;
+  --accent-from-light: #f9a8d4;
+  --accent-to-light: #d8b4fe;
+  --accent-glow: rgba(244, 114, 182, 0.3);
+}
+
+/* Tema MONO - Monocromo */
+html.color-mono {
+  --accent-from: #525252;
+  --accent-to: #262626;
+  --accent-from-light: #737373;
+  --accent-to-light: #404040;
+  --accent-glow: rgba(82, 82, 82, 0.3);
+}
+
+/* Aplicar tema a elementos que usan los colores */
+.hero-section,
+[style*="linear-gradient(135deg, #7F77DD, #1D9E75)"]:not(.no-theme),
+[style*="linear-gradient(135deg, #7F77DD 0%, #1D9E75 100%)"]:not(.no-theme) {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Logo gradient text */
+.logo-text {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Botones primarios con gradiente */
+button[style*="linear-gradient(135deg, #7F77DD, #1D9E75)"]:not(.no-theme),
+button[style*="linear-gradient(135deg, #7F77DD 0%, #1D9E75 100%)"]:not(.no-theme),
+.tutorial-btn-primary,
+.empty-state-action,
+.menu-toggle-btn::before {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Loading screen */
+.loading-logo,
+.loading-dots span {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Hamburger icon */
+.hamburger-icon span {
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Side menu header */
+.side-menu-header {
+  background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%) !important;
+}
+
+/* Tutorial header */
+.tutorial-header {
+  background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%) !important;
+}
+
+/* Onboarding progress fill */
+.onboarding-progress-fill {
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Toast progress bar */
+.toast-progress-bar {
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Auth screen logo */
+#auth-screen [style*="linear-gradient(135deg, #7F77DD, #1D9E75)"] {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Modal type=default */
+.confirm-modal-default {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* Net worth hero */
+.net-worth-hero {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+}
+
+/* ========================================
+   DENSIDAD DE INFORMACIÓN
+   ======================================== */
+
+/* COMPACTO: menos espacio */
+html.density-compact .raised-card,
+html.density-compact .metric-card {
+  padding: 12px !important;
+  margin-bottom: 8px !important;
+}
+
+html.density-compact .card-title {
+  font-size: 13px !important;
+  margin-bottom: 8px !important;
+}
+
+html.density-compact input,
+html.density-compact select,
+html.density-compact textarea {
+  padding: 8px 10px !important;
+  min-height: 38px !important;
+  font-size: 14px !important;
+}
+
+html.density-compact button {
+  min-height: 36px !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+}
+
+html.density-compact .summary-row {
+  padding: 6px 4px !important;
+  font-size: 12px !important;
+}
+
+html.density-compact .tx-row {
+  padding: 8px 10px !important;
+}
+
+html.density-compact .metric-value {
+  font-size: 20px !important;
+}
+
+html.density-compact .net-worth-hero-value {
+  font-size: 28px !important;
+}
+
+/* ESPACIOSO: más respiro */
+html.density-comfortable .raised-card,
+html.density-comfortable .metric-card {
+  padding: 24px !important;
+  margin-bottom: 18px !important;
+}
+
+html.density-comfortable .card-title {
+  font-size: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+html.density-comfortable input,
+html.density-comfortable select,
+html.density-comfortable textarea {
+  padding: 14px 16px !important;
+  min-height: 50px !important;
+  font-size: 15px !important;
+}
+
+html.density-comfortable button {
+  min-height: 48px !important;
+  padding: 14px 20px !important;
+  font-size: 15px !important;
+}
+
+html.density-comfortable .summary-row {
+  padding: 14px 6px !important;
+  font-size: 14px !important;
+}
+
+html.density-comfortable .tx-row {
+  padding: 16px !important;
+}
+
+html.density-comfortable .metric-value {
+  font-size: 30px !important;
+}
+
+html.density-comfortable .net-worth-hero-value {
+  font-size: 44px !important;
+}

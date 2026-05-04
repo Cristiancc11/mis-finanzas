@@ -288,6 +288,13 @@ async function loadFromCloud() {
     try {
       window.loadState();
       console.log('✅ Interfaz actualizada');
+      
+      // Aplicar preferencias visuales sincronizadas
+      if (typeof applyVisualPreferences === 'function') {
+        applyVisualPreferences();
+        console.log('🎨 Preferencias visuales aplicadas');
+      }
+      
       hideLoadingScreen();
       sessionStorage.removeItem('reload_attempted'); // Limpiar flag al cargar OK
     } catch(e) {
@@ -1623,6 +1630,196 @@ window.showPrompt = function(opts) {
     });
   });
 };
+
+// ============================================================
+// PERSONALIZACIÓN VISUAL (color, modo, densidad)
+// ============================================================
+
+const VISUAL_PREFS_KEY = 'finanzaspro_visual_prefs';
+
+function loadVisualPreferences() {
+  // 1. Intentar leer del state principal (sincronizado con Supabase)
+  try {
+    const stateRaw = localStorage.getItem(STORAGE_KEY_GLOBAL);
+    if (stateRaw) {
+      const state = JSON.parse(stateRaw);
+      if (state && state.visualPrefs) {
+        return state.visualPrefs;
+      }
+    }
+  } catch(e) {}
+  
+  // 2. Fallback: leer del key viejo (compatibilidad)
+  try {
+    const raw = localStorage.getItem(VISUAL_PREFS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  
+  return { theme: 'default', mode: 'auto', density: 'normal' };
+}
+
+function saveVisualPreferences(prefs) {
+  try {
+    // Guardar en localStorage (key viejo, compatibilidad)
+    localStorage.setItem(VISUAL_PREFS_KEY, JSON.stringify(prefs));
+    
+    // Guardar en el state principal para que se sincronice con Supabase
+    const stateRaw = localStorage.getItem(STORAGE_KEY_GLOBAL);
+    if (stateRaw) {
+      const state = JSON.parse(stateRaw);
+      state.visualPrefs = prefs;
+      localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(state));
+      
+      // Forzar sync inmediato a Supabase
+      if (typeof saveToCloud === 'function' && currentUser) {
+        saveToCloud(state);
+      }
+    }
+  } catch(e) {
+    console.error('Error guardando preferencias visuales:', e);
+  }
+}
+
+function applyVisualPreferences() {
+  const prefs = loadVisualPreferences();
+  const html = document.documentElement;
+
+  // Limpiar clases viejas
+  html.classList.forEach(cls => {
+    if (cls.startsWith('color-') || cls.startsWith('density-')) {
+      html.classList.remove(cls);
+    }
+  });
+
+  // Aplicar tema de color
+  html.classList.add('color-' + (prefs.theme || 'default'));
+
+  // Aplicar densidad
+  html.classList.add('density-' + (prefs.density || 'normal'));
+
+  // Aplicar modo (claro/oscuro/auto)
+  html.classList.remove('theme-light', 'theme-dark');
+  if (prefs.mode === 'light') html.classList.add('theme-light');
+  else if (prefs.mode === 'dark') html.classList.add('theme-dark');
+  // 'auto' no agrega clase, deja que prefers-color-scheme actúe
+
+  // Actualizar UI de selectores
+  updateVisualSelectors(prefs);
+}
+
+function updateVisualSelectors(prefs) {
+  // Color
+  document.querySelectorAll('.color-option').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
+  });
+
+  // Modo
+  document.querySelectorAll('.theme-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === prefs.mode);
+  });
+
+  // Densidad
+  document.querySelectorAll('.density-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.density === prefs.density);
+  });
+}
+
+window.setColorTheme = function(theme) {
+  const prefs = loadVisualPreferences();
+  prefs.theme = theme;
+  saveVisualPreferences(prefs);
+  applyVisualPreferences();
+  
+  // Re-render charts si existen
+  if (typeof renderCharts === 'function') {
+    setTimeout(renderCharts, 100);
+  }
+  
+  toastSuccess('Tema actualizado', `Color "${getThemeName(theme)}" aplicado`);
+};
+
+window.setThemeMode = function(mode) {
+  const prefs = loadVisualPreferences();
+  prefs.mode = mode;
+  saveVisualPreferences(prefs);
+  applyVisualPreferences();
+  
+  // Re-render charts si existen
+  if (typeof renderCharts === 'function') {
+    setTimeout(renderCharts, 100);
+  }
+  
+  const names = { light: 'Claro', dark: 'Oscuro', auto: 'Automático' };
+  toastSuccess('Modo actualizado', `Modo ${names[mode]} aplicado`);
+};
+
+window.setDensity = function(density) {
+  const prefs = loadVisualPreferences();
+  prefs.density = density;
+  saveVisualPreferences(prefs);
+  applyVisualPreferences();
+  
+  const names = { compact: 'Compacto', normal: 'Normal', comfortable: 'Espacioso' };
+  toastSuccess('Densidad actualizada', `Vista ${names[density]} aplicada`);
+};
+
+window.resetVisualPreferences = async function() {
+  const confirmed = await showConfirm({
+    title: '¿Restablecer personalización?',
+    message: 'Volverá a los valores originales: color clásico, modo automático, densidad normal.',
+    confirmText: 'Sí, restablecer',
+    cancelText: 'Cancelar',
+    type: 'warning',
+    icon: '↺'
+  });
+  
+  if (!confirmed) return;
+
+  const defaultPrefs = { theme: 'default', mode: 'auto', density: 'normal' };
+  saveVisualPreferences(defaultPrefs);
+  applyVisualPreferences();
+  
+  if (typeof renderCharts === 'function') {
+    setTimeout(renderCharts, 100);
+  }
+  
+  toastSuccess('Restablecido', 'Tu dashboard volvió al diseño original');
+};
+
+function getThemeName(theme) {
+  const names = {
+    default: 'Clásico',
+    blue: 'Océano',
+    pink: 'Coral',
+    orange: 'Sunset',
+    green: 'Bosque',
+    purple: 'Royal',
+    rose: 'Lavanda',
+    mono: 'Monocromo'
+  };
+  return names[theme] || 'Clásico';
+}
+
+// Aplicar al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  applyVisualPreferences();
+});
+
+// También aplicar inmediatamente (antes del DOMContentLoaded)
+applyVisualPreferences();
+
+// Re-aplicar cuando cambia el tab a perfil (para sincronizar UI)
+document.addEventListener('DOMContentLoaded', () => {
+  const perfilTab = document.querySelector('.fin-tab[data-tab="perfil"]');
+  if (perfilTab) {
+    perfilTab.addEventListener('click', () => {
+      setTimeout(() => {
+        const prefs = loadVisualPreferences();
+        updateVisualSelectors(prefs);
+      }, 200);
+    });
+  }
+});
 
 // ============================================================
 // ONBOARDING INTERACTIVO - Tutorial multi-paso
