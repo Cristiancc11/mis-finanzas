@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -237,6 +237,25 @@
         <span class="side-menu-item-arrow">›</span>
       </button>
     </nav>
+
+    <!-- Sección de acciones rápidas -->
+    <div class="side-menu-actions">
+      <p class="side-menu-actions-title">⚡ Acciones rápidas</p>
+      <div class="side-menu-actions-grid">
+        <button class="side-menu-action" onclick="closeSideMenu(); toggleTheme();" title="Cambiar tema">
+          <span class="side-menu-action-icon">🌗</span>
+          <span class="side-menu-action-label">Tema</span>
+        </button>
+        <button class="side-menu-action" onclick="closeSideMenu(); exportData();" title="Exportar datos">
+          <span class="side-menu-action-icon">📥</span>
+          <span class="side-menu-action-label">Exportar</span>
+        </button>
+        <button class="side-menu-action" onclick="closeSideMenu(); importData();" title="Importar datos">
+          <span class="side-menu-action-icon">📤</span>
+          <span class="side-menu-action-label">Importar</span>
+        </button>
+      </div>
+    </div>
 
     <div class="side-menu-footer">
       <button class="side-menu-logout" onclick="closeSideMenu(); handleLogout();">
@@ -1075,6 +1094,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

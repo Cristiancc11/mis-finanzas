@@ -3411,3 +3411,96 @@ html.density-comfortable .net-worth-hero-value {
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
 }
+
+/* ========================================
+   SIDE MENU ACTIONS (acciones rápidas en drawer)
+   ======================================== */
+@media (max-width: 768px) {
+  .side-menu-actions {
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .side-menu-actions-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    margin: 0 0 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .side-menu-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .side-menu-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 6px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+
+  .side-menu-action:active {
+    transform: scale(0.96);
+    background: rgba(127, 119, 221, 0.1);
+  }
+
+  .side-menu-action-icon {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .side-menu-action-label {
+    font-size: 11px;
+    font-weight: 500;
+  }
+}
+
+/* En desktop, no mostrar las acciones del drawer */
+@media (min-width: 769px) {
+  .side-menu-actions {
+    display: none;
+  }
+}
+
+/* ========================================
+   HERO CONTROLS EN MÓVIL: solo lo esencial
+   ======================================== */
+@media (max-width: 768px) {
+  /* Ocultar botones duplicados del hero (ya están en drawer) */
+  .hero-controls #theme-toggle-btn,
+  .hero-controls button[onclick*="exportData"],
+  .hero-controls button[onclick*="importData"],
+  .hero-controls button[onclick*="migrateLocalData"],
+  .hero-controls button[onclick*="handleLogout"] {
+    display: none !important;
+  }
+
+  /* Reorganizar lo que queda */
+  .hero-controls {
+    margin-top: 12px !important;
+    gap: 8px !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Selector de moneda y reset visibles */
+  .hero-controls select,
+  .hero-controls .reset-btn {
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+  }
+}
