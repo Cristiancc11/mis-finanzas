@@ -3837,3 +3837,161 @@ html.density-comfortable .net-worth-hero-value {
   color: var(--accent-from, #7F77DD);
   transform: translateX(3px);
 }
+
+/* ========================================
+   EDITOR DE PRESUPUESTOS - Diseño compacto
+   ======================================== */
+
+#budget-edit {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  #budget-edit {
+    grid-template-columns: 1fr;
+  }
+}
+
+.budget-edit-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.budget-edit-item:hover {
+  border-color: var(--accent-from, #7F77DD);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(127, 119, 221, 0.08);
+}
+
+.budget-edit-item.has-budget {
+  background: linear-gradient(135deg, var(--bg-secondary), rgba(127, 119, 221, 0.05));
+}
+
+.budget-edit-item.no-budget {
+  opacity: 0.85;
+}
+
+.budget-edit-item.over-budget {
+  border-color: var(--danger-text);
+  background: linear-gradient(135deg, var(--bg-secondary), rgba(239, 68, 68, 0.05));
+}
+
+.budget-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.budget-edit-cat {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.budget-edit-status {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--bg-primary);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.budget-edit-item.over-budget .budget-edit-status {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.budget-edit-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.budget-edit-input {
+  flex: 1;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  min-height: 38px !important;
+}
+
+.budget-edit-input:focus {
+  border-color: var(--accent-from, #7F77DD) !important;
+  outline: none;
+}
+
+.budget-edit-input::placeholder {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.budget-edit-clear {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  background: var(--danger-bg) !important;
+  color: var(--danger-text) !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  flex-shrink: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.budget-edit-clear:hover {
+  background: var(--danger-text) !important;
+  color: white !important;
+  transform: scale(1.05);
+}
+
+/* Barra de progreso del item */
+.budget-edit-bar {
+  height: 4px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.budget-edit-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.budget-edit-fill.ok {
+  background: linear-gradient(90deg, var(--success-text), var(--success-text));
+}
+
+.budget-edit-fill.warn {
+  background: linear-gradient(90deg, var(--warning-text), #f59e0b);
+}
+
+.budget-edit-fill.over {
+  background: linear-gradient(90deg, var(--danger-text), #dc2626);
+}

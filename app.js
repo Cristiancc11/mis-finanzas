@@ -6549,11 +6549,16 @@ async function buildAnnualPDF(state, year) {
         <div style="text-align: right; font-weight: 500;" class="${hasBudget && av < 0 ? 'balance-negative' : (hasBudget ? 'balance-positive' : '')}">${hasBudget ? fmt(av) : '—'}</div>
       </div>`;
 
-      editHtml += `<div class="form-row-budget">
-        <span style="font-size: 13px;">${cat.icon} ${cat.label}</span>
-        <input type="number" value="${bg}" min="0" step="1000" onchange="updateBudget('${cat.id}', this.value)" placeholder="Sin límite (0)" />
-        <span style="font-size: 11px; color: var(--text-secondary);">${sp > 0 ? 'Gastado: ' + fmt(sp) : 'Sin gastos'}</span>
-        <button onclick="updateBudget('${cat.id}', 0)" style="font-size: 11px !important; padding: 4px 10px !important;" title="Quitar límite">×</button>
+      editHtml += `<div class="budget-edit-item ${hasBudget ? 'has-budget' : 'no-budget'} ${cls === 'over' ? 'over-budget' : ''}">
+        <div class="budget-edit-header">
+          <span class="budget-edit-cat">${cat.icon} ${cat.label}</span>
+          <span class="budget-edit-status">${sp > 0 ? fmt(sp) : '—'}</span>
+        </div>
+        <div class="budget-edit-input-row">
+          <input type="number" value="${bg || ''}" min="0" step="1000" onchange="updateBudget('${cat.id}', this.value)" placeholder="Sin límite" class="budget-edit-input" />
+          ${hasBudget ? `<button onclick="updateBudget('${cat.id}', 0)" class="budget-edit-clear" title="Quitar límite">✕</button>` : ''}
+        </div>
+        ${hasBudget ? `<div class="budget-edit-bar"><div class="budget-edit-fill ${cls}" style="width: ${Math.min(100, pct)}%"></div></div>` : ''}
       </div>`;
     });
 
