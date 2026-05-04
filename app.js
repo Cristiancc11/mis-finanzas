@@ -83,15 +83,16 @@ function hideAuthScreen() {
 function hideLoadingScreen() {
   const el = document.getElementById('loading-screen');
   if (!el) return;
-  // Forzar oculto inmediato si ya estaba oculto
-  if (el.style.display === 'none') return;
-  // Fade out animado
-  el.style.transition = 'opacity 0.4s ease, visibility 0.4s';
-  el.style.opacity = '0';
-  el.style.pointerEvents = 'none';
-  setTimeout(() => {
-    el.style.display = 'none';
-  }, 400);
+  // Forzar oculto con todos los métodos posibles
+  el.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important;';
+  el.setAttribute('hidden', 'true');
+  // Remover del DOM por si hay z-index conflict
+  try {
+    if (el.parentNode) el.parentNode.removeChild(el);
+  } catch(e) {
+    console.warn('No se pudo remover loading screen del DOM:', e);
+  }
+  console.log('🎯 Loading screen oculto');
 }
 
 function switchAuthTab(mode) {
