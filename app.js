@@ -421,6 +421,24 @@ async function handleForgotPassword() {
 
 window.handleForgotPassword = handleForgotPassword;
 
+// ============================================================
+// QUICK ADD GASTO (FAB - Floating Action Button)
+// ============================================================
+window.openQuickAddGasto = function() {
+  // Cambiar a la pestaña de Presupuesto y hacer focus en el input
+  const tab = document.querySelector('[data-tab="presupuesto"]');
+  if (tab) tab.click();
+
+  // Esperar un momento y hacer scroll + focus
+  setTimeout(() => {
+    const input = document.getElementById('tx-desc');
+    if (input) {
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => input.focus(), 400);
+    }
+  }, 200);
+};
+
 // Detectar si el usuario llegó de un link de recuperación
 async function checkPasswordRecoveryFlow() {
   // Supabase incluye el token en el hash URL después de un reset
@@ -1186,6 +1204,31 @@ window.toastInfo = (title, message, duration) => showToast({ type: 'info', title
 // SISTEMA DE MODALES BONITOS (reemplaza confirm/alert/prompt feos)
 // ============================================================
 
+// ===== HELPER: Bloquear/desbloquear scroll del body =====
+let modalCount = 0;
+let savedScrollPos = 0;
+
+function lockBody() {
+  modalCount++;
+  if (modalCount === 1) {
+    savedScrollPos = window.scrollY;
+    document.body.style.top = `-${savedScrollPos}px`;
+    document.body.classList.add('modal-open');
+  }
+}
+
+function unlockBody() {
+  modalCount = Math.max(0, modalCount - 1);
+  if (modalCount === 0) {
+    document.body.classList.remove('modal-open');
+    document.body.style.top = '';
+    window.scrollTo(0, savedScrollPos);
+  }
+}
+
+window.lockBody = lockBody;
+window.unlockBody = unlockBody;
+
 /**
  * Muestra un modal de confirmación bonito
  * @returns {Promise<boolean>} true si confirma, false si cancela
@@ -1241,11 +1284,15 @@ window.showConfirm = function(opts) {
     `;
 
     document.body.appendChild(modal);
+    lockBody();
 
     const close = (value) => {
       modal.style.opacity = '0';
       modal.style.transition = 'opacity 0.2s';
-      setTimeout(() => modal.remove(), 200);
+      setTimeout(() => {
+        modal.remove();
+        unlockBody();
+      }, 200);
       resolve(value);
     };
 
@@ -1311,13 +1358,17 @@ window.showPrompt = function(opts) {
     `;
 
     document.body.appendChild(modal);
+    lockBody();
     const input = document.getElementById(`${id}-input`);
     setTimeout(() => input.focus(), 100);
 
     const close = (value) => {
       modal.style.opacity = '0';
       modal.style.transition = 'opacity 0.2s';
-      setTimeout(() => modal.remove(), 200);
+      setTimeout(() => {
+        modal.remove();
+        unlockBody();
+      }, 200);
       resolve(value);
     };
 
@@ -1407,6 +1458,7 @@ function showWelcomeTutorial() {
     `;
 
     document.body.appendChild(modal);
+    lockBody();
   } catch(e) {
     console.error('Error mostrando tutorial:', e);
   }
@@ -1414,7 +1466,10 @@ function showWelcomeTutorial() {
 
 window.dismissWelcomeTutorial = function() {
   const modal = document.getElementById('welcome-tutorial');
-  if (modal) modal.remove();
+  if (modal) {
+    modal.remove();
+    unlockBody();
+  }
 
   // Marcar como ya visto
   try {
@@ -4215,6 +4270,7 @@ async function buildAnnualPDF(state, year) {
     `;
 
     document.body.appendChild(modal);
+    lockBody();
     renderIncomeTypesList();
   };
 
@@ -4245,7 +4301,10 @@ async function buildAnnualPDF(state, year) {
 
   window.closeIncomeTypesManager = function() {
     const modal = document.getElementById('income-types-modal');
-    if (modal) modal.remove();
+    if (modal) {
+      modal.remove();
+      unlockBody();
+    }
   };
 
   window.addCustomIncomeType = function() {
@@ -4402,6 +4461,7 @@ async function buildAnnualPDF(state, year) {
     `;
 
     document.body.appendChild(modal);
+    lockBody();
     renderCategoriesList();
   };
 
@@ -4433,7 +4493,10 @@ async function buildAnnualPDF(state, year) {
 
   window.closeCategoriesManager = function() {
     const modal = document.getElementById('categories-modal');
-    if (modal) modal.remove();
+    if (modal) {
+      modal.remove();
+      unlockBody();
+    }
   };
 
   window.addCustomCategory = function() {
@@ -4594,6 +4657,7 @@ async function buildAnnualPDF(state, year) {
     `;
 
     document.body.appendChild(modal);
+    lockBody();
     renderPaymentMethodsList();
   };
 
@@ -4624,7 +4688,10 @@ async function buildAnnualPDF(state, year) {
 
   window.closePaymentMethodsManager = function() {
     const modal = document.getElementById('payment-methods-modal');
-    if (modal) modal.remove();
+    if (modal) {
+      modal.remove();
+      unlockBody();
+    }
   };
 
   window.addCustomPaymentMethod = function() {
