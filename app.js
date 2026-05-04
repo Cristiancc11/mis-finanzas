@@ -281,12 +281,31 @@ async function loadFromCloud() {
   }
   isLoadingFromCloud = false;
   
-  // IMPORTANTE: refrescar el estado en la pantalla después de cargar datos de la nube
+  // Forzar refresh del estado en pantalla
+  console.log('🔄 Refrescando interfaz...');
   if (typeof window.loadState === 'function') {
     try {
       window.loadState();
+      console.log('✅ Interfaz actualizada');
+      hideLoadingScreen();
+      sessionStorage.removeItem('reload_attempted'); // Limpiar flag al cargar OK
     } catch(e) {
-      console.error('Error en loadState:', e);
+      console.error('❌ Error en loadState:', e);
+      hideLoadingScreen();
+      // Si falla, recargar la página solo si no se ha intentado ya
+      if (!sessionStorage.getItem('reload_attempted')) {
+        sessionStorage.setItem('reload_attempted', '1');
+        console.log('🔄 Recargando página por seguridad...');
+        setTimeout(() => location.reload(), 500);
+      }
+    }
+  } else {
+    console.warn('⚠️ window.loadState no disponible');
+    hideLoadingScreen();
+    if (!sessionStorage.getItem('reload_attempted')) {
+      sessionStorage.setItem('reload_attempted', '1');
+      console.log('🔄 Recargando página por seguridad...');
+      setTimeout(() => location.reload(), 500);
     }
   }
 }
