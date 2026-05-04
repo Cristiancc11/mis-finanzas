@@ -913,3 +913,751 @@
       50% { transform: scale(1.05); opacity: 0.8; }
     }
   
+/* ============================================================
+   MEJORAS MÓVILES - VISTA OPTIMIZADA PARA CELULAR
+   ============================================================ */
+
+/* Variables para safe area (iPhones con notch) */
+@supports (padding: max(0px)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 768px) {
+  
+  /* ========================================
+     LAYOUT GENERAL MÓVIL
+     ======================================== */
+  body {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+  
+  /* Container principal con menos padding */
+  .fin-container {
+    padding: 12px !important;
+  }
+  
+  /* ========================================
+     HERO COMPACTO EN MÓVIL
+     ======================================== */
+  .hero-banner {
+    padding: 16px 16px !important;
+    border-radius: 16px;
+    margin-bottom: 12px !important;
+  }
+  
+  .hero-content {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  
+  .hero-title {
+    font-size: 20px !important;
+  }
+  
+  .hero-subtitle {
+    font-size: 12px !important;
+  }
+  
+  .hero-icon-container {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  
+  .hero-logo {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .hero-badge {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+  }
+  
+  /* Hero controls (botones de exportar, importar, salir) */
+  .hero-controls {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    width: 100%;
+  }
+  
+  .hero-controls button,
+  .hero-controls select {
+    font-size: 11px !important;
+    padding: 8px 10px !important;
+    min-height: 36px;
+  }
+  
+  /* Decoración del hero más sutil en móvil */
+  .hero-banner::before {
+    opacity: 0.03 !important;
+    font-size: 60px !important;
+  }
+  
+  /* ========================================
+     BOTTOM NAVIGATION (TABS FIJOS ABAJO)
+     ======================================== */
+  .fin-tabs {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border);
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px)) 4px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    z-index: 100;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  
+  .fin-tabs::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+  
+  /* Tabs como íconos en móvil */
+  .fin-tab {
+    flex: 0 0 auto !important;
+    min-width: 72px !important;
+    padding: 8px 6px !important;
+    font-size: 10px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    border: none !important;
+    transition: all 0.2s ease;
+    line-height: 1.2;
+  }
+  
+  .fin-tab.active {
+    background: linear-gradient(135deg, rgba(127, 119, 221, 0.15), rgba(29, 158, 117, 0.15)) !important;
+    color: var(--info-text) !important;
+    transform: scale(1.05);
+  }
+  
+  .fin-tab:active {
+    transform: scale(0.95);
+  }
+  
+  /* ========================================
+     CARDS Y FORMULARIOS MÓVIL
+     ======================================== */
+  .raised-card {
+    padding: 14px !important;
+    margin-bottom: 12px !important;
+    border-radius: 14px;
+  }
+  
+  .card-title {
+    font-size: 14px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Formularios stack vertical en móvil */
+  .quick-add,
+  .form-row-3,
+  .form-row-debt,
+  .form-row-goal,
+  .form-row-pocket,
+  .form-row-budget {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  
+  /* Inputs más grandes para tocar */
+  input, select, textarea {
+    min-height: 44px !important;
+    font-size: 16px !important; /* Evita zoom en iOS */
+    padding: 10px 14px !important;
+  }
+  
+  /* Botones más grandes */
+  button {
+    min-height: 44px;
+    font-size: 14px !important;
+  }
+  
+  /* Botones pequeños no pueden ser tan pequeños en móvil */
+  button[style*="font-size: 11px"],
+  button[style*="font-size: 12px"] {
+    min-height: 36px !important;
+  }
+  
+  /* ========================================
+     MÉTRICAS DEL RESUMEN
+     ======================================== */
+  .hero-metrics {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  
+  .metric-hero {
+    padding: 14px !important;
+  }
+  
+  .metric-label {
+    font-size: 11px !important;
+  }
+  
+  .metric-value {
+    font-size: 20px !important;
+  }
+  
+  .metric-sub {
+    font-size: 10px !important;
+  }
+  
+  /* Gráficos más altos en móvil */
+  canvas#chart-pockets,
+  canvas#chart-comparison {
+    max-height: 250px !important;
+  }
+  
+  /* ========================================
+     LISTA DE TRANSACCIONES MÓVIL
+     ======================================== */
+  .tx-row {
+    grid-template-columns: 1fr auto auto !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    font-size: 12px !important;
+  }
+  
+  .tx-date {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    font-size: 10px !important;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+  
+  /* ========================================
+     ALERTAS MÓVIL
+     ======================================== */
+  .alert {
+    padding: 12px 36px 12px 14px !important;
+    font-size: 12px !important;
+  }
+  
+  /* ========================================
+     BOLSILLOS MÓVIL
+     ======================================== */
+  .pocket-item {
+    flex-direction: column;
+    align-items: stretch !important;
+    padding: 12px !important;
+  }
+  
+  /* ========================================
+     TARJETAS DE CRÉDITO VISUALES
+     ======================================== */
+  .credit-card-visual {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 180px !important;
+  }
+  
+  /* ========================================
+     MODALES OPTIMIZADOS PARA MÓVIL
+     ======================================== */
+  [id$="-modal"] > div {
+    max-width: 100% !important;
+    margin: 10px !important;
+    padding: 20px !important;
+    max-height: 85vh !important;
+  }
+  
+  /* ========================================
+     TOASTS MÓVIL
+     ======================================== */
+  #toast-container {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important; /* Sobre el bottom nav */
+    right: 12px !important;
+    left: 12px !important;
+  }
+  
+  .toast {
+    min-width: auto !important;
+    max-width: 100% !important;
+    padding: 12px 14px !important;
+  }
+  
+  .toast-title {
+    font-size: 13px !important;
+  }
+  
+  .toast-message {
+    font-size: 12px !important;
+  }
+  
+  /* ========================================
+     BUDGET ROWS
+     ======================================== */
+  .budget-row {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+    padding: 12px !important;
+  }
+  
+  .budget-bar-cell {
+    grid-column: 1 / -1;
+  }
+  
+  /* ========================================
+     TABLA DE PRESUPUESTO HEADER
+     ======================================== */
+  .budget-header {
+    display: none !important; /* Ocultar headers en móvil */
+  }
+  
+  /* ========================================
+     ICONO DEL HERO BG
+     ======================================== */
+  .hero-decorations {
+    display: none !important;
+  }
+  
+  /* ========================================
+     SCROLLBAR THIN EN MÓVIL
+     ======================================== */
+  ::-webkit-scrollbar {
+    width: 0px !important;
+  }
+}
+
+/* ============================================================
+   PANTALLAS MUY PEQUEÑAS (iPhone SE, etc.)
+   ============================================================ */
+@media (max-width: 380px) {
+  .fin-tab {
+    min-width: 64px !important;
+    font-size: 9px !important;
+  }
+  
+  .hero-title {
+    font-size: 18px !important;
+  }
+  
+  .metric-value {
+    font-size: 18px !important;
+  }
+  
+  .raised-card {
+    padding: 12px !important;
+  }
+}
+
+/* ============================================================
+   TABLET (entre móvil y desktop)
+   ============================================================ */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .hero-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .hero-title {
+    font-size: 24px;
+  }
+}
+
+/* ============================================================
+   FAB (FLOATING ACTION BUTTON) PARA AGREGAR RÁPIDO
+   ============================================================ */
+.fab {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7F77DD, #1D9E75);
+  color: white;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(127, 119, 221, 0.4);
+  z-index: 99;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.fab:active {
+  transform: scale(0.92);
+}
+
+.fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 32px rgba(127, 119, 221, 0.5);
+}
+
+@media (max-width: 768px) {
+  .fab {
+    display: flex;
+  }
+}
+
+/* ============================================================
+   TOUCH FEEDBACK SUTIL
+   ============================================================ */
+@media (max-width: 768px) {
+  button:active,
+  .fin-tab:active,
+  .raised-card:active {
+    opacity: 0.8;
+    transition: opacity 0.1s;
+  }
+  
+  /* Quitar hover effects en móvil (causan problemas) */
+  button:hover,
+  .raised-card:hover {
+    transform: none !important;
+  }
+}
+
+/* ============================================================
+   TAB ICONS Y LABELS (responsive)
+   ============================================================ */
+.tab-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.tab-label {
+  font-size: inherit;
+}
+
+/* En desktop: emoji y texto en línea */
+@media (min-width: 769px) {
+  .tab-icon {
+    margin-right: 6px;
+  }
+}
+
+/* En móvil: emoji arriba, texto abajo (como app nativa) */
+@media (max-width: 768px) {
+  .fin-tab {
+    flex-direction: column !important;
+    gap: 3px !important;
+  }
+  .tab-icon {
+    font-size: 22px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+  }
+  .tab-label {
+    font-size: 10px !important;
+    font-weight: 500;
+  }
+}
+
+/* ========================================
+   MEJORAS MÓVIL AVANZADAS (V2)
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Body con espaciado mejor */
+  body {
+    padding: 12px !important;
+    padding-bottom: 100px !important; /* Espacio para bottom nav */
+  }
+
+  /* Hero más compacto en móvil */
+  .hero-section,
+  [style*="background: linear-gradient(135deg, #7F77DD"][style*="border-radius"] {
+    padding: 20px 18px !important;
+  }
+  .hero-title {
+    font-size: 22px !important;
+    margin-bottom: 2px !important;
+  }
+  .hero-subtitle {
+    font-size: 12px !important;
+  }
+  .hero-badge {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    margin-bottom: 8px !important;
+  }
+  .hero-tagline {
+    display: none;
+  }
+
+  /* Logo más pequeño */
+  .hero-section img,
+  .hero-section svg {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  /* Hero controls compactos */
+  .hero-controls {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .hero-controls .btn-icon {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+  .hero-controls select {
+    font-size: 12px !important;
+    padding: 6px 8px !important;
+    height: 34px !important;
+  }
+
+  /* TABS COMO APP NATIVA - BOTTOM NAVIGATION */
+  .fin-tabs {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: var(--bg-primary) !important;
+    border-top: 1px solid var(--border) !important;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08) !important;
+    padding: 6px 4px !important;
+    margin: 0 !important;
+    z-index: 100 !important;
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 0 !important;
+    gap: 0 !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+  }
+
+  .fin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .fin-tab {
+    flex-shrink: 0 !important;
+    flex: 1 1 auto !important;
+    min-width: 64px !important;
+    padding: 8px 6px !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 10px !important;
+    margin: 2px !important;
+    transition: all 0.2s !important;
+  }
+
+  .fin-tab.active {
+    background: linear-gradient(135deg, rgba(127, 119, 221, 0.15), rgba(29, 158, 117, 0.15)) !important;
+    color: var(--text-primary) !important;
+  }
+
+  .fin-tab .tab-icon {
+    font-size: 20px !important;
+  }
+
+  .fin-tab .tab-label {
+    font-size: 9px !important;
+    font-weight: 500 !important;
+    margin-top: 2px;
+  }
+
+  /* Cards con menos padding en móvil */
+  .raised-card,
+  .metric-card,
+  [class*="raised-card"] {
+    padding: 14px !important;
+    margin-bottom: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Métricas más legibles */
+  .metric-value {
+    font-size: 22px !important;
+  }
+  .metric-label {
+    font-size: 11px !important;
+  }
+
+  /* Card title compacto */
+  .card-title {
+    font-size: 13px !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* Inputs más grandes para tocar fácil */
+  input, select, textarea {
+    font-size: 16px !important; /* iOS no hace zoom si es 16px+ */
+    padding: 10px 12px !important;
+    min-height: 44px !important; /* Apple HIG */
+  }
+
+  /* Botones más grandes */
+  button {
+    min-height: 40px !important;
+    font-size: 14px !important;
+  }
+
+  button.btn-icon {
+    min-height: 36px !important;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Botones primarios (gradientes) */
+  button[style*="linear-gradient"] {
+    min-height: 48px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Botones × eliminar más fáciles de tocar */
+  .delete-btn {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 18px !important;
+  }
+
+  /* Forms en columna en móvil */
+  .quick-add,
+  .form-row-3,
+  .form-row-debt,
+  .form-row-goal,
+  .form-row-pocket {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Quick-add: el botón ocupa todo el ancho */
+  .quick-add button {
+    width: 100% !important;
+  }
+
+  /* TX rows más legibles */
+  .tx-row {
+    grid-template-columns: 1fr auto !important;
+    gap: 6px !important;
+    padding: 12px !important;
+  }
+  .tx-date {
+    font-size: 11px !important;
+  }
+
+  /* Summary rows más espaciados */
+  .summary-row {
+    padding: 10px 4px !important;
+    font-size: 13px !important;
+  }
+
+  /* Modales: ocupan más pantalla */
+  [id$="-modal"] > div {
+    max-width: calc(100vw - 24px) !important;
+    padding: 20px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Toasts mobile */
+  .toast {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 12px 14px !important;
+    font-size: 13px !important;
+  }
+
+  /* Notification panel compacto */
+  #notifications-panel {
+    top: 10px !important;
+    right: 10px !important;
+    left: 10px !important;
+    width: auto !important;
+  }
+
+  /* Charts más pequeños */
+  canvas {
+    max-height: 240px !important;
+  }
+
+  /* Score crediticio responsive */
+  .credit-bar-container {
+    height: 14px !important;
+  }
+
+  /* Tabla responsive */
+  table {
+    font-size: 12px !important;
+  }
+
+  /* Eliminar tabs scroll lateral si hay muchos */
+  .fin-tabs::after {
+    content: '';
+    flex-shrink: 0;
+    width: 4px;
+  }
+
+  /* Footer compacto */
+  footer, [class*="footer"] {
+    padding: 14px !important;
+    font-size: 11px !important;
+    margin-bottom: 70px !important; /* Para no chocar con bottom nav */
+  }
+
+  /* Filtros de transacciones */
+  #tx-filters-bar {
+    padding: 10px !important;
+  }
+
+  /* Ajuste especial para iPhone con notch */
+  @supports (padding: max(0px)) {
+    .fin-tabs {
+      padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
+    }
+    body {
+      padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))) !important;
+    }
+  }
+}
+
+/* Móvil pequeño (iPhone SE, etc.) */
+@media (max-width: 380px) {
+  body {
+    padding: 8px !important;
+  }
+  .hero-title {
+    font-size: 19px !important;
+  }
+  .metric-value {
+    font-size: 20px !important;
+  }
+  .fin-tab .tab-label {
+    font-size: 8px !important;
+  }
+  .fin-tab .tab-icon {
+    font-size: 18px !important;
+  }
+}
+
+/* Mejoras táctiles en touch devices */
+@media (hover: none) and (pointer: coarse) {
+  /* Quitar hover effects que se quedan pegados */
+  button:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  /* Activar tap feedback */
+  button:active {
+    transform: scale(0.97) !important;
+    opacity: 0.85 !important;
+  }
+  /* Cards también tienen feedback */
+  .raised-card:active {
+    transform: scale(0.99) !important;
+  }
+}
