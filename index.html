@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=4">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -169,14 +169,25 @@
   <!-- DRAWER LATERAL -->
   <aside id="side-menu" class="side-menu" aria-label="Menú principal">
     <div class="side-menu-header">
-      <div class="side-menu-logo">
-        <div class="side-menu-logo-icon">💎</div>
-        <div>
-          <h2 class="side-menu-logo-text"><span class="logo-text">FinanzasPro</span></h2>
-          <p class="side-menu-logo-subtitle">Tu dashboard personal</p>
+      <button class="side-menu-close" onclick="closeSideMenu()" aria-label="Cerrar menú">×</button>
+
+      <!-- Avatar y datos del usuario -->
+      <div class="side-menu-user" onclick="navigateTab('perfil')">
+        <div class="side-menu-avatar" id="side-menu-avatar">
+          <span id="side-menu-avatar-initials">U</span>
+        </div>
+        <div class="side-menu-user-info">
+          <h2 class="side-menu-user-name" id="side-menu-user-name">Usuario</h2>
+          <p class="side-menu-user-email" id="side-menu-user-email">cargando...</p>
+          <p class="side-menu-user-link">Ver mi perfil ›</p>
         </div>
       </div>
-      <button class="side-menu-close" onclick="closeSideMenu()" aria-label="Cerrar menú">×</button>
+
+      <!-- Branding sutil -->
+      <div class="side-menu-brand">
+        <span class="side-menu-brand-icon">💎</span>
+        <span class="side-menu-brand-text"><span class="logo-text">FinanzasPro</span></span>
+      </div>
     </div>
 
     <nav class="side-menu-nav">
@@ -898,6 +909,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
