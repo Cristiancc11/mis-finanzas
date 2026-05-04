@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=11">
+<link rel="stylesheet" href="styles.css?v=12">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -436,61 +436,112 @@
   </div>
 
   <div class="fin-section" id="section-presupuesto">
-    <div class="insight-box">
-      <strong>Cómo funciona:</strong> Define un presupuesto mensual por categoría, registra cada gasto cuando ocurra, y verás cuánto te queda disponible en tiempo real. Cambia de mes en el selector para ver historial.
-    </div>
+    <!-- Selector de mes -->
     <div class="month-selector">
       <label style="font-size: 13px; color: var(--text-secondary);">Mes:</label>
       <select id="month-select"></select>
     </div>
+
+    <!-- Resumen del mes (siempre visible) -->
     <div id="budget-summary"></div>
-    <div class="raised-card">
-      <p class="card-title">Presupuesto vs gasto real por categoría</p>
-      <div class="budget-row header">
-        <div>Categoría</div><div>Presupuesto</div><div>Gastado</div><div style="text-align: right;">Disponible</div>
-      </div>
-      <div id="budget-list"></div>
-      <div class="summary-row" style="margin-top: 12px;"><span style="font-weight: 500;">Total presupuestado</span><span id="budget-total" style="font-weight: 500;">—</span></div>
-      <div class="summary-row"><span style="font-weight: 500;">Total gastado</span><span id="budget-spent-total" style="font-weight: 500; color: var(--danger-text);">—</span></div>
-      <div class="summary-row"><span style="font-weight: 500;">Disponible restante</span><span id="budget-available-total" style="font-weight: 500;">—</span></div>
+
+    <!-- Sub-tabs de Presupuesto -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-subtab="movimientos" onclick="switchSubTab('movimientos')">
+        <span class="sub-tab-icon">📝</span>
+        <span class="sub-tab-text">Movimientos</span>
+      </button>
+      <button class="sub-tab" data-subtab="categorias" onclick="switchSubTab('categorias')">
+        <span class="sub-tab-icon">📊</span>
+        <span class="sub-tab-text">Categorías</span>
+      </button>
+      <button class="sub-tab" data-subtab="config" onclick="switchSubTab('config')">
+        <span class="sub-tab-icon">⚙️</span>
+        <span class="sub-tab-text">Configurar</span>
+      </button>
     </div>
-    <div class="raised-card">
-      <p class="card-title">Registrar gasto</p>
-      <div class="quick-add">
-        <input type="text" id="tx-desc" placeholder="¿En qué gastaste?" />
-        <input type="number" id="tx-amount" placeholder="Monto" min="0" step="0.01" />
-        <select id="tx-category"></select>
-        <button onclick="addTransaction()">Agregar</button>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; align-items: center;">
-        <select id="tx-payment-method"></select>
-        <select id="tx-card" style="display: none;">
-          <option value="">Selecciona tarjeta</option>
-        </select>
-        <input type="date" id="tx-date" />
-      </div>
-      <div id="tx-pocket-row" style="display: none; margin-top: 8px;">
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
-          <select id="tx-pocket">
-            <option value="">¿De qué bolsillo salió?</option>
-          </select>
-          <span style="font-size: 11px; color: var(--text-tertiary);">Se descontará automáticamente</span>
+
+    <!-- TAB: MOVIMIENTOS -->
+    <div class="sub-section active" id="subsection-movimientos">
+      <div class="raised-card">
+        <p class="card-title">➕ Registrar gasto</p>
+        <div class="quick-add">
+          <input type="text" id="tx-desc" placeholder="¿En qué gastaste?" />
+          <input type="number" id="tx-amount" placeholder="Monto" min="0" step="0.01" />
+          <select id="tx-category"></select>
+          <button onclick="addTransaction()">Agregar</button>
         </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; align-items: center;">
+          <select id="tx-payment-method"></select>
+          <select id="tx-card" style="display: none;">
+            <option value="">Selecciona tarjeta</option>
+          </select>
+          <input type="date" id="tx-date" />
+        </div>
+        <div id="tx-pocket-row" style="display: none; margin-top: 8px;">
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
+            <select id="tx-pocket">
+              <option value="">¿De qué bolsillo salió?</option>
+            </select>
+            <span style="font-size: 11px; color: var(--text-tertiary);">Se descontará automáticamente</span>
+          </div>
+        </div>
+        <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
       </div>
-      <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
-      <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-        <button onclick="openCategoriesManager()" style="font-size: 11px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">⚙️ Categorías</button>
-        <button onclick="openPaymentMethodsManager()" style="font-size: 11px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">⚙️ Métodos de pago</button>
+
+      <div class="raised-card">
+        <p class="card-title">📋 Movimientos del mes</p>
+        <div id="tx-list"></div>
       </div>
     </div>
-    <div class="raised-card">
-      <p class="card-title">Movimientos del mes</p>
-      <div id="tx-list"></div>
+
+    <!-- TAB: CATEGORÍAS (presupuesto vs gasto) -->
+    <div class="sub-section" id="subsection-categorias" style="display: none;">
+      <div class="raised-card">
+        <p class="card-title">📊 Presupuesto vs gasto real</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Mira cuánto presupuestaste vs lo que gastaste por categoría</p>
+        <div class="budget-row header">
+          <div>Categoría</div><div>Presupuesto</div><div>Gastado</div><div style="text-align: right;">Disponible</div>
+        </div>
+        <div id="budget-list"></div>
+        <div class="summary-row" style="margin-top: 12px;"><span style="font-weight: 500;">Total presupuestado</span><span id="budget-total" style="font-weight: 500;">—</span></div>
+        <div class="summary-row"><span style="font-weight: 500;">Total gastado</span><span id="budget-spent-total" style="font-weight: 500; color: var(--danger-text);">—</span></div>
+        <div class="summary-row"><span style="font-weight: 500;">Disponible restante</span><span id="budget-available-total" style="font-weight: 500;">—</span></div>
+      </div>
+
+      <div class="raised-card">
+        <p class="card-title">✏️ Editar presupuestos</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Define un límite máximo por categoría (opcional). Deja en 0 para solo hacer seguimiento sin alertas.</p>
+        <div id="budget-edit"></div>
+      </div>
     </div>
-    <div class="raised-card">
-      <p class="card-title">Editar presupuestos</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Define un límite máximo por categoría (opcional). Deja en 0 para solo hacer seguimiento sin alertas.</p>
-      <div id="budget-edit"></div>
+
+    <!-- TAB: CONFIGURACIÓN -->
+    <div class="sub-section" id="subsection-config" style="display: none;">
+      <div class="info-banner">
+        <strong>💡 ¿Cómo funciona?</strong>
+        <p style="margin: 6px 0 0; font-size: 13px;">Define un presupuesto mensual por categoría, registra cada gasto cuando ocurra, y verás cuánto te queda disponible en tiempo real. Cambia de mes en el selector para ver historial.</p>
+      </div>
+
+      <div class="raised-card">
+        <p class="card-title">⚙️ Categorías de gastos</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Agrega, edita o elimina categorías personalizadas</p>
+        <button onclick="openCategoriesManager()" class="config-btn">
+          <span style="font-size: 18px;">🏷️</span>
+          <span>Gestionar categorías</span>
+          <span class="config-btn-arrow">›</span>
+        </button>
+      </div>
+
+      <div class="raised-card">
+        <p class="card-title">💳 Métodos de pago</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Personaliza tus métodos de pago (Nequi, Daviplata, Tarjeta, etc.)</p>
+        <button onclick="openPaymentMethodsManager()" class="config-btn">
+          <span style="font-size: 18px;">💵</span>
+          <span>Gestionar métodos de pago</span>
+          <span class="config-btn-arrow">›</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1067,6 +1118,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

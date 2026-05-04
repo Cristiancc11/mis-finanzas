@@ -3706,3 +3706,134 @@ html.density-comfortable .net-worth-hero-value {
     font-size: 12px;
   }
 }
+
+/* ========================================
+   SUB-TABS (dentro de Presupuesto)
+   ======================================== */
+
+.sub-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.sub-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.sub-tab:hover {
+  color: var(--text-primary);
+}
+
+.sub-tab.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+}
+
+.sub-tab-icon {
+  font-size: 16px;
+}
+
+/* En móvil: solo iconos si no caben */
+@media (max-width: 480px) {
+  .sub-tab-text {
+    font-size: 12px;
+  }
+  .sub-tab {
+    padding: 10px 4px;
+    gap: 4px;
+  }
+}
+
+/* Sección activa con animación */
+.sub-section {
+  animation: fadeIn 0.3s ease;
+}
+
+/* ========================================
+   INFO BANNER (insight box mejorado)
+   ======================================== */
+
+.info-banner {
+  background: linear-gradient(135deg, var(--info-bg), rgba(127, 119, 221, 0.08));
+  border-left: 3px solid var(--info-text);
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.info-banner strong {
+  color: var(--info-text);
+}
+
+.info-banner p {
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   CONFIG BUTTONS (botones de configuración)
+   ======================================== */
+
+.config-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  cursor: pointer;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  transition: all 0.2s;
+  text-align: left;
+  font-family: inherit;
+}
+
+.config-btn:hover {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--accent-from, #7F77DD) !important;
+  transform: translateX(2px);
+}
+
+.config-btn:active {
+  transform: scale(0.98);
+}
+
+.config-btn-arrow {
+  margin-left: auto;
+  color: var(--text-tertiary);
+  font-size: 18px;
+  transition: transform 0.2s;
+}
+
+.config-btn:hover .config-btn-arrow {
+  color: var(--accent-from, #7F77DD);
+  transform: translateX(3px);
+}

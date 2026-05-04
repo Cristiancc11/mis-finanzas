@@ -1491,6 +1491,43 @@ function updateFabVisibility(tabName) {
 
 window.updateFabVisibility = updateFabVisibility;
 
+// ============================================================
+// SUB-TABS dentro de Presupuesto
+// ============================================================
+window.switchSubTab = function(subtab) {
+  // Activar el sub-tab clickeado
+  document.querySelectorAll('.sub-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.subtab === subtab);
+  });
+
+  // Mostrar la sub-sección correspondiente
+  document.querySelectorAll('.sub-section').forEach(section => {
+    const id = section.id.replace('subsection-', '');
+    if (id === subtab) {
+      section.style.display = 'block';
+      section.classList.add('active');
+    } else {
+      section.style.display = 'none';
+      section.classList.remove('active');
+    }
+  });
+
+  // Guardar preferencia
+  try {
+    localStorage.setItem('finanzaspro_last_subtab_presupuesto', subtab);
+  } catch(e) {}
+};
+
+// Restaurar último sub-tab al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const lastSubtab = localStorage.getItem('finanzaspro_last_subtab_presupuesto');
+    if (lastSubtab) {
+      setTimeout(() => switchSubTab(lastSubtab), 500);
+    }
+  } catch(e) {}
+});
+
 // También sincronizar cuando se hace click directo en una tab desktop
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.fin-tab').forEach(tab => {
