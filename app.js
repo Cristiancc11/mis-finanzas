@@ -5947,8 +5947,18 @@ async function buildAnnualPDF(state, year) {
     const c1 = document.getElementById('chart-pockets');
     const c2 = document.getElementById('chart-comparison');
     if (!c1 || !c2 || typeof Chart === 'undefined') return;
-    const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const tc = dark ? '#e8e6df' : '#2c2c2a';
+    
+    // Detectar tema activo correctamente (respeta manual y prefers-color-scheme)
+    const html = document.documentElement;
+    let isDark;
+    if (html.classList.contains('theme-dark')) isDark = true;
+    else if (html.classList.contains('theme-light')) isDark = false;
+    else isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Colores con buen contraste para cada tema
+    const tc = isDark ? '#e8e6df' : '#1a1a18';      // Texto principal (más oscuro en claro)
+    const tcSecondary = isDark ? '#a8a8a0' : '#4a4a45'; // Texto secundario
+    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
     const cl = ['#7F77DD', '#1D9E75', '#D85A30', '#D4537E', '#378ADD', '#639922', '#BA7517', '#888780', '#E24B4A'];
 
     const sorted = [...state.pockets].sort((a, b) => b.amount - a.amount);
@@ -5964,11 +5974,30 @@ async function buildAnnualPDF(state, year) {
         data: { labels: lbls, datasets: [{ data: vals, backgroundColor: cl.slice(0, vals.length), borderWidth: 0 }] },
         options: { responsive: true, maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom', labels: { color: tc, font: { size: 11 }, boxWidth: 10, padding: 6 }},
-            tooltip: { callbacks: { label: (ctx) => {
-              const t = vals.reduce((a, b) => a + b, 0);
-              return ctx.label + ': ' + fmt(ctx.parsed) + ' (' + ((ctx.parsed/t)*100).toFixed(1) + '%)';
-            }}}
+            legend: { 
+              position: 'bottom', 
+              labels: { 
+                color: tc, 
+                font: { size: 12, weight: '500' }, 
+                boxWidth: 12, 
+                padding: 10,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            },
+            tooltip: { 
+              callbacks: { label: (ctx) => {
+                const t = vals.reduce((a, b) => a + b, 0);
+                return ctx.label + ': ' + fmt(ctx.parsed) + ' (' + ((ctx.parsed/t)*100).toFixed(1) + '%)';
+              }},
+              backgroundColor: isDark ? 'rgba(36,36,34,0.95)' : 'rgba(255,255,255,0.95)',
+              titleColor: tc,
+              bodyColor: tc,
+              borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 8
+            }
           }
         }
       });
@@ -5988,17 +6017,52 @@ async function buildAnnualPDF(state, year) {
           datasets: [{
             data: [Math.round(inc), Math.round(exp), Math.round(bal)],
             backgroundColor: ['#1D9E75', '#E24B4A', bal >= 0 ? '#378ADD' : '#A32D2D'],
-            borderWidth: 0
+            borderWidth: 0,
+            borderRadius: 6
           }]
         },
         options: { responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => fmt(ctx.parsed.y) }}},
+          plugins: { 
+            legend: { display: false }, 
+            tooltip: { 
+              callbacks: { label: (ctx) => fmt(ctx.parsed.y) },
+              backgroundColor: isDark ? 'rgba(36,36,34,0.95)' : 'rgba(255,255,255,0.95)',
+              titleColor: tc,
+              bodyColor: tc,
+              borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 8
+            }
+          },
           scales: {
-            y: { ticks: { color: tc, font: { size: 11 }, callback: (v) => fmt(v) }, grid: { color: 'rgba(128,128,128,0.1)' }},
-            x: { ticks: { color: tc, font: { size: 11 }}, grid: { display: false }}
+            y: { 
+              ticks: { color: tcSecondary, font: { size: 11, weight: '500' }, callback: (v) => fmt(v) }, 
+              grid: { color: gridColor }
+            },
+            x: { 
+              ticks: { color: tc, font: { size: 12, weight: '600' }}, 
+              grid: { display: false }
+            }
           }
         }
       });
+    }
+  }
+  
+  // Re-renderizar charts cuando cambie el tema
+  if (typeof window !== 'undefined') {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        if (m.attributeName === 'class') {
+          if (typeof renderCharts === 'function') {
+            setTimeout(renderCharts, 50);
+          }
+        }
+      });
+    });
+    if (document.documentElement) {
+      observer.observe(document.documentElement, { attributes: true });
     }
   }
 
