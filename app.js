@@ -1625,8 +1625,105 @@ window.showPrompt = function(opts) {
 };
 
 // ============================================================
-// TUTORIAL DE BIENVENIDA PARA NUEVOS USUARIOS
+// ONBOARDING INTERACTIVO - Tutorial multi-paso
 // ============================================================
+
+const TUTORIAL_STEPS = [
+  {
+    icon: '👋',
+    title: '¡Bienvenido a FinanzasPro!',
+    subtitle: 'Tu nuevo dashboard financiero',
+    content: `
+      <h3>Toma el control de tus finanzas</h3>
+      <p>FinanzasPro te ayuda a organizar tu dinero, gastos, tarjetas y metas. Todo en un solo lugar, completamente personalizable.</p>
+      <div class="tutorial-tip-box">
+        <p>💡 <strong>Te llevará 5 minutos</strong> dejar todo configurado. ¡Empecemos!</p>
+      </div>
+    `
+  },
+  {
+    icon: '👛',
+    title: 'Bolsillos',
+    subtitle: 'Organiza dónde tienes tu dinero',
+    content: `
+      <h3>¿Qué es un Bolsillo?</h3>
+      <p>Un Bolsillo representa un lugar donde tienes dinero: tu cuenta de Nequi, Bancolombia, Lulo, efectivo en la billetera, etc.</p>
+      <p>También puedes crear bolsillos para metas: <strong>Fondo de Emergencias</strong>, <strong>Vacaciones</strong>, <strong>Gastos del mes</strong>.</p>
+      <div class="tutorial-tip-box">
+        <p>💡 <strong>Tip:</strong> Empieza creando uno para cada cuenta bancaria que tengas y uno para "Efectivo".</p>
+      </div>
+    `
+  },
+  {
+    icon: '💰',
+    title: 'Ingresos',
+    subtitle: 'Salario y otros ingresos',
+    content: `
+      <h3>Define tus ingresos recurrentes</h3>
+      <p>Aquí registras tu salario, mesada, freelance, o cualquier ingreso que recibes regularmente. Esto nos ayuda a calcular tu margen mensual.</p>
+      <p>También puedes agregar <strong>ingresos extras</strong> ocasionales: bonos, ventas, regalos, etc.</p>
+      <div class="tutorial-tip-box">
+        <p>💡 <strong>Tip:</strong> Si tu salario varía, pon un promedio de los últimos 3 meses.</p>
+      </div>
+    `
+  },
+  {
+    icon: '💸',
+    title: 'Gastos',
+    subtitle: 'Registra cada gasto al momento',
+    content: `
+      <h3>Registra tus gastos</h3>
+      <p>Cada vez que gastas algo, ve a <strong>Presupuesto</strong> y regístralo. Solo necesitas:</p>
+      <ul style="margin: 8px 0 12px 20px; padding: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+        <li>Descripción (ej: "Almuerzo")</li>
+        <li>Monto</li>
+        <li>Categoría (te sugerimos automáticamente)</li>
+        <li>Método de pago</li>
+      </ul>
+      <div class="tutorial-tip-box">
+        <p>💡 <strong>Tip:</strong> Hazlo al momento, no al final del día. Toma 10 segundos y la información será más precisa.</p>
+      </div>
+    `
+  },
+  {
+    icon: '💳',
+    title: 'Tarjetas de crédito',
+    subtitle: 'Optimiza tu cashback y score',
+    content: `
+      <h3>Maneja tus tarjetas como un pro</h3>
+      <p>Registra tus tarjetas con: cupo, día de corte, tasa y cashback. Te ayudaremos a:</p>
+      <ul style="margin: 8px 0 12px 20px; padding: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+        <li>Mantener tu utilización <strong>menor al 30%</strong></li>
+        <li>Maximizar cashback en cada compra</li>
+        <li>Recordarte fechas de corte</li>
+        <li>Mejorar tu score crediticio</li>
+      </ul>
+      <div class="tutorial-tip-box">
+        <p>💡 <strong>Tip:</strong> Tenemos plantillas pre-cargadas para 30+ tarjetas colombianas (Lulo, Davivienda, Bancolombia, etc.)</p>
+      </div>
+    `
+  },
+  {
+    icon: '🎯',
+    title: '¡Listo para empezar!',
+    subtitle: 'Tu dashboard está esperándote',
+    content: `
+      <h3>Ya conoces lo básico</h3>
+      <p>En el <strong>Resumen</strong> verás un checklist con los siguientes pasos. Te llevará 5 minutos completarlo y dejar todo configurado.</p>
+      <p style="margin-bottom: 4px;"><strong>Recuerda:</strong></p>
+      <ul style="margin: 0 0 12px 20px; padding: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+        <li>Todo se guarda automáticamente en la nube ☁️</li>
+        <li>Puedes acceder desde cualquier dispositivo</li>
+        <li>Puedes ver este tutorial cuando quieras desde tu Perfil</li>
+      </ul>
+      <div class="tutorial-tip-box">
+        <p>🚀 <strong>¡Empecemos a configurarlo!</strong></p>
+      </div>
+    `
+  }
+];
+
+let currentTutorialStep = 0;
 
 function showWelcomeTutorial() {
   // Verificar si es nuevo usuario
@@ -1636,73 +1733,84 @@ function showWelcomeTutorial() {
     const state = JSON.parse(stateRaw);
     if (!state.isNewUser) return;
 
-    // Crear modal
-    const modal = document.createElement('div');
-    modal.id = 'welcome-tutorial';
-    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; backdrop-filter: blur(4px);';
-
-    modal.innerHTML = `
-      <div style="background: var(--bg-primary); border-radius: 16px; max-width: 500px; width: 100%; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <div style="font-size: 48px; margin-bottom: 8px;">💎</div>
-          <h2 style="font-size: 22px; font-weight: 600; margin: 0 0 4px;">¡Bienvenido a tu dashboard financiero!</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">Te ayudamos a tomar el control de tus finanzas</p>
-        </div>
-
-        <div style="background: var(--bg-secondary); padding: 14px; border-radius: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.6;">
-          <p style="margin: 0 0 8px; font-weight: 500;">📋 Para que arranques bien, sigue estos 4 pasos:</p>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-              <span style="background: var(--info-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">1</span>
-              <div>
-                <strong style="font-size: 13px;">👛 Configura tus Bolsillos</strong>
-                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Te dejamos algunos como ejemplo. Edita los nombres y montos según tus cuentas reales (Nequi, Lulo, Bancolombia, etc.)</p>
-              </div>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-              <span style="background: var(--success-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">2</span>
-              <div>
-                <strong style="font-size: 13px;">💰 Agrega tus Ingresos</strong>
-                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Define tu salario u otros ingresos recurrentes para calcular bien tu margen mensual</p>
-              </div>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-              <span style="background: var(--warning-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">3</span>
-              <div>
-                <strong style="font-size: 13px;">💳 Registra tus Tarjetas</strong>
-                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Agrega tus tarjetas de crédito con el cupo, día de corte y cashback. Te ayudaremos a optimizarlas.</p>
-              </div>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: flex-start;">
-              <span style="background: var(--purple-text); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0;">4</span>
-              <div>
-                <strong style="font-size: 13px;">📝 Empieza a registrar gastos</strong>
-                <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Cada vez que pagas algo, regístralo en "Presupuesto". El sistema te sugiere la categoría automáticamente.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style="background: var(--info-bg); color: var(--info-text); padding: 12px 14px; border-radius: 10px; font-size: 12px; line-height: 1.5; margin-bottom: 16px;">
-          💡 <strong>Tip:</strong> Los bolsillos, ingreso y categorías que ves son <strong>solo ejemplos</strong>. Edítalos, elimínalos o agrega los tuyos según tu situación.
-        </div>
-
-        <button onclick="dismissWelcomeTutorial()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
-          ¡Empecemos! 🚀
-        </button>
-
-        <p style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin: 12px 0 0;">Puedes volver a ver esta guía desde tu Perfil</p>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-    lockBody();
+    currentTutorialStep = 0;
+    renderTutorialStep();
   } catch(e) {
     console.error('Error mostrando tutorial:', e);
   }
 }
 
-window.dismissWelcomeTutorial = function() {
+function renderTutorialStep() {
+  // Limpiar tutorial previo
+  const existing = document.getElementById('welcome-tutorial');
+  if (existing) existing.remove();
+
+  const step = TUTORIAL_STEPS[currentTutorialStep];
+  const total = TUTORIAL_STEPS.length;
+  const isFirst = currentTutorialStep === 0;
+  const isLast = currentTutorialStep === total - 1;
+
+  // Generar dots de progreso
+  let dotsHtml = '';
+  for (let i = 0; i < total; i++) {
+    let dotClass = 'tutorial-step-dot';
+    if (i === currentTutorialStep) dotClass += ' active';
+    else if (i < currentTutorialStep) dotClass += ' completed';
+    dotsHtml += `<div class="${dotClass}"></div>`;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'welcome-tutorial';
+  overlay.className = 'tutorial-overlay';
+
+  overlay.innerHTML = `
+    <div class="tutorial-card">
+      <div class="tutorial-header">
+        ${!isLast ? `<button class="tutorial-skip" onclick="skipTutorial()">Saltar</button>` : ''}
+        <span class="tutorial-icon-big">${step.icon}</span>
+        <h2 class="tutorial-title">${step.title}</h2>
+        <p class="tutorial-subtitle">${step.subtitle}</p>
+        <div class="tutorial-step-dots">${dotsHtml}</div>
+      </div>
+
+      <div class="tutorial-body">
+        <div class="tutorial-step-content">
+          ${step.content}
+        </div>
+      </div>
+
+      <div class="tutorial-footer">
+        ${!isFirst ? `<button class="tutorial-btn tutorial-btn-secondary" onclick="prevTutorialStep()">‹ Atrás</button>` : ''}
+        <button class="tutorial-btn tutorial-btn-primary" onclick="${isLast ? 'finishTutorial()' : 'nextTutorialStep()'}">
+          ${isLast ? '¡Empecemos! 🚀' : 'Siguiente ›'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  if (isFirst) lockBody();
+}
+
+window.nextTutorialStep = function() {
+  if (currentTutorialStep < TUTORIAL_STEPS.length - 1) {
+    currentTutorialStep++;
+    renderTutorialStep();
+  }
+};
+
+window.prevTutorialStep = function() {
+  if (currentTutorialStep > 0) {
+    currentTutorialStep--;
+    renderTutorialStep();
+  }
+};
+
+window.skipTutorial = function() {
+  finishTutorial();
+};
+
+window.finishTutorial = function() {
   const modal = document.getElementById('welcome-tutorial');
   if (modal) {
     modal.remove();
@@ -1715,10 +1823,17 @@ window.dismissWelcomeTutorial = function() {
     if (stateRaw) {
       const state = JSON.parse(stateRaw);
       state.isNewUser = false;
+      state.onboardingDismissed = false; // Para que aparezca el checklist en el resumen
       localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
     }
   } catch(e) {}
+
+  // Mostrar checklist en el resumen
+  setTimeout(() => updateOnboardingChecklist(), 300);
 };
+
+// Mantener compatibilidad
+window.dismissWelcomeTutorial = window.finishTutorial;
 
 window.showWelcomeTutorialAgain = function() {
   // Permitir mostrarlo manualmente desde Perfil
@@ -1728,10 +1843,218 @@ window.showWelcomeTutorialAgain = function() {
       const state = JSON.parse(stateRaw);
       state.isNewUser = true;
       localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
-      showWelcomeTutorial();
+      currentTutorialStep = 0;
+      renderTutorialStep();
     }
   } catch(e) {}
 };
+
+// ============================================================
+// CHECKLIST DE PROGRESO en el Resumen
+// ============================================================
+
+function getOnboardingProgress() {
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (!stateRaw) return null;
+    const state = JSON.parse(stateRaw);
+
+    // Calcular progreso de cada paso
+    const hasPockets = state.pockets && state.pockets.filter(p => p.amount > 0).length > 0;
+    const hasIncomes = state.incomes && state.incomes.length > 0;
+    const hasCards = state.debts && state.debts.length > 0;
+    
+    // Verificar si tiene transacciones en cualquier mes
+    let hasTransactions = false;
+    if (state.transactions) {
+      for (const month in state.transactions) {
+        if (state.transactions[month] && state.transactions[month].length > 0) {
+          hasTransactions = true;
+          break;
+        }
+      }
+    }
+
+    return {
+      pockets: hasPockets,
+      incomes: hasIncomes,
+      cards: hasCards,
+      transactions: hasTransactions,
+      dismissed: state.onboardingDismissed === true,
+      total: 4,
+      completed: [hasPockets, hasIncomes, hasCards, hasTransactions].filter(Boolean).length
+    };
+  } catch(e) {
+    return null;
+  }
+}
+
+function updateOnboardingChecklist() {
+  const checklist = document.getElementById('onboarding-checklist');
+  if (!checklist) return;
+
+  const progress = getOnboardingProgress();
+  if (!progress) {
+    checklist.style.display = 'none';
+    return;
+  }
+
+  // Si el usuario lo descartó O ya completó todo, ocultar
+  if (progress.dismissed) {
+    checklist.style.display = 'none';
+    return;
+  }
+
+  // Mostrar checklist
+  checklist.style.display = 'block';
+
+  // Actualizar progreso
+  const progressText = document.getElementById('onboarding-progress-text');
+  const progressFill = document.getElementById('onboarding-progress-fill');
+  if (progressText) progressText.textContent = `${progress.completed} de ${progress.total}`;
+  if (progressFill) progressFill.style.width = `${(progress.completed / progress.total) * 100}%`;
+
+  // Marcar pasos completados
+  const stepPockets = document.getElementById('onboarding-step-pockets');
+  const stepIncomes = document.getElementById('onboarding-step-incomes');
+  const stepCards = document.getElementById('onboarding-step-cards');
+  const stepTx = document.getElementById('onboarding-step-tx');
+
+  if (stepPockets) stepPockets.classList.toggle('completed', progress.pockets);
+  if (stepIncomes) stepIncomes.classList.toggle('completed', progress.incomes);
+  if (stepCards) stepCards.classList.toggle('completed', progress.cards);
+  if (stepTx) stepTx.classList.toggle('completed', progress.transactions);
+
+  // Mostrar celebración si completó todo
+  const celebration = document.getElementById('onboarding-celebration');
+  if (celebration) {
+    if (progress.completed === progress.total) {
+      celebration.style.display = 'block';
+    } else {
+      celebration.style.display = 'none';
+    }
+  }
+}
+
+window.dismissOnboarding = async function() {
+  const confirmed = await showConfirm({
+    title: '¿Descartar guía?',
+    message: 'Puedes volver a ver el tutorial completo desde tu Perfil cuando quieras.',
+    confirmText: 'Sí, descartar',
+    cancelText: 'Cancelar',
+    type: 'warning',
+    icon: '👋'
+  });
+
+  if (!confirmed) return;
+
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (stateRaw) {
+      const state = JSON.parse(stateRaw);
+      state.onboardingDismissed = true;
+      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+    }
+  } catch(e) {}
+
+  const checklist = document.getElementById('onboarding-checklist');
+  if (checklist) {
+    checklist.style.opacity = '0';
+    checklist.style.transition = 'opacity 0.3s';
+    setTimeout(() => {
+      checklist.style.display = 'none';
+    }, 300);
+  }
+};
+
+// Función para resetear el onboarding (desde Perfil)
+window.resetOnboarding = function() {
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (stateRaw) {
+      const state = JSON.parse(stateRaw);
+      state.onboardingDismissed = false;
+      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+    }
+    updateOnboardingChecklist();
+    // Navegar a resumen
+    const resumenTab = document.querySelector('.fin-tab[data-tab="resumen"]');
+    if (resumenTab) resumenTab.click();
+    toastSuccess('Guía activada', 'Verás el checklist en tu Resumen');
+  } catch(e) {}
+};
+
+// ============================================================
+// NAVEGACIÓN CON HIGHLIGHT (cuando tocas un paso del checklist)
+// ============================================================
+
+window.navigateAndHighlight = function(tabName, elementId) {
+  // Cerrar drawer si está abierto
+  if (typeof closeSideMenu === 'function') closeSideMenu();
+
+  // Navegar al tab
+  const targetTab = document.querySelector(`.fin-tab[data-tab="${tabName}"]`);
+  if (targetTab) targetTab.click();
+
+  // Sincronizar drawer
+  document.querySelectorAll('.side-menu-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.tab === tabName);
+  });
+  if (typeof updateMenuToggleText === 'function') updateMenuToggleText(tabName);
+
+  // Highlight del elemento target
+  setTimeout(() => {
+    const target = document.getElementById(elementId);
+    if (!target) return;
+
+    // Scroll al elemento
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Highlight: encontrar el contenedor padre (raised-card)
+    let container = target.closest('.raised-card');
+    if (!container) container = target.parentElement;
+
+    if (container) {
+      container.classList.add('onboarding-highlight');
+      setTimeout(() => {
+        container.classList.remove('onboarding-highlight');
+      }, 4000);
+    }
+
+    // Focus en el input
+    if (target.focus) {
+      setTimeout(() => target.focus(), 600);
+    }
+  }, 400);
+};
+
+// ============================================================
+// INTEGRACIÓN: actualizar checklist cuando cambian datos
+// ============================================================
+
+// Hook al saveState original para refrescar el checklist
+(function() {
+  let lastUpdate = 0;
+  const originalSaveState = window.saveState;
+  // Esperar a que saveState esté disponible
+  const checkInterval = setInterval(() => {
+    if (typeof window.saveState === 'function') {
+      clearInterval(checkInterval);
+      // No reemplazar saveState directamente, solo escuchar cambios
+      // a través de un MutationObserver o setInterval
+      setInterval(() => {
+        const now = Date.now();
+        if (now - lastUpdate > 1000) {
+          lastUpdate = now;
+          updateOnboardingChecklist();
+        }
+      }, 2000);
+    }
+  }, 200);
+})();
+
+
+
 
 // Mostrar tutorial automáticamente 1.5 segundos después del login
 document.addEventListener('DOMContentLoaded', () => {
@@ -5966,6 +6289,11 @@ async function buildAnnualPDF(state, year) {
   }
 
   function renderResumen() {
+    // Actualizar checklist de onboarding
+    if (typeof window.updateOnboardingChecklist === 'function') {
+      window.updateOnboardingChecklist();
+    }
+    
     const sav = totalPockets();
     const incRecurrent = totalIncome();
     const incExtras = totalMonthExtraIncome();
