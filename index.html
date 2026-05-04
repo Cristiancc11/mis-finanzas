@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -268,6 +268,63 @@
           <div class="net-worth-hero-detail" id="net-worth-detail"></div>
         </div>
         <div class="net-worth-icon-bg">💰</div>
+      </div>
+    </div>
+
+    <!-- ONBOARDING CHECKLIST (solo se muestra para usuarios nuevos) -->
+    <div id="onboarding-checklist" class="onboarding-checklist" style="display: none;">
+      <div class="onboarding-header">
+        <div>
+          <h3 class="onboarding-title">🚀 Configura tu dashboard</h3>
+          <p class="onboarding-subtitle"><span id="onboarding-progress-text">0 de 4</span> pasos completados</p>
+        </div>
+        <button class="onboarding-dismiss" onclick="dismissOnboarding()" aria-label="Cerrar">×</button>
+      </div>
+
+      <div class="onboarding-progress-bar">
+        <div class="onboarding-progress-fill" id="onboarding-progress-fill" style="width: 0%"></div>
+      </div>
+
+      <div class="onboarding-steps">
+        <div class="onboarding-step" id="onboarding-step-pockets" onclick="navigateAndHighlight('bolsillos', 'pocket-name')">
+          <div class="onboarding-step-check">○</div>
+          <div class="onboarding-step-content">
+            <div class="onboarding-step-title">👛 Configura tus bolsillos</div>
+            <div class="onboarding-step-desc">Define dónde tienes tu dinero (Nequi, Bancolombia, efectivo)</div>
+          </div>
+          <div class="onboarding-step-arrow">›</div>
+        </div>
+
+        <div class="onboarding-step" id="onboarding-step-incomes" onclick="navigateAndHighlight('ingresos', 'income-name')">
+          <div class="onboarding-step-check">○</div>
+          <div class="onboarding-step-content">
+            <div class="onboarding-step-title">💰 Agrega tus ingresos</div>
+            <div class="onboarding-step-desc">Salario, mesada, freelance — lo que recibes cada mes</div>
+          </div>
+          <div class="onboarding-step-arrow">›</div>
+        </div>
+
+        <div class="onboarding-step" id="onboarding-step-cards" onclick="navigateAndHighlight('deudas', 'card-template')">
+          <div class="onboarding-step-check">○</div>
+          <div class="onboarding-step-content">
+            <div class="onboarding-step-title">💳 Registra tus tarjetas</div>
+            <div class="onboarding-step-desc">Cupos, fechas de corte y cashback de cada tarjeta</div>
+          </div>
+          <div class="onboarding-step-arrow">›</div>
+        </div>
+
+        <div class="onboarding-step" id="onboarding-step-tx" onclick="navigateAndHighlight('presupuesto', 'tx-desc')">
+          <div class="onboarding-step-check">○</div>
+          <div class="onboarding-step-content">
+            <div class="onboarding-step-title">📝 Registra tu primer gasto</div>
+            <div class="onboarding-step-desc">Empieza el seguimiento de tus gastos diarios</div>
+          </div>
+          <div class="onboarding-step-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="onboarding-celebration" id="onboarding-celebration" style="display: none;">
+        🎉 <strong>¡Felicidades!</strong> Has configurado todo lo básico. Ya puedes empezar a usar tu dashboard.
       </div>
     </div>
 
@@ -849,11 +906,20 @@
     </div>
 
     <div class="raised-card">
-      <p class="card-title">📚 Ayuda</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">¿Necesitas un recordatorio de cómo empezar?</p>
-      <button onclick="showWelcomeTutorialAgain()" style="width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px;">
-        🎓 Ver guía de inicio rápido
-      </button>
+      <p class="card-title">📚 Ayuda y guías</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Aprende a usar todas las funciones del dashboard</p>
+      <div style="display: grid; gap: 8px;">
+        <button onclick="showWelcomeTutorialAgain()" style="width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px; text-align: left; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 18px;">🎓</span>
+          <span>Ver tutorial completo</span>
+          <span style="margin-left: auto; color: var(--text-tertiary);">›</span>
+        </button>
+        <button onclick="resetOnboarding()" style="width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px; text-align: left; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 18px;">✅</span>
+          <span>Activar checklist de configuración</span>
+          <span style="margin-left: auto; color: var(--text-tertiary);">›</span>
+        </button>
+      </div>
     </div>
 
     <div class="raised-card">
@@ -909,6 +975,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
