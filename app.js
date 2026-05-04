@@ -1302,10 +1302,67 @@ window.openSideMenu = function() {
   const backdrop = document.getElementById('side-menu-backdrop');
   if (!menu || !backdrop) return;
 
+  // Actualizar datos del usuario antes de mostrar
+  updateSideMenuUserInfo();
+
   menu.classList.add('open');
   backdrop.classList.add('open');
   document.body.classList.add('drawer-open');
 };
+
+// Actualizar info del usuario en el drawer
+function updateSideMenuUserInfo() {
+  const nameEl = document.getElementById('side-menu-user-name');
+  const emailEl = document.getElementById('side-menu-user-email');
+  const avatarEl = document.getElementById('side-menu-avatar');
+  const initialsEl = document.getElementById('side-menu-avatar-initials');
+
+  if (!nameEl) return;
+
+  // Nombre
+  let displayName = 'Usuario';
+  if (typeof userProfile !== 'undefined' && userProfile && userProfile.full_name) {
+    displayName = userProfile.full_name;
+  } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.email) {
+    displayName = currentUser.email.split('@')[0];
+    // Capitalizar primera letra
+    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+  }
+  nameEl.textContent = displayName;
+
+  // Email
+  if (emailEl) {
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.email) {
+      emailEl.textContent = currentUser.email;
+    } else {
+      emailEl.textContent = '';
+    }
+  }
+
+  // Avatar (foto o iniciales)
+  if (avatarEl && initialsEl) {
+    if (typeof userProfile !== 'undefined' && userProfile && userProfile.avatar_url) {
+      avatarEl.innerHTML = `<img src="${userProfile.avatar_url}" alt="${displayName}" />`;
+    } else {
+      // Calcular iniciales
+      let initials = 'U';
+      if (typeof userProfile !== 'undefined' && userProfile && userProfile.full_name) {
+        const parts = userProfile.full_name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          initials = (parts[0][0] + parts[1][0]).toUpperCase();
+        } else if (parts[0]) {
+          initials = parts[0].substring(0, 2).toUpperCase();
+        }
+      } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.email) {
+        initials = currentUser.email.substring(0, 2).toUpperCase();
+      }
+      // Mantener span para que el CSS funcione
+      avatarEl.innerHTML = `<span id="side-menu-avatar-initials">${initials}</span>`;
+    }
+  }
+}
+
+window.updateSideMenuUserInfo = updateSideMenuUserInfo;
 
 window.closeSideMenu = function() {
   const menu = document.getElementById('side-menu');
