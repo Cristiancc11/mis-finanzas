@@ -989,10 +989,85 @@
 
   <div class="fin-section" id="section-deudas">
     <div class="insight-box success"><strong>Buen hábito:</strong> Pagas tus tarjetas completas cada mes evitando intereses.</div>
-    <div class="raised-card">
-      <p class="card-title">Agregar tarjeta</p>
-      <div class="form-row-debt">
-        <input type="text" id="debt-name" placeholder="Nombre" />
+
+    <!-- SELECTOR DE PLANTILLA -->
+    <div class="raised-card" style="border: 0.5px solid var(--info-text);">
+      <p class="card-title">⚡ Agregar tarjeta rápido</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Selecciona tu tarjeta y pre-cargamos los datos. Luego solo ingresas el cupo y el saldo.</p>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px;">
+        <select id="card-template" onchange="applyCardTemplate()">
+          <option value="">— Selecciona tu tarjeta —</option>
+          <optgroup label="🟣 Lulo Bank">
+            <option value="lulo_master">Lulo Bank Mastercard</option>
+          </optgroup>
+          <optgroup label="🔴 Davivienda">
+            <option value="rappicard_visa">RappiCard Davivienda VISA</option>
+            <option value="davivienda_clasica">Davivienda Clásica</option>
+            <option value="davivienda_oro">Davivienda Oro</option>
+            <option value="davivienda_platinum">Davivienda Platinum</option>
+          </optgroup>
+          <optgroup label="🟡 Bancolombia">
+            <option value="bancolombia_clasica">Bancolombia Clásica</option>
+            <option value="bancolombia_oro">Bancolombia Oro</option>
+            <option value="bancolombia_platinum">Bancolombia Platinum</option>
+            <option value="bancolombia_amex">Bancolombia American Express</option>
+          </optgroup>
+          <optgroup label="🔵 BBVA">
+            <option value="bbva_aqua">BBVA Aqua</option>
+            <option value="bbva_oro">BBVA Oro</option>
+            <option value="bbva_platinum">BBVA Platinum</option>
+          </optgroup>
+          <optgroup label="🟢 Banco de Bogotá">
+            <option value="bogota_clasica">Banco de Bogotá Clásica</option>
+            <option value="bogota_oro">Banco de Bogotá Oro</option>
+            <option value="bogota_lifemiles">Banco de Bogotá LifeMiles</option>
+          </optgroup>
+          <optgroup label="🟠 Tuya (Éxito)">
+            <option value="tuya_exito">Tuya Éxito Mastercard</option>
+            <option value="tuya_carulla">Tuya Carulla Mastercard</option>
+            <option value="tuya_alkosto">Tuya Alkosto</option>
+          </optgroup>
+          <optgroup label="🟣 Banco AV Villas">
+            <option value="avvillas_clasica">AV Villas Clásica</option>
+            <option value="avvillas_oro">AV Villas Oro</option>
+          </optgroup>
+          <optgroup label="🔴 Scotiabank Colpatria">
+            <option value="colpatria_clasica">Scotiabank Colpatria Clásica</option>
+            <option value="colpatria_oro">Scotiabank Colpatria Oro</option>
+            <option value="colpatria_platinum">Scotiabank Colpatria Platinum</option>
+          </optgroup>
+          <optgroup label="🟢 Banco Falabella">
+            <option value="falabella_cmr">Banco Falabella CMR</option>
+            <option value="falabella_visa">Banco Falabella VISA</option>
+          </optgroup>
+          <optgroup label="🔵 Itaú">
+            <option value="itau_clasica">Itaú Clásica</option>
+            <option value="itau_oro">Itaú Oro</option>
+            <option value="itau_platinum">Itaú Platinum</option>
+          </optgroup>
+          <optgroup label="⚫ Banco Popular">
+            <option value="popular_clasica">Banco Popular Clásica</option>
+            <option value="popular_oro">Banco Popular Oro</option>
+          </optgroup>
+          <optgroup label="🟢 Otros bancos">
+            <option value="caja_social_clasica">Banco Caja Social Clásica</option>
+            <option value="bcsc_clasica">BCSC Clásica</option>
+            <option value="banco_w">Banco W</option>
+            <option value="bancoomeva">Bancoomeva</option>
+            <option value="cooperativa_minuto">Cooperativa Minuto de Dios</option>
+            <option value="nu_colombia">Nu Colombia</option>
+          </optgroup>
+          <optgroup label="✏️ Personalizada">
+            <option value="custom">Otra tarjeta (datos manuales)</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div id="card-template-info" style="display: none; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 12px; line-height: 1.5; margin-bottom: 10px;"></div>
+
+      <div class="form-row-debt" id="debt-form">
+        <input type="text" id="debt-name" placeholder="Nombre de la tarjeta" />
         <input type="number" id="debt-balance" placeholder="Saldo actual" min="0" step="0.01" />
         <input type="number" id="debt-rate" placeholder="Tasa % anual" min="0" step="0.01" value="0" />
         <input type="number" id="debt-payment" placeholder="Cupo total" min="0" step="0.01" />
@@ -1001,19 +1076,41 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
         <select id="debt-bank">
           <option value="">Banco emisor</option>
-          <option value="davivienda">🏠 Davivienda</option>
-          <option value="lulo">🟡 Lulo Bank</option>
+          <option value="davivienda">Davivienda</option>
+          <option value="lulo">Lulo Bank</option>
+          <option value="bancolombia">Bancolombia</option>
+          <option value="bbva">BBVA</option>
+          <option value="bogota">Banco de Bogotá</option>
+          <option value="tuya">Tuya</option>
+          <option value="avvillas">AV Villas</option>
+          <option value="colpatria">Scotiabank Colpatria</option>
+          <option value="falabella">Banco Falabella</option>
+          <option value="itau">Itaú</option>
+          <option value="popular">Banco Popular</option>
+          <option value="caja_social">Banco Caja Social</option>
+          <option value="bcsc">BCSC</option>
+          <option value="banco_w">Banco W</option>
+          <option value="bancoomeva">Bancoomeva</option>
+          <option value="nu">Nu Colombia</option>
           <option value="other">Otro banco</option>
         </select>
         <select id="debt-brand">
           <option value="">Franquicia</option>
           <option value="visa">VISA</option>
           <option value="mastercard">Mastercard</option>
+          <option value="amex">American Express</option>
+          <option value="diners">Diners Club</option>
+          <option value="cmr">CMR</option>
         </select>
         <input type="text" id="debt-digits" placeholder="Últimos 4 dígitos" maxlength="4" pattern="[0-9]{4}" />
         <input type="number" id="debt-cutoff" placeholder="Día corte (1-31)" min="1" max="31" />
       </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+        <input type="number" id="debt-cashback" placeholder="Cashback %" min="0" max="100" step="0.1" value="0" title="% de cashback que da esta tarjeta" />
+        <input type="text" id="debt-benefits" placeholder="Beneficios (opcional)" />
+      </div>
     </div>
+
     <div class="raised-card">
       <p class="card-title">Mis tarjetas</p>
       <div id="debt-list"></div>
@@ -5100,6 +5197,250 @@ async function buildAnnualPDF(state, year) {
     document.getElementById('extra-grand-total').textContent = fmt(grandTotal);
   }
 
+  // Plantillas de tarjetas colombianas (datos típicos de mercado abr 2026)
+  const CARD_TEMPLATES = {
+    // Lulo Bank
+    lulo_master: {
+      name: 'Lulo Bank Mastercard',
+      bank: 'lulo', brand: 'mastercard', cutoffDay: 5, rate: 24,
+      cashback: 1, benefits: '1% cashback en todas las compras + sin cuota de manejo'
+    },
+    // Davivienda
+    rappicard_visa: {
+      name: 'RappiCard Davivienda VISA',
+      bank: 'davivienda', brand: 'visa', cutoffDay: 28, rate: 26,
+      cashback: 1, benefits: '1% cashback general, 3% en Rappi + sin cuota de manejo'
+    },
+    davivienda_clasica: {
+      name: 'Davivienda Clásica',
+      bank: 'davivienda', brand: 'visa', cutoffDay: 15, rate: 27,
+      cashback: 0, benefits: 'Cuota de manejo aplica'
+    },
+    davivienda_oro: {
+      name: 'Davivienda Oro',
+      bank: 'davivienda', brand: 'visa', cutoffDay: 15, rate: 26,
+      cashback: 0.5, benefits: 'Programa Daviplata Puntos'
+    },
+    davivienda_platinum: {
+      name: 'Davivienda Platinum',
+      bank: 'davivienda', brand: 'visa', cutoffDay: 15, rate: 25,
+      cashback: 1, benefits: 'Acceso a salas VIP + seguros'
+    },
+    // Bancolombia
+    bancolombia_clasica: {
+      name: 'Bancolombia Clásica',
+      bank: 'bancolombia', brand: 'mastercard', cutoffDay: 18, rate: 27,
+      cashback: 0, benefits: 'Cuota de manejo aplica'
+    },
+    bancolombia_oro: {
+      name: 'Bancolombia Oro',
+      bank: 'bancolombia', brand: 'mastercard', cutoffDay: 18, rate: 26,
+      cashback: 0.5, benefits: 'Puntos Colombia'
+    },
+    bancolombia_platinum: {
+      name: 'Bancolombia Platinum',
+      bank: 'bancolombia', brand: 'mastercard', cutoffDay: 18, rate: 25,
+      cashback: 1, benefits: 'Salas VIP + Puntos Colombia 2x'
+    },
+    bancolombia_amex: {
+      name: 'Bancolombia American Express',
+      bank: 'bancolombia', brand: 'amex', cutoffDay: 18, rate: 26,
+      cashback: 1.5, benefits: 'Membership Rewards + beneficios premium'
+    },
+    // BBVA
+    bbva_aqua: {
+      name: 'BBVA Aqua',
+      bank: 'bbva', brand: 'visa', cutoffDay: 20, rate: 26,
+      cashback: 0, benefits: 'Tarjeta sin numeración visible (más segura)'
+    },
+    bbva_oro: {
+      name: 'BBVA Oro',
+      bank: 'bbva', brand: 'visa', cutoffDay: 20, rate: 26,
+      cashback: 0.5, benefits: 'Programa BBVA Puntos'
+    },
+    bbva_platinum: {
+      name: 'BBVA Platinum',
+      bank: 'bbva', brand: 'visa', cutoffDay: 20, rate: 25,
+      cashback: 1, benefits: 'Salas VIP + seguros premium'
+    },
+    // Banco de Bogotá
+    bogota_clasica: {
+      name: 'Banco de Bogotá Clásica',
+      bank: 'bogota', brand: 'visa', cutoffDay: 12, rate: 27,
+      cashback: 0, benefits: 'Cuota de manejo aplica'
+    },
+    bogota_oro: {
+      name: 'Banco de Bogotá Oro',
+      bank: 'bogota', brand: 'visa', cutoffDay: 12, rate: 26,
+      cashback: 0.5, benefits: 'Programa Aliados'
+    },
+    bogota_lifemiles: {
+      name: 'Banco de Bogotá LifeMiles',
+      bank: 'bogota', brand: 'visa', cutoffDay: 12, rate: 25,
+      cashback: 0, benefits: '1.5 millas LifeMiles por cada $1.000 pesos'
+    },
+    // Tuya
+    tuya_exito: {
+      name: 'Tuya Éxito Mastercard',
+      bank: 'tuya', brand: 'mastercard', cutoffDay: 8, rate: 28,
+      cashback: 0, benefits: 'Descuentos exclusivos en Éxito y aliados + Puntos Colombia'
+    },
+    tuya_carulla: {
+      name: 'Tuya Carulla Mastercard',
+      bank: 'tuya', brand: 'mastercard', cutoffDay: 8, rate: 28,
+      cashback: 0, benefits: 'Descuentos en Carulla + Puntos Colombia'
+    },
+    tuya_alkosto: {
+      name: 'Tuya Alkosto',
+      bank: 'tuya', brand: 'mastercard', cutoffDay: 8, rate: 28,
+      cashback: 0, benefits: 'Compras a cuotas en Alkosto sin intereses'
+    },
+    // AV Villas
+    avvillas_clasica: {
+      name: 'AV Villas Clásica',
+      bank: 'avvillas', brand: 'visa', cutoffDay: 10, rate: 27,
+      cashback: 0, benefits: 'Programa AV Villas Premia'
+    },
+    avvillas_oro: {
+      name: 'AV Villas Oro',
+      bank: 'avvillas', brand: 'visa', cutoffDay: 10, rate: 26,
+      cashback: 0.5, benefits: 'AV Villas Premia + descuentos'
+    },
+    // Scotiabank Colpatria
+    colpatria_clasica: {
+      name: 'Scotiabank Colpatria Clásica',
+      bank: 'colpatria', brand: 'mastercard', cutoffDay: 22, rate: 27,
+      cashback: 0, benefits: 'Programa Scotia Recompensa'
+    },
+    colpatria_oro: {
+      name: 'Scotiabank Colpatria Oro',
+      bank: 'colpatria', brand: 'mastercard', cutoffDay: 22, rate: 26,
+      cashback: 0.5, benefits: 'Scotia Recompensa Plus'
+    },
+    colpatria_platinum: {
+      name: 'Scotiabank Colpatria Platinum',
+      bank: 'colpatria', brand: 'mastercard', cutoffDay: 22, rate: 25,
+      cashback: 1, benefits: 'Salas VIP + Priority Pass'
+    },
+    // Falabella
+    falabella_cmr: {
+      name: 'Banco Falabella CMR',
+      bank: 'falabella', brand: 'cmr', cutoffDay: 5, rate: 28,
+      cashback: 0, benefits: 'Descuentos exclusivos en Falabella, Sodimac, Tottus'
+    },
+    falabella_visa: {
+      name: 'Banco Falabella VISA',
+      bank: 'falabella', brand: 'visa', cutoffDay: 5, rate: 27,
+      cashback: 0.5, benefits: 'CMR Puntos + descuentos'
+    },
+    // Itaú
+    itau_clasica: {
+      name: 'Itaú Clásica',
+      bank: 'itau', brand: 'visa', cutoffDay: 17, rate: 27,
+      cashback: 0, benefits: 'Programa Always On'
+    },
+    itau_oro: {
+      name: 'Itaú Oro',
+      bank: 'itau', brand: 'visa', cutoffDay: 17, rate: 26,
+      cashback: 0.5, benefits: 'Descuentos y promociones'
+    },
+    itau_platinum: {
+      name: 'Itaú Platinum',
+      bank: 'itau', brand: 'visa', cutoffDay: 17, rate: 25,
+      cashback: 1, benefits: 'Salas VIP + Concierge'
+    },
+    // Banco Popular
+    popular_clasica: {
+      name: 'Banco Popular Clásica',
+      bank: 'popular', brand: 'visa', cutoffDay: 14, rate: 27,
+      cashback: 0, benefits: 'Cuota de manejo aplica'
+    },
+    popular_oro: {
+      name: 'Banco Popular Oro',
+      bank: 'popular', brand: 'visa', cutoffDay: 14, rate: 26,
+      cashback: 0.5, benefits: 'Beneficios estándar'
+    },
+    // Otros
+    caja_social_clasica: {
+      name: 'Banco Caja Social Clásica',
+      bank: 'caja_social', brand: 'visa', cutoffDay: 20, rate: 27,
+      cashback: 0, benefits: 'Tarjeta tradicional'
+    },
+    bcsc_clasica: {
+      name: 'BCSC Clásica',
+      bank: 'bcsc', brand: 'mastercard', cutoffDay: 25, rate: 27,
+      cashback: 0, benefits: 'Tarjeta tradicional'
+    },
+    banco_w: {
+      name: 'Banco W',
+      bank: 'banco_w', brand: 'mastercard', cutoffDay: 15, rate: 27,
+      cashback: 0, benefits: 'Microfinanzas'
+    },
+    bancoomeva: {
+      name: 'Bancoomeva',
+      bank: 'bancoomeva', brand: 'visa', cutoffDay: 10, rate: 26,
+      cashback: 0, benefits: 'Cooperativa financiera'
+    },
+    cooperativa_minuto: {
+      name: 'Cooperativa Minuto de Dios',
+      bank: 'other', brand: 'visa', cutoffDay: 15, rate: 25,
+      cashback: 0, benefits: 'Cooperativa con tasas preferenciales'
+    },
+    nu_colombia: {
+      name: 'Nu Colombia',
+      bank: 'nu', brand: 'mastercard', cutoffDay: 15, rate: 24,
+      cashback: 1, benefits: 'Sin cuota de manejo + 100% digital + cashback'
+    }
+  };
+
+  window.applyCardTemplate = function() {
+    const select = document.getElementById('card-template');
+    const template = select.value;
+    const infoBox = document.getElementById('card-template-info');
+
+    if (!template || template === 'custom') {
+      // Limpiar campos para entrada manual
+      if (template === 'custom') {
+        ['debt-name', 'debt-balance', 'debt-rate', 'debt-payment', 'debt-cutoff',
+         'debt-bank', 'debt-brand', 'debt-digits', 'debt-cashback', 'debt-benefits'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            if (el.tagName === 'SELECT') el.value = '';
+            else if (id === 'debt-rate' || id === 'debt-cashback') el.value = '0';
+            else el.value = '';
+          }
+        });
+        infoBox.style.display = 'none';
+      } else {
+        infoBox.style.display = 'none';
+      }
+      return;
+    }
+
+    const t = CARD_TEMPLATES[template];
+    if (!t) return;
+
+    // Aplicar valores de la plantilla (excepto cupo y saldo que el usuario pone)
+    document.getElementById('debt-name').value = t.name;
+    document.getElementById('debt-rate').value = t.rate;
+    document.getElementById('debt-cutoff').value = t.cutoffDay;
+    document.getElementById('debt-bank').value = t.bank;
+    document.getElementById('debt-brand').value = t.brand;
+    document.getElementById('debt-cashback').value = t.cashback;
+    document.getElementById('debt-benefits').value = t.benefits;
+
+    // Mostrar info
+    infoBox.style.display = 'block';
+    infoBox.innerHTML = `
+      <strong>📋 ${t.name}</strong><br>
+      💵 Tasa: ${t.rate}% E.A.<br>
+      📅 Día de corte estándar: ${t.cutoffDay}<br>
+      💰 Cashback: ${t.cashback}%<br>
+      ✨ Beneficios: ${t.benefits}<br>
+      <small style="color: var(--text-tertiary);">⚠️ Verifica tu día de corte real (puede variar) y agrega tu cupo y saldo.</small>
+    `;
+  };
+
   window.addDebt = function() {
     const n = document.getElementById('debt-name').value.trim();
     const b = parseFloat(document.getElementById('debt-balance').value);
@@ -5109,16 +5450,32 @@ async function buildAnnualPDF(state, year) {
     const bank = document.getElementById('debt-bank').value || null;
     const brand = document.getElementById('debt-brand').value || null;
     const lastDigits = document.getElementById('debt-digits').value.trim() || null;
-    if (!n || isNaN(b) || b < 0) return alert('Completa todo');
-    state.debts.push({ id: Date.now(), name: n, balance: b, rate: r, payment: p, cutoffDay: co, bank, brand, lastDigits });
-    document.getElementById('debt-name').value = '';
-    document.getElementById('debt-balance').value = '';
+    const cashback = parseFloat(document.getElementById('debt-cashback').value) || 0;
+    const benefits = document.getElementById('debt-benefits').value.trim() || null;
+
+    if (!n || isNaN(b) || b < 0) return alert('Completa el nombre y el saldo');
+    if (p <= 0) return alert('Define un cupo total mayor a 0');
+
+    state.debts.push({
+      id: Date.now(),
+      name: n, balance: b, rate: r, payment: p,
+      cutoffDay: co, bank, brand, lastDigits,
+      cashbackPercent: cashback, benefits
+    });
+
+    // Limpiar formulario
+    ['debt-name', 'debt-balance', 'debt-payment', 'debt-cutoff', 'debt-bank',
+     'debt-brand', 'debt-digits', 'debt-benefits', 'card-template'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (el.tagName === 'SELECT') el.value = '';
+        else el.value = '';
+      }
+    });
     document.getElementById('debt-rate').value = '0';
-    document.getElementById('debt-payment').value = '';
-    document.getElementById('debt-cutoff').value = '';
-    document.getElementById('debt-bank').value = '';
-    document.getElementById('debt-brand').value = '';
-    document.getElementById('debt-digits').value = '';
+    document.getElementById('debt-cashback').value = '0';
+    document.getElementById('card-template-info').style.display = 'none';
+
     saveState(); renderAll();
   };
   window.removeDebt = function(id) { state.debts = state.debts.filter(d => d.id !== id); saveState(); renderAll(); };
