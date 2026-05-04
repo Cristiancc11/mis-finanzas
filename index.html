@@ -52,6 +52,18 @@
 <body>
 
 <!-- LOGIN SCREEN -->
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="loading-logo">💎</div>
+  <h1 class="loading-title">FinanzasPro</h1>
+  <p class="loading-subtitle">Cargando tu información...</p>
+  <div class="loading-dots">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+
 <div id="auth-screen" style="display: none; position: fixed; inset: 0; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
   <div style="background: var(--bg-primary); border-radius: 20px; padding: 32px 28px; max-width: 420px; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05); animation: fadeInScale 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
     <div style="text-align: center; margin-bottom: 24px;">
@@ -141,16 +153,99 @@
     <div id="sync-indicator" style="position: absolute; top: 12px; right: 16px; font-size: 11px; color: rgba(255,255,255,0.7);"></div>
   </div>
 
+  <!-- BOTÓN HAMBURGUESA (solo móvil) -->
+  <button id="menu-toggle" class="menu-toggle-btn" onclick="toggleSideMenu()" aria-label="Abrir menú">
+    <span class="hamburger-icon">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+    <span class="menu-current-tab" id="menu-current-tab">🏠 Resumen</span>
+  </button>
+
+  <!-- BACKDROP del drawer -->
+  <div id="side-menu-backdrop" class="side-menu-backdrop" onclick="closeSideMenu()"></div>
+
+  <!-- DRAWER LATERAL -->
+  <aside id="side-menu" class="side-menu" aria-label="Menú principal">
+    <div class="side-menu-header">
+      <div class="side-menu-logo">
+        <div class="side-menu-logo-icon">💎</div>
+        <div>
+          <h2 class="side-menu-logo-text"><span class="logo-text">FinanzasPro</span></h2>
+          <p class="side-menu-logo-subtitle">Tu dashboard personal</p>
+        </div>
+      </div>
+      <button class="side-menu-close" onclick="closeSideMenu()" aria-label="Cerrar menú">×</button>
+    </div>
+
+    <nav class="side-menu-nav">
+      <button class="side-menu-item active" data-tab="resumen" onclick="navigateTab('resumen')">
+        <span class="side-menu-item-icon">🏠</span>
+        <span class="side-menu-item-text">Resumen</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="presupuesto" onclick="navigateTab('presupuesto')">
+        <span class="side-menu-item-icon">💸</span>
+        <span class="side-menu-item-text">Presupuesto</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="bolsillos" onclick="navigateTab('bolsillos')">
+        <span class="side-menu-item-icon">👛</span>
+        <span class="side-menu-item-text">Bolsillos</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="ingresos" onclick="navigateTab('ingresos')">
+        <span class="side-menu-item-icon">💰</span>
+        <span class="side-menu-item-text">Ingresos</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="deudas" onclick="navigateTab('deudas')">
+        <span class="side-menu-item-icon">💳</span>
+        <span class="side-menu-item-text">Tarjetas</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="metas" onclick="navigateTab('metas')">
+        <span class="side-menu-item-icon">🎯</span>
+        <span class="side-menu-item-text">Metas</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="analisis" onclick="navigateTab('analisis')">
+        <span class="side-menu-item-icon">📊</span>
+        <span class="side-menu-item-text">Análisis</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="documentos" onclick="navigateTab('documentos')">
+        <span class="side-menu-item-icon">📄</span>
+        <span class="side-menu-item-text">Documentos</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+      <button class="side-menu-item" data-tab="perfil" onclick="navigateTab('perfil')">
+        <span class="side-menu-item-icon">👤</span>
+        <span class="side-menu-item-text">Mi Perfil</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
+    </nav>
+
+    <div class="side-menu-footer">
+      <button class="side-menu-logout" onclick="closeSideMenu(); handleLogout();">
+        <span>🚪</span>
+        <span>Cerrar sesión</span>
+      </button>
+      <p class="side-menu-version">v1.0 · Mayo 2026</p>
+    </div>
+  </aside>
+
   <div class="fin-tabs">
-    <button class="fin-tab active" data-tab="resumen">🏠 Resumen</button>
-    <button class="fin-tab" data-tab="presupuesto">💸 Presupuesto</button>
-    <button class="fin-tab" data-tab="bolsillos">👛 Bolsillos</button>
-    <button class="fin-tab" data-tab="ingresos">💰 Ingresos</button>
-    <button class="fin-tab" data-tab="deudas">💳 Tarjetas</button>
-    <button class="fin-tab" data-tab="metas">🎯 Metas</button>
-    <button class="fin-tab" data-tab="analisis">📊 Análisis</button>
-    <button class="fin-tab" data-tab="documentos">📄 Documentos</button>
-    <button class="fin-tab" data-tab="perfil">👤 Perfil</button>
+    <button class="fin-tab active" data-tab="resumen"><span class="tab-icon">🏠</span><span class="tab-label">Resumen</span></button>
+    <button class="fin-tab" data-tab="presupuesto"><span class="tab-icon">💸</span><span class="tab-label">Presupuesto</span></button>
+    <button class="fin-tab" data-tab="bolsillos"><span class="tab-icon">👛</span><span class="tab-label">Bolsillos</span></button>
+    <button class="fin-tab" data-tab="ingresos"><span class="tab-icon">💰</span><span class="tab-label">Ingresos</span></button>
+    <button class="fin-tab" data-tab="deudas"><span class="tab-icon">💳</span><span class="tab-label">Tarjetas</span></button>
+    <button class="fin-tab" data-tab="metas"><span class="tab-icon">🎯</span><span class="tab-label">Metas</span></button>
+    <button class="fin-tab" data-tab="analisis"><span class="tab-icon">📊</span><span class="tab-label">Análisis</span></button>
+    <button class="fin-tab" data-tab="documentos"><span class="tab-icon">📄</span><span class="tab-label">Docs</span></button>
+    <button class="fin-tab" data-tab="perfil"><span class="tab-icon">👤</span><span class="tab-label">Perfil</span></button>
   </div>
 
   <div class="fin-section active" id="section-resumen">
@@ -797,6 +892,11 @@
     <div>Tus datos se guardan en este navegador · Usa "Exportar" como respaldo periódico</div>
   </div>
 </div>
+
+<!-- Floating Action Button (FAB) - Solo visible en móvil -->
+<button class="fab" id="fab-quick-add" onclick="openQuickAddGasto()" title="Registrar gasto rápido" aria-label="Registrar gasto rápido">
+  <span style="font-size: 28px; line-height: 1;">+</span>
+</button>
 
 <script src="app.js"></script>
 </body>
