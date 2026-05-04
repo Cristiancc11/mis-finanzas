@@ -874,13 +874,7 @@
         <button onclick="addTransaction()">Agregar</button>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; align-items: center;">
-        <select id="tx-payment-method">
-          <option value="tarjeta">💳 Tarjeta de crédito</option>
-          <option value="pse">🏦 PSE</option>
-          <option value="llave">🔑 Llave / Bre-B</option>
-          <option value="efectivo">💵 Efectivo</option>
-          <option value="debito">🏧 Débito Lulo</option>
-        </select>
+        <select id="tx-payment-method"></select>
         <select id="tx-card" style="display: none;">
           <option value="">Selecciona tarjeta</option>
         </select>
@@ -895,6 +889,10 @@
         </div>
       </div>
       <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
+      <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+        <button onclick="openCategoriesManager()" style="font-size: 11px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">⚙️ Categorías</button>
+        <button onclick="openPaymentMethodsManager()" style="font-size: 11px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">⚙️ Métodos de pago</button>
+      </div>
     </div>
     <div class="raised-card">
       <p class="card-title">Movimientos del mes</p>
@@ -954,16 +952,7 @@
       <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center;">
         <input type="text" id="extra-desc" placeholder="¿De dónde viene?" />
         <input type="number" id="extra-amount" placeholder="Monto" min="0" step="0.01" />
-        <select id="extra-source">
-          <option value="bono">🎁 Bono / Bonificación</option>
-          <option value="devolucion">↩️ Devolución</option>
-          <option value="regalo">🎉 Regalo</option>
-          <option value="venta">🛒 Venta</option>
-          <option value="freelance">💼 Freelance / Trabajo extra</option>
-          <option value="prestamo">💵 Devolución de préstamo</option>
-          <option value="reembolso">📋 Reembolso (hermana/Milena)</option>
-          <option value="otro">📌 Otro</option>
-        </select>
+        <select id="extra-source"></select>
         <button onclick="addExtraIncome()">Agregar</button>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center;">
@@ -972,7 +961,10 @@
           <option value="">¿A qué bolsillo va?</option>
         </select>
       </div>
-      <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">Si seleccionas un bolsillo, el dinero se sumará automáticamente</p>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+        <p style="font-size: 11px; color: var(--text-tertiary); margin: 0;">Si seleccionas un bolsillo, el dinero se sumará automáticamente</p>
+        <button onclick="openIncomeTypesManager()" style="font-size: 11px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">⚙️ Gestionar tipos</button>
+      </div>
     </div>
 
     <div class="raised-card">
@@ -4603,25 +4595,47 @@ async function buildAnnualPDF(state, year) {
 (function() {
   const STORAGE_KEY = 'finance-dashboard-cristian-v20';
 
-  const CATEGORIES = [
-    // FIJOS NO NEGOCIABLES
-    { id: 'servicios_casa', label: 'Servicios + aporte casa', icon: '🏠', tipo: 'fijo' },
-    // ESTILO DE VIDA FIJO (poco margen)
-    { id: 'uber', label: 'Uber (mi mitad)', icon: '🚗', tipo: 'estilo' },
-    { id: 'celular', label: 'Plan celular', icon: '📞', tipo: 'estilo' },
-    { id: 'gimnasio', label: 'Gimnasio', icon: '💪', tipo: 'estilo' },
-    { id: 'streaming', label: 'Streaming (YouTube, etc.)', icon: '📺', tipo: 'estilo' },
-    // VARIABLES (donde tienes control)
-    { id: 'comida_fuera', label: 'Comer fuera (solo)', icon: '🍔', tipo: 'variable' },
-    { id: 'rappi', label: 'Domicilios Rappi', icon: '🛵', tipo: 'variable' },
-    { id: 'salidas_milena', label: 'Salidas con Milena (mi mitad)', icon: '🎭', tipo: 'variable' },
-    { id: 'gasolina', label: 'Gasolina', icon: '⛽', tipo: 'variable' },
-    { id: 'mascota', label: 'Zlatan (base mensual)', icon: '🐾', tipo: 'variable' },
-    { id: 'mascota_extra', label: 'Veterinaria/imprevistos Zlatan', icon: '🏥', tipo: 'variable' },
-    { id: 'compras', label: 'Compras varias', icon: '🛍️', tipo: 'variable' },
-    { id: 'salud', label: 'Salud / medicina', icon: '💊', tipo: 'variable' },
-    { id: 'otros', label: 'Otros', icon: '📋', tipo: 'variable' }
+  // Categorías de gastos: por defecto + personalizadas del usuario
+  const DEFAULT_CATEGORIES = [
+    // GASTOS FIJOS
+    { id: 'servicios_casa', label: 'Servicios + casa', icon: '🏠', tipo: 'fijo', isDefault: true },
+    { id: 'celular', label: 'Plan celular', icon: '📞', tipo: 'fijo', isDefault: true },
+    { id: 'gimnasio', label: 'Gimnasio', icon: '💪', tipo: 'fijo', isDefault: true },
+    { id: 'streaming', label: 'Streaming', icon: '📺', tipo: 'fijo', isDefault: true },
+    // TRANSPORTE
+    { id: 'uber', label: 'Uber / Transporte', icon: '🚗', tipo: 'estilo', isDefault: true },
+    { id: 'gasolina', label: 'Gasolina', icon: '⛽', tipo: 'estilo', isDefault: true },
+    // ALIMENTACIÓN
+    { id: 'comida_fuera', label: 'Comida fuera', icon: '🍔', tipo: 'variable', isDefault: true },
+    { id: 'rappi', label: 'Domicilios', icon: '🛵', tipo: 'variable', isDefault: true },
+    { id: 'mercado', label: 'Mercado / Supermercado', icon: '🛒', tipo: 'variable', isDefault: true },
+    // OCIO
+    { id: 'salidas', label: 'Salidas / Entretenimiento', icon: '🎭', tipo: 'variable', isDefault: true },
+    // OTROS COMUNES
+    { id: 'salud', label: 'Salud / Medicina', icon: '💊', tipo: 'variable', isDefault: true },
+    { id: 'compras', label: 'Compras varias', icon: '🛍️', tipo: 'variable', isDefault: true },
+    { id: 'mascota', label: 'Mascota', icon: '🐾', tipo: 'variable', isDefault: true },
+    { id: 'otros', label: 'Otros', icon: '📋', tipo: 'variable', isDefault: true }
   ];
+
+  // Categorías DINÁMICAS: combina las default con las custom del state
+  function getAllCategories() {
+    const customs = (state && state.customCategories) ? state.customCategories : [];
+    return [...DEFAULT_CATEGORIES, ...customs];
+  }
+
+  // Proxy para que el resto del código siga usando "CATEGORIES" pero leyendo dinámico
+  const CATEGORIES_PROXY = new Proxy([], {
+    get(target, prop) {
+      const arr = getAllCategories();
+      if (prop === 'forEach' || prop === 'map' || prop === 'filter' || prop === 'find' || prop === 'length' || prop === 'slice' || prop === 'sort' || prop === 'reduce' || prop === 'some' || prop === 'every' || prop === 'indexOf' || prop === 'includes') {
+        return arr[prop].bind(arr);
+      }
+      if (prop === Symbol.iterator) return arr[Symbol.iterator].bind(arr);
+      return arr[prop];
+    }
+  });
+  const CATEGORIES = CATEGORIES_PROXY;
 
   function getCurrentMonthKey() {
     const d = new Date();
@@ -5083,6 +5097,561 @@ async function buildAnnualPDF(state, year) {
   };
   window.removeIncome = function(id) { state.incomes = state.incomes.filter(i => i.id !== id); saveState(); renderAll(); };
 
+  // ============================================
+  // TIPOS DE INGRESOS EXTRAS (PERSONALIZABLES)
+  // ============================================
+  const DEFAULT_INCOME_TYPES = [
+    { id: 'bono', icon: '🎁', label: 'Bono / Bonificación', isDefault: true },
+    { id: 'devolucion', icon: '↩️', label: 'Devolución', isDefault: true },
+    { id: 'regalo', icon: '🎉', label: 'Regalo', isDefault: true },
+    { id: 'venta', icon: '🛒', label: 'Venta', isDefault: true },
+    { id: 'freelance', icon: '💼', label: 'Freelance / Trabajo extra', isDefault: true },
+    { id: 'prestamo', icon: '💵', label: 'Devolución de préstamo', isDefault: true },
+    { id: 'reembolso', icon: '📋', label: 'Reembolso', isDefault: true },
+    { id: 'otro', icon: '📌', label: 'Otro', isDefault: true }
+  ];
+
+  function getAllIncomeTypes() {
+    // Combina los default con los personalizados del usuario
+    const userTypes = state.extraIncomeTypes || [];
+    return [...DEFAULT_INCOME_TYPES, ...userTypes];
+  }
+
+  function getIncomeTypesAsMap() {
+    const map = {};
+    getAllIncomeTypes().forEach(t => {
+      map[t.id] = { icon: t.icon, label: t.label };
+    });
+    return map;
+  }
+
+  function renderIncomeTypesSelect() {
+    const select = document.getElementById('extra-source');
+    if (!select) return;
+    const currentValue = select.value;
+    const types = getAllIncomeTypes();
+    select.innerHTML = types.map(t =>
+      `<option value="${t.id}">${t.icon} ${t.label}</option>`
+    ).join('');
+    if (currentValue) select.value = currentValue;
+  }
+
+  window.openIncomeTypesManager = function() {
+    let modal = document.getElementById('income-types-modal');
+    if (modal) modal.remove();
+
+    modal = document.createElement('div');
+    modal.id = 'income-types-modal';
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; backdrop-filter: blur(4px);';
+
+    modal.innerHTML = `
+      <div style="background: var(--bg-primary); border-radius: 16px; max-width: 500px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">⚙️ Gestionar tipos de ingreso</h2>
+          <button onclick="closeIncomeTypesManager()" style="background: transparent; border: none; cursor: pointer; font-size: 22px; color: var(--text-secondary); padding: 0 4px;">×</button>
+        </div>
+
+        <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 16px;">Crea tus propios tipos de ingreso extra para personalizar el dashboard a tu estilo.</p>
+
+        <div style="background: var(--bg-secondary); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+          <p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">➕ Crear nuevo tipo</p>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="new-type-icon" placeholder="🎯" maxlength="2" style="text-align: center; font-size: 18px;" />
+            <input type="text" id="new-type-label" placeholder="Nombre (ej: Comisión por ventas)" maxlength="50" />
+          </div>
+          <button onclick="addCustomIncomeType()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 13px;">+ Crear tipo</button>
+          <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Tip: usa emojis para identificarlo visualmente</p>
+        </div>
+
+        <div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">📋 Tipos disponibles</p>
+          <div id="income-types-list"></div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    renderIncomeTypesList();
+  };
+
+  function renderIncomeTypesList() {
+    const container = document.getElementById('income-types-list');
+    if (!container) return;
+
+    const types = getAllIncomeTypes();
+    container.innerHTML = types.map(t => {
+      const isDefault = t.isDefault;
+      return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 6px; border: 0.5px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          <span style="font-size: 20px;">${t.icon}</span>
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: 500;">${t.label}</div>
+            ${isDefault ? '<div style="font-size: 11px; color: var(--text-tertiary);">Tipo por defecto</div>' : '<div style="font-size: 11px; color: var(--info-text);">✨ Personalizado</div>'}
+          </div>
+        </div>
+        ${!isDefault ? `
+          <div style="display: flex; gap: 4px;">
+            <button onclick="editCustomIncomeType('${t.id}')" style="font-size: 11px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">✏️</button>
+            <button onclick="deleteCustomIncomeType('${t.id}')" style="font-size: 11px; padding: 4px 8px; background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); border-radius: 6px; cursor: pointer;">🗑️</button>
+          </div>
+        ` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  window.closeIncomeTypesManager = function() {
+    const modal = document.getElementById('income-types-modal');
+    if (modal) modal.remove();
+  };
+
+  window.addCustomIncomeType = function() {
+    const icon = document.getElementById('new-type-icon').value.trim() || '📌';
+    const label = document.getElementById('new-type-label').value.trim();
+    if (!label) {
+      alert('Ingresa un nombre para el tipo');
+      return;
+    }
+
+    if (!state.extraIncomeTypes) state.extraIncomeTypes = [];
+
+    // Verificar que no exista uno con el mismo nombre
+    const allTypes = getAllIncomeTypes();
+    if (allTypes.some(t => t.label.toLowerCase() === label.toLowerCase())) {
+      alert('Ya existe un tipo con ese nombre');
+      return;
+    }
+
+    // Crear ID único basado en timestamp
+    const id = 'custom_' + Date.now();
+    state.extraIncomeTypes.push({ id, icon, label, isDefault: false });
+
+    document.getElementById('new-type-icon').value = '';
+    document.getElementById('new-type-label').value = '';
+
+    saveState();
+    renderIncomeTypesList();
+    renderIncomeTypesSelect();
+  };
+
+  window.editCustomIncomeType = function(id) {
+    if (!state.extraIncomeTypes) return;
+    const type = state.extraIncomeTypes.find(t => t.id === id);
+    if (!type) return;
+
+    const newLabel = prompt('Nuevo nombre:', type.label);
+    if (newLabel === null) return;
+    if (!newLabel.trim()) return alert('El nombre no puede estar vacío');
+
+    const newIcon = prompt('Nuevo emoji/ícono (opcional):', type.icon);
+    if (newIcon === null) return;
+
+    type.label = newLabel.trim();
+    type.icon = newIcon.trim() || '📌';
+
+    saveState();
+    renderIncomeTypesList();
+    renderIncomeTypesSelect();
+    renderExtraIncomes();
+  };
+
+  window.deleteCustomIncomeType = function(id) {
+    if (!state.extraIncomeTypes) return;
+    const type = state.extraIncomeTypes.find(t => t.id === id);
+    if (!type) return;
+
+    // Verificar si está en uso
+    let inUse = 0;
+    Object.values(state.extraIncomes || {}).forEach(monthExtras => {
+      monthExtras.forEach(e => {
+        if (e.source === id) inUse++;
+      });
+    });
+
+    let confirmMsg = `¿Eliminar el tipo "${type.label}"?`;
+    if (inUse > 0) {
+      confirmMsg += `\n\n⚠️ Tienes ${inUse} ingreso(s) registrados con este tipo. Si lo eliminas, se mostrarán como "Otro".`;
+    }
+
+    if (!confirm(confirmMsg)) return;
+
+    state.extraIncomeTypes = state.extraIncomeTypes.filter(t => t.id !== id);
+
+    // Migrar los registros que usaban ese tipo a "otro"
+    Object.values(state.extraIncomes || {}).forEach(monthExtras => {
+      monthExtras.forEach(e => {
+        if (e.source === id) e.source = 'otro';
+      });
+    });
+
+    saveState();
+    renderIncomeTypesList();
+    renderIncomeTypesSelect();
+    renderExtraIncomes();
+  };
+
+  // ============================================
+  // CATEGORÍAS DE GASTOS PERSONALIZABLES
+  // ============================================
+  function renderCategoriesSelect() {
+    // Actualizar el select de tx-category
+    const select = document.getElementById('tx-category');
+    if (!select) return;
+    const currentValue = select.value;
+    const cats = getAllCategories();
+    select.innerHTML = cats.map(c =>
+      `<option value="${c.id}">${c.icon} ${c.label}</option>`
+    ).join('');
+    if (currentValue) select.value = currentValue;
+
+    // También actualizar el filtro de categorías si existe
+    const filterSel = document.getElementById('tx-filter-category');
+    if (filterSel) {
+      const filterCurrent = filterSel.value;
+      filterSel.innerHTML = '<option value="all">Todas las categorías</option>' +
+        cats.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
+      if (filterCurrent) filterSel.value = filterCurrent;
+    }
+  }
+
+  window.openCategoriesManager = function() {
+    let modal = document.getElementById('categories-modal');
+    if (modal) modal.remove();
+
+    modal = document.createElement('div');
+    modal.id = 'categories-modal';
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; backdrop-filter: blur(4px);';
+
+    modal.innerHTML = `
+      <div style="background: var(--bg-primary); border-radius: 16px; max-width: 500px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">⚙️ Gestionar categorías</h2>
+          <button onclick="closeCategoriesManager()" style="background: transparent; border: none; cursor: pointer; font-size: 22px; color: var(--text-secondary); padding: 0 4px;">×</button>
+        </div>
+
+        <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 16px;">Crea tus propias categorías de gastos para personalizar tu dashboard.</p>
+
+        <div style="background: var(--bg-secondary); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+          <p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">➕ Crear nueva categoría</p>
+          <div style="display: grid; grid-template-columns: 60px 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="new-cat-icon" placeholder="🎯" maxlength="2" style="text-align: center; font-size: 18px;" />
+            <input type="text" id="new-cat-label" placeholder="Nombre (ej: Educación)" maxlength="40" />
+            <select id="new-cat-tipo">
+              <option value="fijo">Fijo</option>
+              <option value="estilo">Estilo</option>
+              <option value="variable" selected>Variable</option>
+            </select>
+          </div>
+          <button onclick="addCustomCategory()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 13px;">+ Crear categoría</button>
+          <div style="margin-top: 8px; padding: 8px 10px; background: var(--bg-primary); border-radius: 6px; font-size: 11px; color: var(--text-secondary); line-height: 1.5;">
+            <strong>Tipos:</strong><br>
+            • <strong>Fijo</strong>: pagos siempre iguales (alquiler, servicios)<br>
+            • <strong>Estilo</strong>: gastos recurrentes con poca variación (gym, transporte)<br>
+            • <strong>Variable</strong>: gastos donde tienes control (comida fuera, compras)
+          </div>
+        </div>
+
+        <div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">📋 Categorías disponibles</p>
+          <div id="categories-list"></div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    renderCategoriesList();
+  };
+
+  function renderCategoriesList() {
+    const container = document.getElementById('categories-list');
+    if (!container) return;
+    const cats = getAllCategories();
+
+    container.innerHTML = cats.map(c => {
+      const isDefault = c.isDefault;
+      const tipoLabel = { fijo: 'Fijo', estilo: 'Estilo', variable: 'Variable' }[c.tipo] || c.tipo;
+      return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 6px; border: 0.5px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          <span style="font-size: 20px;">${c.icon}</span>
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: 500;">${c.label}</div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">${isDefault ? 'Por defecto' : '✨ Personalizada'} · ${tipoLabel}</div>
+          </div>
+        </div>
+        ${!isDefault ? `
+          <div style="display: flex; gap: 4px;">
+            <button onclick="editCustomCategory('${c.id}')" style="font-size: 11px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">✏️</button>
+            <button onclick="deleteCustomCategory('${c.id}')" style="font-size: 11px; padding: 4px 8px; background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); border-radius: 6px; cursor: pointer;">🗑️</button>
+          </div>
+        ` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  window.closeCategoriesManager = function() {
+    const modal = document.getElementById('categories-modal');
+    if (modal) modal.remove();
+  };
+
+  window.addCustomCategory = function() {
+    const icon = document.getElementById('new-cat-icon').value.trim() || '📌';
+    const label = document.getElementById('new-cat-label').value.trim();
+    const tipo = document.getElementById('new-cat-tipo').value || 'variable';
+    if (!label) return alert('Ingresa un nombre');
+
+    const allCats = getAllCategories();
+    if (allCats.some(c => c.label.toLowerCase() === label.toLowerCase())) {
+      alert('Ya existe una categoría con ese nombre');
+      return;
+    }
+
+    if (!state.customCategories) state.customCategories = [];
+    const id = 'custom_cat_' + Date.now();
+    state.customCategories.push({ id, icon, label, tipo, isDefault: false });
+
+    document.getElementById('new-cat-icon').value = '';
+    document.getElementById('new-cat-label').value = '';
+
+    saveState();
+    renderCategoriesList();
+    renderCategoriesSelect();
+    renderAll();
+  };
+
+  window.editCustomCategory = function(id) {
+    if (!state.customCategories) return;
+    const cat = state.customCategories.find(c => c.id === id);
+    if (!cat) return;
+
+    const newLabel = prompt('Nuevo nombre:', cat.label);
+    if (newLabel === null) return;
+    if (!newLabel.trim()) return alert('El nombre no puede estar vacío');
+
+    const newIcon = prompt('Nuevo emoji (opcional):', cat.icon);
+    if (newIcon === null) return;
+
+    cat.label = newLabel.trim();
+    cat.icon = newIcon.trim() || '📌';
+
+    saveState();
+    renderCategoriesList();
+    renderCategoriesSelect();
+    renderAll();
+  };
+
+  window.deleteCustomCategory = function(id) {
+    if (!state.customCategories) return;
+    const cat = state.customCategories.find(c => c.id === id);
+    if (!cat) return;
+
+    let inUse = 0;
+    Object.values(state.transactions || {}).forEach(monthTxs => {
+      monthTxs.forEach(t => { if (t.category === id) inUse++; });
+    });
+
+    let msg = `¿Eliminar la categoría "${cat.label}"?`;
+    if (inUse > 0) msg += `\n\n⚠️ Tienes ${inUse} transacción(es) en esta categoría. Se moverán a "Otros".`;
+    if (!confirm(msg)) return;
+
+    state.customCategories = state.customCategories.filter(c => c.id !== id);
+
+    Object.values(state.transactions || {}).forEach(monthTxs => {
+      monthTxs.forEach(t => { if (t.category === id) t.category = 'otros'; });
+    });
+
+    // También eliminar de presupuestos
+    Object.values(state.budgets || {}).forEach(monthBudget => {
+      delete monthBudget[id];
+    });
+
+    saveState();
+    renderCategoriesList();
+    renderCategoriesSelect();
+    renderAll();
+  };
+
+  // ============================================
+  // MÉTODOS DE PAGO PERSONALIZABLES
+  // ============================================
+  const DEFAULT_PAYMENT_METHODS = [
+    { id: 'tarjeta', icon: '💳', label: 'Tarjeta de crédito', isDefault: true },
+    { id: 'pse', icon: '🏦', label: 'PSE', isDefault: true },
+    { id: 'llave', icon: '🔑', label: 'Llave / Bre-B', isDefault: true },
+    { id: 'efectivo', icon: '💵', label: 'Efectivo', isDefault: true },
+    { id: 'debito', icon: '🏧', label: 'Débito', isDefault: true },
+    { id: 'nequi', icon: '📱', label: 'Nequi', isDefault: true },
+    { id: 'daviplata', icon: '📲', label: 'Daviplata', isDefault: true },
+    { id: 'transferencia', icon: '↔️', label: 'Transferencia', isDefault: true }
+  ];
+
+  function getAllPaymentMethods() {
+    const customs = (state && state.customPaymentMethods) ? state.customPaymentMethods : [];
+    return [...DEFAULT_PAYMENT_METHODS, ...customs];
+  }
+
+  function getPaymentMethodsAsMap() {
+    const map = {};
+    getAllPaymentMethods().forEach(m => {
+      map[m.id] = { icon: m.icon, label: m.label };
+    });
+    return map;
+  }
+
+  function renderPaymentMethodsSelect() {
+    const select = document.getElementById('tx-payment-method');
+    if (!select) return;
+    const currentValue = select.value;
+    const methods = getAllPaymentMethods();
+    select.innerHTML = methods.map(m =>
+      `<option value="${m.id}">${m.icon} ${m.label}</option>`
+    ).join('');
+    if (currentValue) select.value = currentValue;
+
+    // Filtro
+    const filterSel = document.getElementById('tx-filter-method');
+    if (filterSel) {
+      const filterCurrent = filterSel.value;
+      filterSel.innerHTML = '<option value="all">Todos los métodos</option>' +
+        methods.map(m => `<option value="${m.id}">${m.icon} ${m.label}</option>`).join('');
+      if (filterCurrent) filterSel.value = filterCurrent;
+    }
+  }
+
+  window.openPaymentMethodsManager = function() {
+    let modal = document.getElementById('payment-methods-modal');
+    if (modal) modal.remove();
+
+    modal = document.createElement('div');
+    modal.id = 'payment-methods-modal';
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; backdrop-filter: blur(4px);';
+
+    modal.innerHTML = `
+      <div style="background: var(--bg-primary); border-radius: 16px; max-width: 500px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">⚙️ Gestionar métodos de pago</h2>
+          <button onclick="closePaymentMethodsManager()" style="background: transparent; border: none; cursor: pointer; font-size: 22px; color: var(--text-secondary); padding: 0 4px;">×</button>
+        </div>
+
+        <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 16px;">Agrega métodos de pago personalizados (Movii, Bold, Yape, etc.)</p>
+
+        <div style="background: var(--bg-secondary); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+          <p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">➕ Crear nuevo método</p>
+          <div style="display: grid; grid-template-columns: 60px 1fr; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="new-method-icon" placeholder="💎" maxlength="2" style="text-align: center; font-size: 18px;" />
+            <input type="text" id="new-method-label" placeholder="Nombre (ej: Movii, Yape, Bold)" maxlength="40" />
+          </div>
+          <button onclick="addCustomPaymentMethod()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 13px;">+ Crear método</button>
+        </div>
+
+        <div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">📋 Métodos disponibles</p>
+          <div id="payment-methods-list"></div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    renderPaymentMethodsList();
+  };
+
+  function renderPaymentMethodsList() {
+    const container = document.getElementById('payment-methods-list');
+    if (!container) return;
+    const methods = getAllPaymentMethods();
+
+    container.innerHTML = methods.map(m => {
+      const isDefault = m.isDefault;
+      return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 6px; border: 0.5px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          <span style="font-size: 20px;">${m.icon}</span>
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: 500;">${m.label}</div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">${isDefault ? 'Por defecto' : '✨ Personalizado'}</div>
+          </div>
+        </div>
+        ${!isDefault ? `
+          <div style="display: flex; gap: 4px;">
+            <button onclick="editCustomPaymentMethod('${m.id}')" style="font-size: 11px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">✏️</button>
+            <button onclick="deleteCustomPaymentMethod('${m.id}')" style="font-size: 11px; padding: 4px 8px; background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); border-radius: 6px; cursor: pointer;">🗑️</button>
+          </div>
+        ` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  window.closePaymentMethodsManager = function() {
+    const modal = document.getElementById('payment-methods-modal');
+    if (modal) modal.remove();
+  };
+
+  window.addCustomPaymentMethod = function() {
+    const icon = document.getElementById('new-method-icon').value.trim() || '💳';
+    const label = document.getElementById('new-method-label').value.trim();
+    if (!label) return alert('Ingresa un nombre');
+
+    const all = getAllPaymentMethods();
+    if (all.some(m => m.label.toLowerCase() === label.toLowerCase())) {
+      alert('Ya existe un método con ese nombre');
+      return;
+    }
+
+    if (!state.customPaymentMethods) state.customPaymentMethods = [];
+    const id = 'custom_pm_' + Date.now();
+    state.customPaymentMethods.push({ id, icon, label, isDefault: false });
+
+    document.getElementById('new-method-icon').value = '';
+    document.getElementById('new-method-label').value = '';
+
+    saveState();
+    renderPaymentMethodsList();
+    renderPaymentMethodsSelect();
+  };
+
+  window.editCustomPaymentMethod = function(id) {
+    if (!state.customPaymentMethods) return;
+    const m = state.customPaymentMethods.find(x => x.id === id);
+    if (!m) return;
+
+    const newLabel = prompt('Nuevo nombre:', m.label);
+    if (newLabel === null) return;
+    if (!newLabel.trim()) return alert('El nombre no puede estar vacío');
+
+    const newIcon = prompt('Nuevo emoji:', m.icon);
+    if (newIcon === null) return;
+
+    m.label = newLabel.trim();
+    m.icon = newIcon.trim() || '💳';
+
+    saveState();
+    renderPaymentMethodsList();
+    renderPaymentMethodsSelect();
+    renderTransactions();
+  };
+
+  window.deleteCustomPaymentMethod = function(id) {
+    if (!state.customPaymentMethods) return;
+    const m = state.customPaymentMethods.find(x => x.id === id);
+    if (!m) return;
+
+    let inUse = 0;
+    Object.values(state.transactions || {}).forEach(arr => {
+      arr.forEach(t => { if (t.paymentMethod === id) inUse++; });
+    });
+
+    let msg = `¿Eliminar el método "${m.label}"?`;
+    if (inUse > 0) msg += `\n\n⚠️ Tienes ${inUse} transacción(es) con este método. Se moverán a "Efectivo".`;
+    if (!confirm(msg)) return;
+
+    state.customPaymentMethods = state.customPaymentMethods.filter(x => x.id !== id);
+    Object.values(state.transactions || {}).forEach(arr => {
+      arr.forEach(t => { if (t.paymentMethod === id) t.paymentMethod = 'efectivo'; });
+    });
+
+    saveState();
+    renderPaymentMethodsList();
+    renderPaymentMethodsSelect();
+    renderTransactions();
+  };
+
   // INGRESOS EXTRAS (no recurrentes)
   window.addExtraIncome = function() {
     const desc = document.getElementById('extra-desc').value.trim();
@@ -5156,16 +5725,8 @@ async function buildAnnualPDF(state, year) {
     const list = document.getElementById('extra-list');
     if (!list) return;
 
-    const SOURCE_INFO = {
-      bono: { icon: '🎁', label: 'Bono' },
-      devolucion: { icon: '↩️', label: 'Devolución' },
-      regalo: { icon: '🎉', label: 'Regalo' },
-      venta: { icon: '🛒', label: 'Venta' },
-      freelance: { icon: '💼', label: 'Freelance' },
-      prestamo: { icon: '💵', label: 'Devolución préstamo' },
-      reembolso: { icon: '📋', label: 'Reembolso' },
-      otro: { icon: '📌', label: 'Otro' }
-    };
+    // Combinar tipos por defecto + tipos personalizados del usuario
+    const SOURCE_INFO = getIncomeTypesAsMap();
 
     const extras = ((state.extraIncomes || {})[currentExtraMonth] || []).slice().sort((a, b) => b.date.localeCompare(a.date));
 
@@ -5953,13 +6514,7 @@ async function buildAnnualPDF(state, year) {
       return;
     }
 
-    const PAYMENT_METHODS = {
-      tarjeta: { icon: '💳', label: 'Tarjeta' },
-      pse: { icon: '🏦', label: 'PSE' },
-      llave: { icon: '🔑', label: 'Llave/Bre-B' },
-      efectivo: { icon: '💵', label: 'Efectivo' },
-      debito: { icon: '🏧', label: 'Débito Lulo' }
-    };
+    const PAYMENT_METHODS = getPaymentMethodsAsMap();
 
     list.innerHTML = txs.map(t => {
       const cat = CATEGORIES.find(c => c.id === t.category) || { icon: '📋', label: 'Otros' };
@@ -6735,6 +7290,9 @@ async function buildAnnualPDF(state, year) {
     renderResumen(); renderBudget(); renderTransactions(); renderCharts();
     populateExtraMonths();
     renderExtraIncomes();
+    renderIncomeTypesSelect();
+    renderCategoriesSelect();
+    renderPaymentMethodsSelect();
   }
 
   if (typeof Chart !== 'undefined') loadState();
