@@ -33,7 +33,16 @@ function initSupabase() {
 
 // Verificar si hay sesión activa al cargar
 async function checkAuth() {
+  // TIMEOUT DE SEGURIDAD: si pasan 10s sin terminar, forzar que se oculte el loading
+  const safetyTimeout = setTimeout(() => {
+    console.warn('Loading screen timeout - forzando cierre');
+    hideLoadingScreen();
+    showAuthScreen();
+  }, 10000);
+
   if (!initSupabase()) {
+    clearTimeout(safetyTimeout);
+    hideLoadingScreen();
     showAuthScreen();
     return;
   }
@@ -45,30 +54,37 @@ async function checkAuth() {
     if (session && session.user) {
       currentUser = session.user;
       await loadFromCloud();
+      clearTimeout(safetyTimeout);
       hideLoadingScreen();
       hideAuthScreen();
       // Mostrar botón migrar si hay datos locales
       checkLocalData();
     } else {
+      clearTimeout(safetyTimeout);
       hideLoadingScreen();
       showAuthScreen();
     }
   } catch (e) {
     console.error('Error checking auth:', e);
+    clearTimeout(safetyTimeout);
     hideLoadingScreen();
     showAuthScreen();
   }
 }
 
 function showAuthScreen() {
-  document.getElementById('auth-screen').style.display = 'flex';
+  const el = document.getElementById('auth-screen');
+  if (el) el.style.display = 'flex';
 }
 function hideAuthScreen() {
-  document.getElementById('auth-screen').style.display = 'none';
+  const el = document.getElementById('auth-screen');
+  if (el) el.style.display = 'none';
 }
 function hideLoadingScreen() {
   const el = document.getElementById('loading-screen');
   if (!el) return;
+  // Forzar oculto inmediato si ya estaba oculto
+  if (el.style.display === 'none') return;
   // Fade out animado
   el.style.transition = 'opacity 0.4s ease, visibility 0.4s';
   el.style.opacity = '0';
@@ -356,6 +372,20 @@ localStorage.setItem = function(key, value) {
 window.addEventListener('load', () => {
   // Pequeño delay para que el DOM esté listo
   setTimeout(checkAuth, 100);
+
+  // FAILSAFE: si por alguna razón el loading screen sigue visible después de 12s, ocultarlo
+  setTimeout(() => {
+    const ls = document.getElementById('loading-screen');
+    if (ls && ls.style.display !== 'none' && ls.style.opacity !== '0') {
+      console.warn('FAILSAFE: forzando cierre del loading screen');
+      ls.style.display = 'none';
+      // Si no hay sesión, mostrar login
+      if (!currentUser) {
+        const auth = document.getElementById('auth-screen');
+        if (auth) auth.style.display = 'flex';
+      }
+    }
+  }, 12000);
 });
 
 // Permitir Enter para enviar el formulario de login
