@@ -67,7 +67,15 @@ function hideAuthScreen() {
   document.getElementById('auth-screen').style.display = 'none';
 }
 function hideLoadingScreen() {
-  document.getElementById('loading-screen').style.display = 'none';
+  const el = document.getElementById('loading-screen');
+  if (!el) return;
+  // Fade out animado
+  el.style.transition = 'opacity 0.4s ease, visibility 0.4s';
+  el.style.opacity = '0';
+  el.style.pointerEvents = 'none';
+  setTimeout(() => {
+    el.style.display = 'none';
+  }, 400);
 }
 
 function switchAuthTab(mode) {
@@ -122,6 +130,8 @@ async function handleAuth() {
   }
 
   submitBtn.disabled = true;
+  submitBtn.classList.add('btn-loading');
+  const originalText = submitBtn.textContent;
   submitBtn.textContent = 'Cargando...';
 
   try {
@@ -142,7 +152,12 @@ async function handleAuth() {
         if (loginResult.error) throw loginResult.error;
         currentUser = loginResult.data.user;
         hideAuthScreen();
-        document.getElementById('loading-screen').style.display = 'flex';
+        const ls = document.getElementById('loading-screen');
+        if (ls) {
+          ls.style.display = 'flex';
+          ls.style.opacity = '1';
+          ls.style.pointerEvents = 'auto';
+        }
         await loadFromCloud();
         hideLoadingScreen();
         checkLocalData();
@@ -150,7 +165,12 @@ async function handleAuth() {
     } else {
       currentUser = result.data.user;
       hideAuthScreen();
-      document.getElementById('loading-screen').style.display = 'flex';
+      const ls = document.getElementById('loading-screen');
+      if (ls) {
+        ls.style.display = 'flex';
+        ls.style.opacity = '1';
+        ls.style.pointerEvents = 'auto';
+      }
       await loadFromCloud();
       hideLoadingScreen();
       checkLocalData();
@@ -163,6 +183,7 @@ async function handleAuth() {
     if (msg.includes('weak password')) msg = 'Contraseña débil. Usa al menos 6 caracteres.';
     showAuthMessage(msg, 'error');
     submitBtn.disabled = false;
+    submitBtn.classList.remove('btn-loading');
     submitBtn.textContent = authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta';
   }
 }
@@ -1199,6 +1220,107 @@ window.toastSuccess = (title, message, duration) => showToast({ type: 'success',
 window.toastError = (title, message, duration) => showToast({ type: 'error', title, message, duration: duration || 6000 });
 window.toastWarning = (title, message, duration) => showToast({ type: 'warning', title, message, duration });
 window.toastInfo = (title, message, duration) => showToast({ type: 'info', title, message, duration });
+
+// ============================================================
+// ============================================================
+// MENÚ LATERAL (DRAWER) - Solo móvil
+// ============================================================
+
+window.toggleSideMenu = function() {
+  const menu = document.getElementById('side-menu');
+  const backdrop = document.getElementById('side-menu-backdrop');
+  if (!menu || !backdrop) return;
+
+  if (menu.classList.contains('open')) {
+    closeSideMenu();
+  } else {
+    openSideMenu();
+  }
+};
+
+window.openSideMenu = function() {
+  const menu = document.getElementById('side-menu');
+  const backdrop = document.getElementById('side-menu-backdrop');
+  if (!menu || !backdrop) return;
+
+  menu.classList.add('open');
+  backdrop.classList.add('open');
+  document.body.classList.add('drawer-open');
+};
+
+window.closeSideMenu = function() {
+  const menu = document.getElementById('side-menu');
+  const backdrop = document.getElementById('side-menu-backdrop');
+  if (!menu || !backdrop) return;
+
+  menu.classList.remove('open');
+  backdrop.classList.remove('open');
+  document.body.classList.remove('drawer-open');
+};
+
+window.navigateTab = function(tabName) {
+  // Cerrar drawer (con pequeño delay para animación visual)
+  closeSideMenu();
+
+  // Activar tab correspondiente (dispara el listener existente)
+  setTimeout(() => {
+    const targetTab = document.querySelector(`.fin-tab[data-tab="${tabName}"]`);
+    if (targetTab) targetTab.click();
+
+    // Marcar como activo en el drawer también
+    document.querySelectorAll('.side-menu-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.tab === tabName);
+    });
+
+    // Actualizar texto del botón hamburguesa
+    updateMenuToggleText(tabName);
+
+    // Scroll arriba
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 100);
+};
+
+function updateMenuToggleText(tabName) {
+  const menuLabel = document.getElementById('menu-current-tab');
+  if (!menuLabel) return;
+
+  const labels = {
+    resumen: '🏠 Resumen',
+    presupuesto: '💸 Presupuesto',
+    bolsillos: '👛 Bolsillos',
+    ingresos: '💰 Ingresos',
+    deudas: '💳 Tarjetas',
+    metas: '🎯 Metas',
+    analisis: '📊 Análisis',
+    documentos: '📄 Documentos',
+    perfil: '👤 Mi Perfil'
+  };
+  menuLabel.textContent = labels[tabName] || '🏠 Resumen';
+}
+
+// Sincronizar drawer cuando cambia tab desde tabs originales
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.fin-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.dataset.tab;
+      // Sincronizar drawer
+      document.querySelectorAll('.side-menu-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.tab === tabName);
+      });
+      updateMenuToggleText(tabName);
+    });
+  });
+
+  // Cerrar drawer con tecla ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const menu = document.getElementById('side-menu');
+      if (menu && menu.classList.contains('open')) {
+        closeSideMenu();
+      }
+    }
+  });
+});
 
 // ============================================================
 // SISTEMA DE MODALES BONITOS (reemplaza confirm/alert/prompt feos)
@@ -4844,7 +4966,16 @@ async function buildAnnualPDF(state, year) {
     const extras = ((state.extraIncomes || {})[currentExtraMonth] || []).slice().sort((a, b) => b.date.localeCompare(a.date));
 
     if (extras.length === 0) {
-      list.innerHTML = '<div class="empty-state">No hay ingresos extras en ' + getMonthLabel(currentExtraMonth) + '. Cuando recibas algo extra, regístralo aquí.</div>';
+      list.innerHTML = `
+        <div class="empty-state-fancy">
+          <div class="empty-state-icon">💸</div>
+          <h3 class="empty-state-title">Sin ingresos extras en ${getMonthLabel(currentExtraMonth)}</h3>
+          <p class="empty-state-message">
+            Cuando recibas un bono, regalo, devolución o pago freelance, regístralo aquí
+            para que tu margen sea más preciso.
+          </p>
+        </div>
+      `;
     } else {
       list.innerHTML = extras.map(e => {
         const src = SOURCE_INFO[e.source] || { icon: '📌', label: 'Otro' };
@@ -5307,7 +5438,19 @@ async function buildAnnualPDF(state, year) {
     }
 
     if (state.pockets.length === 0) {
-      list.innerHTML = '<div class="empty-state">Sin bolsillos</div>';
+      list.innerHTML = `
+        <div class="empty-state-fancy">
+          <div class="empty-state-icon">👛</div>
+          <h3 class="empty-state-title">Aún no tienes bolsillos</h3>
+          <p class="empty-state-message">
+            Los bolsillos te ayudan a organizar tu dinero por objetivos:
+            ahorros, gastos fijos, fondo de emergencias, etc.
+          </p>
+          <button class="empty-state-action" onclick="document.getElementById('pocket-name')?.focus()">
+            ➕ Crear mi primer bolsillo
+          </button>
+        </div>
+      `;
     } else {
       const sorted = [...state.pockets].sort((a, b) => b.amount - a.amount);
       list.innerHTML = sorted.map(p => {
@@ -5332,7 +5475,19 @@ async function buildAnnualPDF(state, year) {
   function renderIncomes() {
     const list = document.getElementById('income-list');
     if (state.incomes.length === 0) {
-      list.innerHTML = '<div class="empty-state">Sin ingresos</div>';
+      list.innerHTML = `
+        <div class="empty-state-fancy">
+          <div class="empty-state-icon">💰</div>
+          <h3 class="empty-state-title">Sin ingresos registrados</h3>
+          <p class="empty-state-message">
+            Registra tus ingresos recurrentes (salario, mesada, freelance) para
+            calcular tu margen mensual.
+          </p>
+          <button class="empty-state-action" onclick="document.getElementById('income-name')?.focus()">
+            ➕ Agregar mi primer ingreso
+          </button>
+        </div>
+      `;
     } else {
       list.innerHTML = state.incomes.map(i => `<div class="item-row">
         <div><strong>${esc(i.name)}</strong></div>
@@ -5377,7 +5532,19 @@ async function buildAnnualPDF(state, year) {
     const list = document.getElementById('debt-list');
     const debt = totalDebt(), limit = totalLimit();
     if (state.debts.length === 0) {
-      list.innerHTML = '<div class="empty-state">Sin tarjetas</div>';
+      list.innerHTML = `
+        <div class="empty-state-fancy">
+          <div class="empty-state-icon">💳</div>
+          <h3 class="empty-state-title">Sin tarjetas registradas</h3>
+          <p class="empty-state-message">
+            Registra tus tarjetas de crédito para hacer seguimiento de cupos,
+            cashback y mejorar tu score crediticio.
+          </p>
+          <button class="empty-state-action" onclick="document.getElementById('card-template')?.focus()">
+            ➕ Agregar mi primera tarjeta
+          </button>
+        </div>
+      `;
     } else {
       list.innerHTML = '<div class="cards-grid">' + state.debts.map(d => {
         const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
@@ -5522,7 +5689,19 @@ async function buildAnnualPDF(state, year) {
   function renderGoals() {
     const list = document.getElementById('goal-list');
     if (state.goals.length === 0) {
-      list.innerHTML = '<div class="empty-state">Sin metas</div>'; return;
+      list.innerHTML = `
+        <div class="empty-state-fancy">
+          <div class="empty-state-icon">🎯</div>
+          <h3 class="empty-state-title">Aún no tienes metas</h3>
+          <p class="empty-state-message">
+            Define metas de ahorro: vacaciones, casa, carro, fondo de emergencia.
+            ¡Te ayudaremos a llegar!
+          </p>
+          <button class="empty-state-action" onclick="document.getElementById('goal-name')?.focus()">
+            🎯 Crear mi primera meta
+          </button>
+        </div>
+      `; return;
     }
     list.innerHTML = state.goals.map(g => {
       const pct = Math.min(100, Math.round((g.current / g.target) * 100));
@@ -5623,7 +5802,19 @@ async function buildAnnualPDF(state, year) {
     if (!list) return;
     const txs = (state.transactions[currentMonth] || []).slice().sort((a, b) => b.date.localeCompare(a.date));
     if (txs.length === 0) {
-      list.innerHTML = '<div class="empty-state">No hay movimientos en ' + getMonthLabel(currentMonth) + '. Empieza a registrarlos.</div>';
+      list.innerHTML = `
+        <div class="empty-state-fancy">
+          <div class="empty-state-icon">📝</div>
+          <h3 class="empty-state-title">Sin movimientos en ${getMonthLabel(currentMonth)}</h3>
+          <p class="empty-state-message">
+            Registra tus gastos para hacer seguimiento del presupuesto y
+            descubrir patrones de consumo.
+          </p>
+          <button class="empty-state-action" onclick="document.getElementById('tx-desc')?.focus()">
+            💸 Registrar primer gasto
+          </button>
+        </div>
+      `;
       return;
     }
 
