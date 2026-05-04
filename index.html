@@ -2,11 +2,41 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Tablero Financiero Pro Cristian</title>
+
+<!-- SEO y compartir -->
+<title>💎 FinanzasPro · Tu dashboard financiero personal</title>
+<meta name="description" content="Toma el control de tus finanzas: bolsillos, presupuesto, tarjetas de crédito, score crediticio y reportes mensuales en PDF. Todo personalizable.">
+<meta name="theme-color" content="#7F77DD">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FinanzasPro">
+
+<!-- Open Graph (para WhatsApp, Facebook, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="💎 FinanzasPro · Tu dashboard financiero personal">
+<meta property="og:description" content="Bolsillos, presupuesto, tarjetas, score crediticio y reportes PDF. Todo en uno.">
+<meta property="og:image" content="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAwIDYzMCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzdGNzdERCIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzFEOUU3NSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjYzMCIgZmlsbD0idXJsKCNhKSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTUlIiBmb250LXNpemU9IjEyMCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSI+8J+SoyBGaW5hbnphc1BybzwvdGV4dD48L3N2Zz4=">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="💎 FinanzasPro">
+<meta name="twitter:description" content="Tu dashboard financiero personal completo">
+
+<!-- Favicon SVG personalizado (diamante con gradiente) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM3Rjc3REQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxRDlFNzUiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSJ1cmwoI2cpIi8+PHBhdGggZD0iTTUwIDIwTDcwIDQwTDUwIDgwTDMwIDQwWiIgZmlsbD0iI2ZmZiIgZmlsbC1vcGFjaXR5PSIwLjk1Ii8+PHBhdGggZD0iTTMwIDQwTDcwIDQwIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMyIvPjxwYXRoIGQ9Ik01MCAyMEw1MCA4MCIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLW9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==">
+
+<!-- Apple Touch Icon -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM3Rjc3REQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxRDlFNzUiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSJ1cmwoI2cpIi8+PHBhdGggZD0iTTkwIDQwTDEzMCA3MEw5MCAxNDBMNTAgNzBaIiBmaWxsPSIjZmZmIi8+PC9zdmc+">
+
+<!-- Preload de fuentes -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -18,6 +48,269 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 </script>
+<style>
+  /* ========================================
+     RESET Y FUENTES MODERNAS
+     ======================================== */
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ========================================
+     ANIMACIONES GLOBALES
+     ======================================== */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideOutRight {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(100%); }
+  }
+  @keyframes pulseSubtle {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  @keyframes spinModern {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Aplicar animación de entrada a las cards */
+  .raised-card, .metric-card {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  /* ========================================
+     TOAST NOTIFICATIONS MODERNAS
+     ======================================== */
+  #toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    max-width: calc(100vw - 48px);
+  }
+  @media (max-width: 600px) {
+    #toast-container {
+      bottom: 16px;
+      right: 16px;
+      left: 16px;
+      align-items: stretch;
+    }
+  }
+  .toast {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 280px;
+    max-width: 400px;
+    pointer-events: auto;
+    animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+  }
+  .toast::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+  }
+  .toast.success::before { background: linear-gradient(180deg, #1D9E75, #34c89c); }
+  .toast.error::before { background: linear-gradient(180deg, #A32D2D, #d14848); }
+  .toast.warning::before { background: linear-gradient(180deg, #BA7517, #e09b3d); }
+  .toast.info::before { background: linear-gradient(180deg, #378ADD, #5ba7f0); }
+
+  .toast.removing {
+    animation: slideOutRight 0.3s ease-in forwards;
+  }
+  .toast-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+    animation: pulseSubtle 0.6s ease-out;
+  }
+  .toast-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .toast-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 2px;
+    line-height: 1.3;
+  }
+  .toast-message {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+  }
+  .toast-close {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    color: var(--text-tertiary);
+    font-size: 18px;
+    line-height: 1;
+    transition: color 0.2s;
+    flex-shrink: 0;
+    margin-top: -2px;
+  }
+  .toast-close:hover {
+    color: var(--text-primary);
+  }
+  .toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 4px;
+    right: 0;
+    height: 2px;
+    background: rgba(127, 119, 221, 0.15);
+    overflow: hidden;
+  }
+  .toast-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7F77DD, #1D9E75);
+    transform-origin: left;
+    transition: transform linear;
+  }
+
+  /* ========================================
+     BOTONES MEJORADOS
+     ======================================== */
+  button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  button:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* ========================================
+     INPUTS MEJORADOS
+     ======================================== */
+  input, select, textarea {
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--info-text) !important;
+    box-shadow: 0 0 0 3px rgba(127, 119, 221, 0.15);
+  }
+
+  /* ========================================
+     MODALES CON ANIMACIÓN
+     ======================================== */
+  [id$="-modal"] > div {
+    animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ========================================
+     SCROLLBAR PERSONALIZADA
+     ======================================== */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(127, 119, 221, 0.3);
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(127, 119, 221, 0.5);
+  }
+
+  /* ========================================
+     SHIMMER LOADING (skeleton screens)
+     ======================================== */
+  .shimmer {
+    background: linear-gradient(90deg,
+      var(--bg-secondary) 0px,
+      var(--bg-tertiary) 100px,
+      var(--bg-secondary) 200px);
+    background-size: 1000px 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  /* ========================================
+     SPINNER MODERNO
+     ======================================== */
+  .spinner-modern {
+    width: 24px;
+    height: 24px;
+    border: 2.5px solid rgba(127, 119, 221, 0.2);
+    border-top-color: #7F77DD;
+    border-radius: 50%;
+    animation: spinModern 0.8s linear infinite;
+    display: inline-block;
+  }
+
+  /* ========================================
+     CARDS CON HOVER SUTIL
+     ======================================== */
+  .raised-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* ========================================
+     LOGO CON GRADIENT
+     ======================================== */
+  .logo-text {
+    background: linear-gradient(135deg, #7F77DD 0%, #1D9E75 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+  }
+
+  /* ========================================
+     STATUS BADGES
+     ======================================== */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+</style>
 <style>
   :root, html.theme-light {
     --bg-primary: #ffffff;
@@ -644,13 +937,17 @@
 
 <!-- LOGIN SCREEN -->
 <div id="auth-screen" style="display: none; position: fixed; inset: 0; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
-  <div style="background: var(--bg-primary); border-radius: 20px; padding: 32px 28px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+  <div style="background: var(--bg-primary); border-radius: 20px; padding: 32px 28px; max-width: 420px; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05); animation: fadeInScale 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
     <div style="text-align: center; margin-bottom: 24px;">
-      <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: linear-gradient(135deg, #7F77DD, #1D9E75); border-radius: 16px; margin-bottom: 12px;">
-        <span style="font-size: 32px;">💎</span>
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; background: linear-gradient(135deg, #7F77DD, #1D9E75); border-radius: 20px; margin-bottom: 14px; box-shadow: 0 10px 30px rgba(127, 119, 221, 0.4);">
+        <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
+          <path d="M50 20L70 40L50 80L30 40Z" fill="white" fill-opacity="0.95"/>
+          <path d="M30 40L70 40" stroke="white" stroke-width="2" stroke-opacity="0.6"/>
+          <path d="M50 20L50 80" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+        </svg>
       </div>
-      <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: var(--text-primary);">Tablero Financiero Pro</h1>
-      <p style="margin: 6px 0 0; font-size: 13px; color: var(--text-secondary);">Tu dinero. Tu control. Tu futuro.</p>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em;"><span class="logo-text">FinanzasPro</span></h1>
+      <p style="margin: 8px 0 0; font-size: 13px; color: var(--text-secondary);">Tu dinero. Tu control. Tu futuro.</p>
     </div>
 
     <div id="auth-error" style="display: none; padding: 10px 14px; background: var(--danger-bg); color: var(--danger-text); border-radius: 8px; font-size: 13px; margin-bottom: 14px;"></div>
@@ -671,9 +968,12 @@
       <input type="password" id="auth-password" placeholder="Mínimo 6 caracteres" style="width: 100%; padding: 10px 14px; height: 42px; font-size: 14px;" />
     </div>
 
-    <button id="auth-submit" onclick="handleAuth()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 10px; font-weight: 500; font-size: 14px; cursor: pointer;">Iniciar sesión</button>
+    <button id="auth-submit" onclick="handleAuth()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(127, 119, 221, 0.3);">Iniciar sesión</button>
 
-    <p style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin: 16px 0 0;">Tus datos se guardan de forma segura en la nube</p>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin: 18px 0 0;">
+      <span style="font-size: 11px; color: var(--text-tertiary);">🔒</span>
+      <p style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin: 0;">Tus datos se guardan de forma segura en la nube</p>
+    </div>
   </div>
 </div>
 
@@ -709,7 +1009,7 @@
       </div>
       <div>
         <div class="hero-badge">💎 Pro Edition</div>
-        <h1 class="hero-title">Tablero Financiero Pro</h1>
+        <h1 class="hero-title"><span class="logo-text">FinanzasPro</span></h1>
         <p class="hero-subtitle">Cristian · <span class="hero-tagline">Tu dinero. Tu control. Tu futuro.</span></p>
       </div>
     </div>
@@ -1376,7 +1676,7 @@
   <div class="footer-note">
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;">
       <span style="font-size: 14px;">💎</span>
-      <strong style="color: var(--text-secondary);">Tablero Financiero Pro</strong>
+      <strong class="logo-text" style="font-size: 14px;">FinanzasPro</strong>
       <span style="font-size: 14px;">💎</span>
     </div>
     <div>Tus datos se guardan en este navegador · Usa "Exportar" como respaldo periódico</div>
@@ -1600,7 +1900,7 @@ async function loadFromCloud() {
         updateSyncIndicator('Cuenta nueva ☁️');
         // Mostrar mensaje de bienvenida después de 1 segundo
         setTimeout(() => {
-          if (confirm('¡Bienvenido al Tablero Financiero Pro! 🎉\n\nTu cuenta está lista. Empieza por:\n\n1. 👛 Configurar tus bolsillos (pestaña Bolsillos)\n2. 💰 Agregar tus ingresos (pestaña Ingresos)\n3. 💳 Registrar tus tarjetas (pestaña Tarjetas)\n\n¿Quieres ver un tutorial rápido?')) {
+          if (confirm('¡Bienvenido a FinanzasPro! 🎉\n\nTu cuenta está lista. Empieza por:\n\n1. 👛 Configurar tus bolsillos (pestaña Bolsillos)\n2. 💰 Agregar tus ingresos (pestaña Ingresos)\n3. 💳 Registrar tus tarjetas (pestaña Tarjetas)\n\n¿Quieres ver un tutorial rápido?')) {
             alert('Tutorial rápido:\n\n📌 BOLSILLOS\nDistribuye tu plata por categorías (emergencia, gastos, ahorro)\n\n📌 PRESUPUESTO\nRegistra tus gastos y ve cuánto te queda en cada categoría\n\n📌 TARJETAS\nAgrega tus tarjetas de crédito con cupo y día de corte\n\n📌 METAS\nDefine objetivos de ahorro\n\n💡 Tip: cada cambio se guarda automáticamente en la nube');
           }
         }, 1500);
@@ -1676,7 +1976,7 @@ async function migrateLocalData() {
       }, { onConflict: 'user_id' });
 
     if (error) throw error;
-    alert('✅ Datos migrados exitosamente a la nube');
+    toastSuccess('Datos sincronizados', 'Tus datos están guardados en la nube');
     document.getElementById('migrate-btn').style.display = 'none';
     updateSyncIndicator('Sincronizado ☁️');
   } catch (e) {
@@ -1882,7 +2182,7 @@ async function saveProfile() {
     if (error) throw error;
     Object.assign(userProfile, profileData);
     renderProfile();
-    alert('✅ Perfil actualizado');
+    toastSuccess('Perfil actualizado', 'Tus cambios se guardaron correctamente');
   } catch (e) {
     console.error('Error guardando perfil:', e);
     alert('Error al guardar: ' + e.message);
@@ -1915,7 +2215,7 @@ async function uploadAvatar(file) {
 
     userProfile.avatar_url = avatar_url;
     renderProfile();
-    alert('✅ Foto actualizada');
+    toastSuccess('Foto actualizada', 'Tu nueva foto de perfil ya está visible');
   } catch (e) {
     console.error('Error subiendo avatar:', e);
     alert('Error al subir foto: ' + e.message);
@@ -2240,7 +2540,7 @@ async function changePasswordPrompt() {
   try {
     const { error } = await supabaseClient.auth.updateUser({ password: newPass });
     if (error) throw error;
-    alert('✅ Contraseña actualizada');
+    toastSuccess('Contraseña actualizada', 'Tu nueva contraseña está activa');
   } catch (e) {
     alert('Error: ' + e.message);
   }
@@ -2292,6 +2592,101 @@ window.viewDocument = viewDocument;
 window.deleteDocument = deleteDocument;
 window.changePasswordPrompt = changePasswordPrompt;
 window.deleteAccountPrompt = deleteAccountPrompt;
+
+// ============================================================
+// SISTEMA DE TOASTS MODERNOS (avisos flotantes)
+// ============================================================
+
+// Crear contenedor si no existe
+function ensureToastContainer() {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
+/**
+ * Muestra un toast moderno (notificación flotante)
+ * @param {Object} opts - { type, title, message, duration }
+ * type: 'success' | 'error' | 'warning' | 'info'
+ * duration: ms (default 4000), 0 = no auto-cierre
+ */
+window.showToast = function(opts) {
+  const {
+    type = 'info',
+    title = '',
+    message = '',
+    duration = 4000
+  } = opts;
+
+  const container = ensureToastContainer();
+
+  const icons = {
+    success: '✅',
+    error: '⚠️',
+    warning: '⚡',
+    info: 'ℹ️'
+  };
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  toast.innerHTML = `
+    <div class="toast-icon">${icons[type] || icons.info}</div>
+    <div class="toast-content">
+      ${title ? `<p class="toast-title">${escapeHtml(title)}</p>` : ''}
+      ${message ? `<p class="toast-message">${escapeHtml(message)}</p>` : ''}
+    </div>
+    <button class="toast-close" aria-label="Cerrar">×</button>
+    ${duration > 0 ? '<div class="toast-progress"><div class="toast-progress-bar"></div></div>' : ''}
+  `;
+
+  container.appendChild(toast);
+
+  // Función para cerrar el toast
+  const close = () => {
+    if (toast.classList.contains('removing')) return;
+    toast.classList.add('removing');
+    setTimeout(() => toast.remove(), 300);
+  };
+
+  // Botón de cerrar
+  toast.querySelector('.toast-close').addEventListener('click', close);
+
+  // Auto-cerrar con barra de progreso
+  if (duration > 0) {
+    const bar = toast.querySelector('.toast-progress-bar');
+    if (bar) {
+      requestAnimationFrame(() => {
+        bar.style.transition = `transform ${duration}ms linear`;
+        bar.style.transform = 'scaleX(0)';
+      });
+    }
+    setTimeout(close, duration);
+  }
+
+  return { close };
+};
+
+// Helper: escape HTML
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Atajos cómodos
+window.toastSuccess = (title, message, duration) => showToast({ type: 'success', title, message, duration });
+window.toastError = (title, message, duration) => showToast({ type: 'error', title, message, duration: duration || 6000 });
+window.toastWarning = (title, message, duration) => showToast({ type: 'warning', title, message, duration });
+window.toastInfo = (title, message, duration) => showToast({ type: 'info', title, message, duration });
 
 // ============================================================
 // TUTORIAL DE BIENVENIDA PARA NUEVOS USUARIOS
@@ -4288,7 +4683,7 @@ async function buildMonthlyPDF(state, monthKey) {
     doc.setPage(p);
     doc.setFontSize(8);
     doc.setTextColor(...textSecondary);
-    doc.text('Tablero Financiero Pro - Reporte ' + monthNameCap, 14, 290);
+    doc.text('FinanzasPro - Reporte ' + monthNameCap, 14, 290);
     doc.text('Página ' + p + ' de ' + totalPages, 195, 290, { align: 'right' });
   }
 
@@ -4583,7 +4978,7 @@ async function buildAnnualPDF(state, year) {
     doc.setPage(p);
     doc.setFontSize(8);
     doc.setTextColor(...textSecondary);
-    doc.text(`Tablero Financiero Pro - Reporte Anual ${year}`, 14, 290);
+    doc.text(`FinanzasPro - Reporte Anual ${year}`, 14, 290);
     doc.text('Página ' + p + ' de ' + totalPages, 195, 290, { align: 'right' });
   }
 
@@ -7215,7 +7610,7 @@ async function buildAnnualPDF(state, year) {
     state.creditScore.reportData = reportData;
     saveState();
     renderCreditScore();
-    alert('✅ Reporte guardado y análisis generado');
+    toastSuccess('Análisis listo', 'Revisa tus recomendaciones personalizadas abajo');
   };
 
   // Mantener compatibilidad con función anterior
