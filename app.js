@@ -168,13 +168,22 @@ async function handleAuth() {
 }
 
 async function handleLogout() {
-  if (!confirm('¿Cerrar sesión?')) return;
+  const confirmed = await showConfirm({
+    title: '¿Cerrar sesión?',
+    message: 'Tus datos están guardados de forma segura en la nube. Puedes volver a entrar cuando quieras.',
+    confirmText: 'Sí, cerrar sesión',
+    cancelText: 'Cancelar',
+    type: 'danger',
+    icon: '👋'
+  });
+  if (!confirmed) return;
   try {
     await supabaseClient.auth.signOut();
     currentUser = null;
     location.reload();
   } catch (e) {
     console.error('Logout error:', e);
+    toastError('Error al cerrar sesión', 'Intenta de nuevo');
   }
 }
 
@@ -349,6 +358,115 @@ window.handleAuth = handleAuth;
 window.handleLogout = handleLogout;
 window.switchAuthTab = switchAuthTab;
 window.migrateLocalData = migrateLocalData;
+
+// ============================================================
+// RECUPERAR CONTRASEÑA
+// ============================================================
+
+async function handleForgotPassword() {
+  // Pedir email con modal bonito
+  const emailInput = document.getElementById('auth-email');
+  const prefilledEmail = emailInput ? emailInput.value.trim() : '';
+
+  const email = await showPrompt({
+    title: '🔑 Recuperar contraseña',
+    message: 'Te enviaremos un correo con un enlace para crear una nueva contraseña.',
+    placeholder: 'tu@correo.com',
+    defaultValue: prefilledEmail,
+    inputType: 'email',
+    confirmText: 'Enviar correo',
+    icon: '📧'
+  });
+
+  if (!email) return;
+
+  // Validar email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    toastError('Correo inválido', 'Por favor ingresa un correo válido');
+    return;
+  }
+
+  if (!supabaseClient) {
+    toastError('Error de conexión', 'No se puede conectar al servidor');
+    return;
+  }
+
+  try {
+    // Mostrar feedback inmediato
+    toastInfo('Enviando correo...', 'Espera un momento por favor');
+
+    // URL de redirección: a la misma página
+    const redirectTo = window.location.origin + window.location.pathname;
+
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: redirectTo
+    });
+
+    if (error) throw error;
+
+    toastSuccess(
+      '✉️ Correo enviado',
+      'Revisa tu bandeja de entrada (y spam). Sigue el enlace del correo para cambiar tu contraseña.',
+      8000
+    );
+  } catch (e) {
+    console.error('Forgot password error:', e);
+    toastError(
+      'Error al enviar',
+      e.message || 'No pudimos enviar el correo. Intenta de nuevo.'
+    );
+  }
+}
+
+window.handleForgotPassword = handleForgotPassword;
+
+// Detectar si el usuario llegó de un link de recuperación
+async function checkPasswordRecoveryFlow() {
+  // Supabase incluye el token en el hash URL después de un reset
+  const hash = window.location.hash;
+  if (!hash || !hash.includes('type=recovery')) return false;
+
+  try {
+    // Esperar un poco a que Supabase procese el hash
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Mostrar modal para nueva contraseña
+    const newPassword = await showPrompt({
+      title: '🔐 Crear nueva contraseña',
+      message: 'Ingresa tu nueva contraseña (mínimo 6 caracteres)',
+      placeholder: 'Nueva contraseña',
+      inputType: 'password',
+      confirmText: 'Cambiar contraseña',
+      icon: '🔒'
+    });
+
+    if (!newPassword || newPassword.length < 6) {
+      toastWarning('Contraseña muy corta', 'Debe tener al menos 6 caracteres');
+      return true;
+    }
+
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+
+    if (error) throw error;
+
+    toastSuccess('Contraseña actualizada', 'Ya puedes iniciar sesión con tu nueva contraseña');
+
+    // Limpiar el hash para que no quede el token visible
+    history.replaceState(null, '', window.location.pathname);
+
+    return true;
+  } catch (e) {
+    console.error('Recovery error:', e);
+    toastError('Error', e.message || 'No se pudo cambiar la contraseña');
+    return true;
+  }
+}
+
+// Ejecutar check al cargar
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(checkPasswordRecoveryFlow, 1000);
+});
 
 // ============================================================
 // PERFIL Y DOCUMENTOS
@@ -855,25 +973,78 @@ async function deleteDocument(docId, filePath) {
 }
 
 async function changePasswordPrompt() {
-  const newPass = prompt('Nueva contraseña (mínimo 6 caracteres):');
-  if (!newPass || newPass.length < 6) {
-    alert('Contraseña inválida');
+  const newPass = await showPrompt({
+    title: '🔐 Cambiar contraseña',
+    message: 'Ingresa tu nueva contraseña. Debe tener al menos 6 caracteres.',
+    placeholder: 'Nueva contraseña',
+    inputType: 'password',
+    confirmText: 'Cambiar',
+    icon: '🔒'
+  });
+
+  if (!newPass) return;
+
+  if (newPass.length < 6) {
+    toastWarning('Contraseña muy corta', 'Debe tener al menos 6 caracteres');
     return;
   }
+
+  // Confirmar contraseña
+  const confirmPass = await showPrompt({
+    title: 'Confirmar contraseña',
+    message: 'Ingrésala de nuevo para confirmar',
+    placeholder: 'Confirmar contraseña',
+    inputType: 'password',
+    confirmText: 'Confirmar',
+    icon: '✅'
+  });
+
+  if (!confirmPass) return;
+
+  if (newPass !== confirmPass) {
+    toastError('Las contraseñas no coinciden', 'Inténtalo de nuevo');
+    return;
+  }
+
   try {
     const { error } = await supabaseClient.auth.updateUser({ password: newPass });
     if (error) throw error;
-    toastSuccess('Contraseña actualizada', 'Tu nueva contraseña está activa');
+    toastSuccess('Contraseña actualizada', 'Tu nueva contraseña ya está activa');
   } catch (e) {
-    alert('Error: ' + e.message);
+    toastError('Error', e.message);
   }
 }
 
 async function deleteAccountPrompt() {
-  if (!confirm('⚠️ Esto BORRARÁ tu cuenta y TODOS tus datos permanentemente. ¿Continuar?')) return;
-  if (!confirm('¿Estás 100% seguro? Esta acción NO se puede deshacer.')) return;
-  alert('Para eliminar tu cuenta completamente, contacta a soporte. Por ahora se cerrará tu sesión.');
-  await handleLogout();
+  const confirmed = await showConfirm({
+    title: '⚠️ Eliminar cuenta',
+    message: 'Esto eliminará TU CUENTA y TODOS tus datos permanentemente. Esta acción NO se puede deshacer.',
+    confirmText: 'Sí, eliminar todo',
+    cancelText: 'Cancelar',
+    type: 'danger',
+    icon: '🗑️'
+  });
+
+  if (!confirmed) return;
+
+  const finalConfirm = await showPrompt({
+    title: 'Confirmación final',
+    message: 'Para confirmar, escribe ELIMINAR en el campo de abajo',
+    placeholder: 'ELIMINAR',
+    confirmText: 'Confirmar eliminación',
+    icon: '⚠️'
+  });
+
+  if (finalConfirm !== 'ELIMINAR') {
+    toastInfo('Cancelado', 'No se eliminó tu cuenta');
+    return;
+  }
+
+  toastInfo('Procesando', 'Para eliminar tu cuenta completamente, contacta a soporte. Por ahora cerraremos tu sesión.', 5000);
+  setTimeout(async () => {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  }, 2000);
 }
 
 // Event listeners para inputs de archivos
@@ -1010,6 +1181,159 @@ window.toastSuccess = (title, message, duration) => showToast({ type: 'success',
 window.toastError = (title, message, duration) => showToast({ type: 'error', title, message, duration: duration || 6000 });
 window.toastWarning = (title, message, duration) => showToast({ type: 'warning', title, message, duration });
 window.toastInfo = (title, message, duration) => showToast({ type: 'info', title, message, duration });
+
+// ============================================================
+// SISTEMA DE MODALES BONITOS (reemplaza confirm/alert/prompt feos)
+// ============================================================
+
+/**
+ * Muestra un modal de confirmación bonito
+ * @returns {Promise<boolean>} true si confirma, false si cancela
+ */
+window.showConfirm = function(opts) {
+  const {
+    title = '¿Confirmar?',
+    message = '',
+    confirmText = 'Confirmar',
+    cancelText = 'Cancelar',
+    type = 'default', // default | danger | warning | success
+    icon = null
+  } = opts;
+
+  return new Promise((resolve) => {
+    const id = 'confirm-modal-' + Date.now();
+
+    const colors = {
+      default: { gradient: 'linear-gradient(135deg, #7F77DD, #1D9E75)', shadow: 'rgba(127, 119, 221, 0.3)' },
+      danger: { gradient: 'linear-gradient(135deg, #E24B4A, #A32D2D)', shadow: 'rgba(226, 75, 74, 0.3)' },
+      warning: { gradient: 'linear-gradient(135deg, #BA7517, #E09B3D)', shadow: 'rgba(186, 117, 23, 0.3)' },
+      success: { gradient: 'linear-gradient(135deg, #1D9E75, #34c89c)', shadow: 'rgba(29, 158, 117, 0.3)' }
+    };
+    const c = colors[type] || colors.default;
+
+    const defaultIcons = {
+      default: '❓',
+      danger: '⚠️',
+      warning: '⚡',
+      success: '✅'
+    };
+    const displayIcon = icon || defaultIcons[type];
+
+    const modal = document.createElement('div');
+    modal.id = id;
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 10001; padding: 20px; backdrop-filter: blur(4px); animation: fadeIn 0.2s ease;';
+
+    modal.innerHTML = `
+      <div style="background: var(--bg-primary); border-radius: 18px; max-width: 420px; width: 100%; padding: 28px 26px; box-shadow: 0 30px 60px rgba(0,0,0,0.4); animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+        <div style="text-align: center; margin-bottom: 18px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: ${c.gradient}; border-radius: 16px; margin-bottom: 14px; box-shadow: 0 8px 20px ${c.shadow};">
+            <span style="font-size: 28px;">${displayIcon}</span>
+          </div>
+          <h2 style="margin: 0 0 6px; font-size: 19px; font-weight: 600; color: var(--text-primary);">${escapeHtml(title)}</h2>
+          ${message ? `<p style="margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">${escapeHtml(message)}</p>` : ''}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button id="${id}-cancel" style="padding: 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 12px; font-weight: 500; font-size: 14px; cursor: pointer;">${escapeHtml(cancelText)}</button>
+          <button id="${id}-confirm" style="padding: 12px; background: ${c.gradient}; color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px ${c.shadow};">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const close = (value) => {
+      modal.style.opacity = '0';
+      modal.style.transition = 'opacity 0.2s';
+      setTimeout(() => modal.remove(), 200);
+      resolve(value);
+    };
+
+    document.getElementById(`${id}-confirm`).addEventListener('click', () => close(true));
+    document.getElementById(`${id}-cancel`).addEventListener('click', () => close(false));
+
+    // Cerrar al hacer click en el fondo
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close(false);
+    });
+
+    // ESC para cancelar
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', escHandler);
+        close(false);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  });
+};
+
+/**
+ * Muestra un modal de input bonito (reemplaza prompt())
+ * @returns {Promise<string|null>} valor ingresado o null si cancela
+ */
+window.showPrompt = function(opts) {
+  const {
+    title = 'Ingresa un valor',
+    message = '',
+    placeholder = '',
+    defaultValue = '',
+    inputType = 'text',
+    confirmText = 'Aceptar',
+    cancelText = 'Cancelar',
+    icon = '✏️'
+  } = opts;
+
+  return new Promise((resolve) => {
+    const id = 'prompt-modal-' + Date.now();
+
+    const modal = document.createElement('div');
+    modal.id = id;
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 10001; padding: 20px; backdrop-filter: blur(4px); animation: fadeIn 0.2s ease;';
+
+    modal.innerHTML = `
+      <div style="background: var(--bg-primary); border-radius: 18px; max-width: 420px; width: 100%; padding: 28px 26px; box-shadow: 0 30px 60px rgba(0,0,0,0.4); animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+        <div style="text-align: center; margin-bottom: 18px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: linear-gradient(135deg, #7F77DD, #1D9E75); border-radius: 16px; margin-bottom: 14px; box-shadow: 0 8px 20px rgba(127, 119, 221, 0.3);">
+            <span style="font-size: 28px;">${icon}</span>
+          </div>
+          <h2 style="margin: 0 0 6px; font-size: 19px; font-weight: 600; color: var(--text-primary);">${escapeHtml(title)}</h2>
+          ${message ? `<p style="margin: 0 0 14px; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">${escapeHtml(message)}</p>` : ''}
+        </div>
+
+        <input type="${inputType}" id="${id}-input" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(defaultValue)}" style="width: 100%; padding: 12px 14px; height: 44px; font-size: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-secondary); color: var(--text-primary); margin-bottom: 14px;" />
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button id="${id}-cancel" style="padding: 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 12px; font-weight: 500; font-size: 14px; cursor: pointer;">${escapeHtml(cancelText)}</button>
+          <button id="${id}-confirm" style="padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer;">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    const input = document.getElementById(`${id}-input`);
+    setTimeout(() => input.focus(), 100);
+
+    const close = (value) => {
+      modal.style.opacity = '0';
+      modal.style.transition = 'opacity 0.2s';
+      setTimeout(() => modal.remove(), 200);
+      resolve(value);
+    };
+
+    document.getElementById(`${id}-confirm`).addEventListener('click', () => close(input.value));
+    document.getElementById(`${id}-cancel`).addEventListener('click', () => close(null));
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') close(input.value);
+      if (e.key === 'Escape') close(null);
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close(null);
+    });
+  });
+};
 
 // ============================================================
 // TUTORIAL DE BIENVENIDA PARA NUEVOS USUARIOS
