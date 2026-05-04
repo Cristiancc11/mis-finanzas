@@ -1786,3 +1786,101 @@ body.modal-open {
     margin: 5vh auto !important;
   }
 }
+
+/* ========================================
+   FIX: CALENDARIO FINANCIERO RESPONSIVE
+   ======================================== */
+
+#financial-calendar {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+#financial-calendar > div[style*="grid"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Las celdas del calendario */
+#financial-calendar [style*="aspect-ratio"] {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  font-size: 11px;
+}
+
+/* Texto del día dentro de la celda */
+#financial-calendar [style*="aspect-ratio"] > div:first-child {
+  font-size: 11px !important;
+}
+
+/* En móvil: calendario más compacto */
+@media (max-width: 768px) {
+  #financial-calendar {
+    font-size: 10px;
+    padding: 4px;
+  }
+
+  /* Header del mes */
+  #financial-calendar > div:first-child {
+    font-size: 14px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Días de la semana (L M X J V S D) */
+  #financial-calendar [style*="grid-template-columns: repeat(7, 1fr)"]:first-of-type > div {
+    font-size: 9px !important;
+    padding: 2px !important;
+  }
+
+  /* Celdas de los días */
+  #financial-calendar [style*="aspect-ratio: 1"] {
+    aspect-ratio: 1 / 1;
+    padding: 2px !important;
+    border-radius: 6px !important;
+    min-height: 40px;
+  }
+
+  #financial-calendar [style*="aspect-ratio: 1"] > div:first-child {
+    font-size: 10px !important;
+  }
+
+  /* Limitar iconos visibles en móvil (solo 1) */
+  #financial-calendar [style*="aspect-ratio: 1"] > div:nth-child(2) {
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  #financial-calendar [style*="aspect-ratio: 1"] > div:nth-child(2) span:nth-child(n+2) {
+    display: none !important;
+  }
+
+  /* Listado de eventos importantes */
+  #financial-calendar > div:last-child {
+    margin-top: 12px !important;
+  }
+
+  /* Items de eventos */
+  #financial-calendar > div:last-child > div {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+}
+
+/* Móvil pequeño */
+@media (max-width: 480px) {
+  #financial-calendar [style*="grid-template-columns: repeat(7, 1fr)"] {
+    gap: 2px !important;
+  }
+
+  #financial-calendar [style*="aspect-ratio: 1"] {
+    padding: 1px !important;
+    min-height: 36px;
+  }
+
+  #financial-calendar [style*="aspect-ratio: 1"] > div:first-child {
+    font-size: 9px !important;
+  }
+}
