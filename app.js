@@ -1471,10 +1471,41 @@ window.navigateTab = function(tabName) {
     // Actualizar texto del botón hamburguesa
     updateMenuToggleText(tabName);
 
+    // Mostrar/ocultar FAB según el tab
+    updateFabVisibility(tabName);
+
     // Scroll arriba
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, 100);
 };
+
+// Mostrar el FAB solo en tabs donde tiene sentido (Resumen y Presupuesto)
+function updateFabVisibility(tabName) {
+  const tabsWithFab = ['resumen', 'presupuesto'];
+  if (tabsWithFab.includes(tabName)) {
+    document.body.classList.add('show-fab');
+  } else {
+    document.body.classList.remove('show-fab');
+  }
+}
+
+window.updateFabVisibility = updateFabVisibility;
+
+// También sincronizar cuando se hace click directo en una tab desktop
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.fin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.dataset.tab;
+      if (tabName) {
+        updateFabVisibility(tabName);
+        if (typeof updateMenuToggleText === 'function') updateMenuToggleText(tabName);
+      }
+    });
+  });
+
+  // Aplicar al cargar (asume que arranca en Resumen)
+  updateFabVisibility('resumen');
+});
 
 function updateMenuToggleText(tabName) {
   const menuLabel = document.getElementById('menu-current-tab');

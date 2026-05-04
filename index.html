@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=10">
+<link rel="stylesheet" href="styles.css?v=11">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -880,39 +880,20 @@
   <!-- SECCIÓN PERFIL                                -->
   <!-- ============================================ -->
   <div class="fin-section" id="section-perfil">
-    <div class="raised-card" style="background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));">
-      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
-        <div style="position: relative; flex-shrink: 0;">
-          <div id="profile-avatar" style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #7F77DD, #1D9E75); display: flex; align-items: center; justify-content: center; font-size: 36px; color: white; overflow: hidden;">
+    <div class="raised-card profile-header-card">
+      <div class="profile-header-content">
+        <div class="profile-avatar-wrapper">
+          <div id="profile-avatar" class="profile-avatar">
             👤
           </div>
           <input type="file" id="avatar-input" accept="image/*" style="display: none;" />
-          <button onclick="document.getElementById('avatar-input').click()" style="position: absolute; bottom: 0; right: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--bg-primary); border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;" title="Cambiar foto">📷</button>
+          <button onclick="document.getElementById('avatar-input').click()" class="profile-avatar-edit" title="Cambiar foto">📷</button>
         </div>
-        <div style="flex: 1; min-width: 200px;">
-          <div id="profile-name-display" style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Cargando...</div>
-          <div id="profile-email-display" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;"></div>
-          <div id="profile-since" style="font-size: 11px; color: var(--text-tertiary);"></div>
+        <div class="profile-info">
+          <div id="profile-name-display" class="profile-name">Cargando...</div>
+          <div id="profile-email-display" class="profile-email"></div>
+          <div id="profile-since" class="profile-since"></div>
         </div>
-      </div>
-    </div>
-
-    <div class="raised-card">
-      <p class="card-title">🎨 Apariencia</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Elige el tema visual del dashboard.</p>
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-        <button onclick="setTheme('light')" id="theme-btn-light" style="padding: 14px 8px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-          <span style="font-size: 24px;">☀️</span>
-          <span style="font-size: 12px; font-weight: 500;">Claro</span>
-        </button>
-        <button onclick="setTheme('dark')" id="theme-btn-dark" style="padding: 14px 8px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-          <span style="font-size: 24px;">🌙</span>
-          <span style="font-size: 12px; font-weight: 500;">Oscuro</span>
-        </button>
-        <button onclick="setTheme('auto')" id="theme-btn-auto" style="padding: 14px 8px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-          <span style="font-size: 24px;">🌗</span>
-          <span style="font-size: 12px; font-weight: 500;">Auto</span>
-        </button>
       </div>
     </div>
 
@@ -1086,6 +1067,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
