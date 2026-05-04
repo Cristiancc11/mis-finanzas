@@ -1661,3 +1661,128 @@
     transform: scale(0.99) !important;
   }
 }
+
+/* ========================================
+   FIX: SCROLL HORIZONTAL Y OVERFLOW
+   ======================================== */
+
+/* Prevenir scroll horizontal en TODA la app */
+html, body {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+* {
+  max-width: 100%;
+}
+
+/* Imágenes y SVGs nunca se desbordan */
+img, svg, canvas, video {
+  max-width: 100% !important;
+  height: auto;
+}
+
+/* Tablas con scroll interno (no rompen layout) */
+table {
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Pre y code que no se salgan */
+pre, code {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Forzar text-wrap en textos largos */
+p, span, div, h1, h2, h3, h4, h5, h6, li {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* En móvil, contenedores no se salen */
+@media (max-width: 768px) {
+  body > div, .container, [class*="container"] {
+    max-width: 100vw !important;
+    overflow-x: hidden;
+  }
+
+  /* Cards no rompen layout */
+  .raised-card, .metric-card {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Tx-rows responsive */
+  .tx-row {
+    overflow: hidden;
+  }
+  .tx-row > div {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Tabla se vuelve scroll interno en móvil */
+  .raised-card table {
+    width: 100%;
+  }
+
+  /* Forms no se desbordan */
+  .quick-add, .form-row-3, .form-row-debt {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Hero controls scrollable */
+  .hero-controls {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+  }
+  .hero-controls::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ========================================
+   FIX: MODAL BLOQUEA SCROLL DEL BODY
+   ======================================== */
+
+/* Cuando hay un modal abierto, body no scrollea */
+body.modal-open {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Modales: scroll interno propio si son largos */
+[id$="-modal"],
+#welcome-tutorial,
+#income-types-modal,
+#categories-modal,
+#payment-methods-modal {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Modal content puede scrollear */
+[id$="-modal"] > div {
+  max-height: calc(100vh - 40px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* En móvil, modales casi pantalla completa */
+@media (max-width: 600px) {
+  [id$="-modal"] > div {
+    max-height: 90vh !important;
+    margin: 5vh auto !important;
+  }
+}
