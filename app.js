@@ -280,6 +280,15 @@ async function loadFromCloud() {
     updateSyncIndicator('Error al sincronizar ⚠️');
   }
   isLoadingFromCloud = false;
+  
+  // IMPORTANTE: refrescar el estado en la pantalla después de cargar datos de la nube
+  if (typeof window.loadState === 'function') {
+    try {
+      window.loadState();
+    } catch(e) {
+      console.error('Error en loadState:', e);
+    }
+  }
 }
 
 async function saveToCloud(data) {
@@ -4073,6 +4082,9 @@ async function buildAnnualPDF(state, year) {
     setDefaultDate();
     renderAll();
   }
+  
+  // Exponer al scope global para que loadFromCloud pueda llamarla
+  window.loadState = loadState;
 
   function saveState() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
