@@ -3504,3 +3504,68 @@ html.density-comfortable .net-worth-hero-value {
     font-size: 13px !important;
   }
 }
+
+/* ========================================
+   HERO AVATAR (avatar dinámico del usuario)
+   ======================================== */
+
+.hero-icon-container {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.hero-icon-container:hover {
+  transform: scale(1.05);
+}
+
+.hero-icon-container:active {
+  transform: scale(0.97);
+}
+
+.hero-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2),
+              inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+  position: relative;
+}
+
+.hero-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* En móvil: avatar más pequeño */
+@media (max-width: 768px) {
+  .hero-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
+    border-width: 2.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+}

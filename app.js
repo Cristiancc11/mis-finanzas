@@ -645,6 +645,11 @@ function renderProfile() {
   if (birthInput) birthInput.value = userProfile.birth_date || '';
 
   renderProfileStats();
+
+  // Actualizar avatares en hero y drawer
+  if (typeof updateAllAvatars === 'function') {
+    updateAllAvatars();
+  }
 }
 
 function renderProfileStats() {
@@ -1370,6 +1375,74 @@ function updateSideMenuUserInfo() {
 }
 
 window.updateSideMenuUserInfo = updateSideMenuUserInfo;
+
+// Función global para actualizar avatares (hero + drawer)
+function updateAllAvatars() {
+  // Actualizar drawer
+  if (typeof updateSideMenuUserInfo === 'function') {
+    updateSideMenuUserInfo();
+  }
+
+  // Actualizar hero avatar
+  updateHeroAvatar();
+
+  // Actualizar nombre del usuario en hero
+  updateHeroUserName();
+}
+
+function updateHeroAvatar() {
+  const heroAvatar = document.getElementById('hero-avatar');
+  const heroInitials = document.getElementById('hero-avatar-initials');
+  if (!heroAvatar) return;
+
+  // Si tiene foto subida
+  if (typeof userProfile !== 'undefined' && userProfile && userProfile.avatar_url) {
+    heroAvatar.innerHTML = `<img src="${userProfile.avatar_url}" alt="Avatar" />`;
+  } else {
+    // Calcular iniciales
+    let initials = 'U';
+    if (typeof userProfile !== 'undefined' && userProfile && userProfile.full_name) {
+      const parts = userProfile.full_name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        initials = (parts[0][0] + parts[1][0]).toUpperCase();
+      } else if (parts[0]) {
+        initials = parts[0].substring(0, 2).toUpperCase();
+      }
+    } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.email) {
+      initials = currentUser.email.substring(0, 2).toUpperCase();
+    }
+    heroAvatar.innerHTML = `<span id="hero-avatar-initials">${initials}</span>`;
+  }
+}
+
+function updateHeroUserName() {
+  const heroName = document.getElementById('hero-user-name');
+  if (!heroName) return;
+
+  let displayName = 'Usuario';
+  if (typeof userProfile !== 'undefined' && userProfile && userProfile.full_name) {
+    // Solo el primer nombre
+    displayName = userProfile.full_name.trim().split(/\s+/)[0];
+  } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.email) {
+    displayName = currentUser.email.split('@')[0];
+    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+  }
+  heroName.textContent = displayName;
+}
+
+// Función para navegar al perfil desde el avatar del hero
+window.navigateToProfile = function() {
+  const perfilTab = document.querySelector('.fin-tab[data-tab="perfil"]');
+  if (perfilTab) perfilTab.click();
+  // Sincronizar drawer
+  document.querySelectorAll('.side-menu-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.tab === 'perfil');
+  });
+  if (typeof updateMenuToggleText === 'function') updateMenuToggleText('perfil');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.updateAllAvatars = updateAllAvatars;
 
 window.closeSideMenu = function() {
   const menu = document.getElementById('side-menu');
