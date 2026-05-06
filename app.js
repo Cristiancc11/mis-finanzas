@@ -1980,6 +1980,78 @@ const TUTORIAL_STEPS = [
     `
   },
   {
+    icon: '🔐',
+    title: 'Tu privacidad es PRIORIDAD',
+    subtitle: 'Tus datos están 100% seguros',
+    content: `
+      <h3>Tu información es completamente privada</h3>
+      <p>Antes de empezar, queremos que tengas total tranquilidad sobre el manejo de tu información financiera:</p>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin: 14px 0;">
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+          <span style="font-size: 18px;">🔒</span>
+          <div>
+            <strong style="color: var(--text-primary); font-size: 13px;">Solo tú ves tus datos</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Nadie más puede acceder a tu información, ni siquiera nosotros.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+          <span style="font-size: 18px;">🛡️</span>
+          <div>
+            <strong style="color: var(--text-primary); font-size: 13px;">Cifrado de extremo a extremo</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Tus datos viajan y se guardan cifrados con tecnología bancaria.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+          <span style="font-size: 18px;">🚫</span>
+          <div>
+            <strong style="color: var(--text-primary); font-size: 13px;">Cero venta de datos</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">No vendemos, compartimos ni cedemos tu info a terceros. Nunca.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+          <span style="font-size: 18px;">📵</span>
+          <div>
+            <strong style="color: var(--text-primary); font-size: 13px;">Sin anuncios, sin spam</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">No verás publicidad ni te llegarán correos comerciales.</p>
+          </div>
+        </div>
+      </div>
+      <div class="tutorial-tip-box" style="background: var(--success-bg); border-left-color: var(--success-text);">
+        <p style="color: var(--success-text);">🇨🇴 <strong>Cumplimos la Ley 1581 de 2012</strong> (Habeas Data) de protección de datos personales en Colombia.</p>
+      </div>
+    `
+  },
+  {
+    icon: '🔐',
+    title: 'Tu privacidad es sagrada',
+    subtitle: '100% privado, 100% seguro',
+    content: `
+      <h3>Tus datos son TUYOS</h3>
+      <p>Antes de empezar, queremos que tengas total tranquilidad sobre tu información:</p>
+      <ul style="margin: 12px 0; padding: 0; list-style: none;">
+        <li style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">🔒</span>
+          <span><strong>Cifrado de extremo a extremo:</strong> tus datos viajan y se almacenan cifrados.</span>
+        </li>
+        <li style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">👤</span>
+          <span><strong>Solo tú accedes:</strong> nadie más puede ver tu información, ni siquiera nosotros.</span>
+        </li>
+        <li style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">🚫</span>
+          <span><strong>Sin compartir con terceros:</strong> nunca vendemos ni compartimos tus datos.</span>
+        </li>
+        <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.5;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">📵</span>
+          <span><strong>Sin anuncios:</strong> tu app, tu información, sin distracciones.</span>
+        </li>
+      </ul>
+      <div class="tutorial-tip-box">
+        <p>🛡️ Cumplimos con la <strong>Ley 1581 de Habeas Data</strong> de Colombia. Tus datos están protegidos legalmente.</p>
+      </div>
+    `
+  },
+  {
     icon: '👛',
     title: 'Bolsillos',
     subtitle: 'Organiza dónde tienes tu dinero',
@@ -2172,6 +2244,128 @@ window.finishTutorial = function() {
 
 // Mantener compatibilidad
 window.dismissWelcomeTutorial = window.finishTutorial;
+
+// ============================================================
+// MODAL DE PRIVACIDAD Y SEGURIDAD
+// ============================================================
+window.showPrivacyInfo = function() {
+  // Limpiar cualquier modal previo
+  const existing = document.getElementById('privacy-info-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'privacy-info-modal';
+  overlay.className = 'tutorial-overlay';
+
+  overlay.innerHTML = `
+    <div class="tutorial-card">
+      <div class="tutorial-header">
+        <button class="tutorial-skip" onclick="closePrivacyInfo()">Cerrar ×</button>
+        <span class="tutorial-icon-big">🔐</span>
+        <h2 class="tutorial-title">Tu Privacidad</h2>
+        <p class="tutorial-subtitle">Cómo protegemos tu información financiera</p>
+      </div>
+
+      <div class="tutorial-body">
+        <div class="tutorial-step-content">
+          <h3 style="margin: 0 0 12px;">Compromiso con tu privacidad</h3>
+          <p style="font-size: 13px; line-height: 1.6;">En FinanzasPro entendemos que tu información financiera es <strong>extremadamente sensible</strong>. Por eso, hemos diseñado nuestra plataforma con la privacidad como pilar fundamental.</p>
+
+          <div style="display: flex; flex-direction: column; gap: 10px; margin: 16px 0;">
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 18px;">🔒</span>
+                <strong style="font-size: 13px; color: var(--text-primary);">Acceso exclusivo</strong>
+              </div>
+              <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                Tus datos están vinculados únicamente a tu cuenta. Ni desarrolladores, ni administradores, ni nadie más puede ver tu información financiera personal.
+              </p>
+            </div>
+
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 18px;">🛡️</span>
+                <strong style="font-size: 13px; color: var(--text-primary);">Cifrado bancario</strong>
+              </div>
+              <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                Toda comunicación está protegida con cifrado SSL/TLS. Tus datos se almacenan cifrados en servidores seguros con protocolo bancario.
+              </p>
+            </div>
+
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 18px;">🚫</span>
+                <strong style="font-size: 13px; color: var(--text-primary);">Cero venta de datos</strong>
+              </div>
+              <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                <strong>NUNCA</strong> vendemos, compartimos, alquilamos ni cedemos tu información a terceros. Tu información es tuya y solo tuya.
+              </p>
+            </div>
+
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 18px;">📵</span>
+                <strong style="font-size: 13px; color: var(--text-primary);">Sin anuncios ni rastreo</strong>
+              </div>
+              <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                No mostramos publicidad. No usamos rastreadores de terceros. No te envíamos correos comerciales sin tu permiso.
+              </p>
+            </div>
+
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 18px;">🗑️</span>
+                <strong style="font-size: 13px; color: var(--text-primary);">Tu derecho al olvido</strong>
+              </div>
+              <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                Puedes eliminar tu cuenta y todos tus datos en cualquier momento desde tu perfil. Sin preguntas, sin retenciones.
+              </p>
+            </div>
+
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 18px;">📥</span>
+                <strong style="font-size: 13px; color: var(--text-primary);">Exporta cuando quieras</strong>
+              </div>
+              <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                Puedes descargar todos tus datos en formato JSON desde el menú "Exportar". La información es 100% tuya y portable.
+              </p>
+            </div>
+          </div>
+
+          <div class="tutorial-tip-box" style="background: linear-gradient(135deg, rgba(127, 119, 221, 0.1), rgba(29, 158, 117, 0.08)); border-left-color: var(--accent-from);">
+            <p style="font-size: 12px; line-height: 1.6;">
+              🇨🇴 <strong>Cumplimos la ley colombiana</strong>: Operamos bajo la Ley 1581 de 2012 (Habeas Data) y el Decreto 1377 de 2013 sobre protección de datos personales.
+            </p>
+          </div>
+
+          <div style="margin-top: 16px; padding: 12px; background: var(--info-bg); border-radius: 10px; border-left: 3px solid var(--info-text);">
+            <p style="margin: 0; font-size: 12px; line-height: 1.6; color: var(--info-text);">
+              💬 <strong>¿Dudas o preguntas?</strong> Escribe a <strong>privacidad@finanzaspro.app</strong> y respondemos en menos de 48 horas.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tutorial-footer">
+        <button class="tutorial-btn tutorial-btn-primary" onclick="closePrivacyInfo()">
+          Entendido 👍
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  if (typeof lockBody === 'function') lockBody();
+};
+
+window.closePrivacyInfo = function() {
+  const modal = document.getElementById('privacy-info-modal');
+  if (modal) {
+    modal.remove();
+    if (typeof unlockBody === 'function') unlockBody();
+  }
+};
 
 window.showWelcomeTutorialAgain = function() {
   // Permitir mostrarlo manualmente desde Perfil

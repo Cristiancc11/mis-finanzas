@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=13">
+<link rel="stylesheet" href="styles.css?v=14">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -102,9 +102,34 @@
       <button onclick="handleForgotPassword()" style="background: transparent; border: none; color: var(--info-text); font-size: 13px; cursor: pointer; padding: 4px 8px; text-decoration: underline; font-weight: 500;">¿Olvidaste tu contraseña?</button>
     </div>
 
-    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin: 18px 0 0;">
-      <span style="font-size: 11px; color: var(--text-tertiary);">🔒</span>
-      <p style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin: 0;">Tus datos se guardan de forma segura en la nube</p>
+    <!-- Banner de privacidad y seguridad -->
+    <div class="privacy-banner">
+      <div class="privacy-banner-header">
+        <span class="privacy-banner-icon">🔐</span>
+        <span class="privacy-banner-title">100% Privado y Seguro</span>
+      </div>
+      <ul class="privacy-banner-list">
+        <li>
+          <span class="privacy-check">✓</span>
+          <span>Tus datos están <strong>cifrados</strong> en la nube</span>
+        </li>
+        <li>
+          <span class="privacy-check">✓</span>
+          <span><strong>Solo tú</strong> tienes acceso a tu información</span>
+        </li>
+        <li>
+          <span class="privacy-check">✓</span>
+          <span><strong>Nunca compartimos</strong> tus datos con terceros</span>
+        </li>
+        <li>
+          <span class="privacy-check">✓</span>
+          <span>Sin anuncios. Sin venta de información.</span>
+        </li>
+      </ul>
+      <p class="privacy-banner-footer">
+        <span style="font-size: 11px;">🛡️</span>
+        Cumplimos con la <strong>Ley 1581 de Habeas Data</strong> de Colombia
+      </p>
     </div>
   </div>
 </div>
@@ -948,6 +973,20 @@
       </div>
     </div>
 
+    <!-- Tarjeta destacada de PRIVACIDAD -->
+    <div class="privacy-card-highlight">
+      <div class="privacy-card-icon-wrap">
+        <span class="privacy-card-icon">🔐</span>
+      </div>
+      <div class="privacy-card-content">
+        <h3 class="privacy-card-title">Tu información es 100% privada</h3>
+        <p class="privacy-card-text">Solo tú tienes acceso a tus datos financieros. Cifrado bancario y sin compartir con terceros.</p>
+        <button onclick="showPrivacyInfo()" class="privacy-card-btn">
+          Conoce más sobre tu privacidad ›
+        </button>
+      </div>
+    </div>
+
     <div class="raised-card">
       <p class="card-title">📚 Ayuda y guías</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Aprende a usar todas las funciones del dashboard</p>
@@ -960,6 +999,11 @@
         <button onclick="resetOnboarding()" style="width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px; text-align: left; display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 18px;">✅</span>
           <span>Activar checklist de configuración</span>
+          <span style="margin-left: auto; color: var(--text-tertiary);">›</span>
+        </button>
+        <button onclick="showPrivacyInfo()" style="width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px; text-align: left; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 18px;">🔐</span>
+          <span>Privacidad y seguridad</span>
           <span style="margin-left: auto; color: var(--text-tertiary);">›</span>
         </button>
       </div>
@@ -1118,6 +1162,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=13"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
