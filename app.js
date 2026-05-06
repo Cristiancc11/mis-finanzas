@@ -7672,7 +7672,7 @@ async function buildAnnualPDF(state, year) {
     const mRG = p * (Math.pow(1 + r, 1/12) - 1);
     const mRN = mRG - mT;
     const aRN = aRG - aT;
-    const inc = totalIncome();
+    const inc = totalIncomeWithCashback();  // Total real con extras y cashback
     const sp = totalSpent() || totalBudget();
     const margin = Math.max(0, inc - sp);
     const eA = aRN / p;
@@ -8157,7 +8157,7 @@ async function buildAnnualPDF(state, year) {
       });
     }
 
-    const inc = totalIncome();
+    const inc = totalIncomeWithCashback();  // Incluye salario + extras + cashback
     const exp = totalSpent() || totalBudget();
     const bal = inc - exp;
     if (chartComparison) chartComparison.destroy();
