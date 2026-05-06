@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=23">
+<link rel="stylesheet" href="styles.css?v=25">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -511,6 +511,23 @@
             <span style="font-size: 11px; color: var(--text-tertiary);">Se descontará automáticamente</span>
           </div>
         </div>
+
+        <!-- Selector de TARJETA A PAGAR (aparece cuando categoría es "Pago de tarjeta") -->
+        <div id="tx-pay-card-row" style="display: none; margin-top: 8px;">
+          <div style="background: linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06)); border: 1px solid rgba(127, 119, 221, 0.3); border-radius: 10px; padding: 12px;">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 16px;">💳</span>
+              <span>¿Qué tarjeta estás pagando?</span>
+            </div>
+            <select id="tx-pay-card" style="width: 100%; margin-bottom: 6px;">
+              <option value="">Selecciona la tarjeta</option>
+            </select>
+            <p style="font-size: 11px; color: var(--text-tertiary); margin: 0;">
+              💡 El monto se restará automáticamente del saldo de la tarjeta
+            </p>
+          </div>
+        </div>
+
         <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
       </div>
 
@@ -1231,6 +1248,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=23"></script>
+<script src="app.js?v=25"></script>
 </body>
 </html>

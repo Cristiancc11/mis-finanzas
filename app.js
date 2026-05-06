@@ -5156,6 +5156,8 @@ async function buildAnnualPDF(state, year) {
     { id: 'celular', label: 'Plan celular', icon: '📞', tipo: 'fijo', isDefault: true },
     { id: 'gimnasio', label: 'Gimnasio', icon: '💪', tipo: 'fijo', isDefault: true },
     { id: 'streaming', label: 'Streaming', icon: '📺', tipo: 'fijo', isDefault: true },
+    // PAGOS DE DEUDA (CRÍTICO - reduce saldo de tarjetas)
+    { id: 'pago_tarjeta', label: 'Pago de tarjeta de crédito', icon: '💳', tipo: 'fijo', isDefault: true, isPagoTarjeta: true },
     // TRANSPORTE
     { id: 'uber', label: 'Uber / Transporte', icon: '🚗', tipo: 'estilo', isDefault: true },
     { id: 'gasolina', label: 'Gasolina', icon: '⛽', tipo: 'estilo', isDefault: true },
@@ -5876,6 +5878,15 @@ async function buildAnnualPDF(state, year) {
     ).join('');
     if (currentValue) select.value = currentValue;
 
+    // Listener para detectar "Pago de tarjeta" y mostrar selector de tarjeta a pagar
+    if (!select.hasAttribute('data-listener-attached')) {
+      select.setAttribute('data-listener-attached', 'true');
+      select.addEventListener('change', updatePayCardVisibility);
+    }
+    
+    // Aplicar visibilidad inicial
+    updatePayCardVisibility();
+
     // También actualizar el filtro de categorías si existe
     const filterSel = document.getElementById('tx-filter-category');
     if (filterSel) {
@@ -5883,6 +5894,46 @@ async function buildAnnualPDF(state, year) {
       filterSel.innerHTML = '<option value="all">Todas las categorías</option>' +
         cats.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
       if (filterCurrent) filterSel.value = filterCurrent;
+    }
+  }
+
+  // Mostrar/ocultar el selector de "Tarjeta a pagar" según la categoría
+  function updatePayCardVisibility() {
+    const catSelect = document.getElementById('tx-category');
+    const payCardRow = document.getElementById('tx-pay-card-row');
+    const payCardSelect = document.getElementById('tx-pay-card');
+    
+    if (!catSelect || !payCardRow || !payCardSelect) return;
+    
+    const selectedCatId = catSelect.value;
+    const cats = getAllCategories();
+    const selectedCat = cats.find(c => c.id === selectedCatId);
+    
+    // Es pago de tarjeta si la categoría tiene la flag isPagoTarjeta o el id es 'pago_tarjeta'
+    const isPagoTarjeta = selectedCat && (selectedCat.isPagoTarjeta || selectedCat.id === 'pago_tarjeta');
+    
+    if (isPagoTarjeta) {
+      // Mostrar selector de tarjeta y poblarlo
+      payCardRow.style.display = 'block';
+      
+      // Poblar opciones de tarjetas
+      const cards = (state.debts || []).filter(d => !d.archived);
+      
+      if (cards.length === 0) {
+        payCardSelect.innerHTML = '<option value="">⚠️ No tienes tarjetas registradas</option>';
+      } else {
+        const currentValue = payCardSelect.value;
+        payCardSelect.innerHTML = '<option value="">Selecciona la tarjeta</option>' +
+          cards.map(c => {
+            const balance = c.balance || 0;
+            const balanceStr = balance > 0 ? ` · saldo ${fmt(balance)}` : ' · sin deuda';
+            return `<option value="${c.id}">${c.icon || '💳'} ${c.name}${balanceStr}</option>`;
+          }).join('');
+        if (currentValue) payCardSelect.value = currentValue;
+      }
+    } else {
+      payCardRow.style.display = 'none';
+      payCardSelect.value = '';
     }
   }
 
@@ -6267,7 +6318,13 @@ async function buildAnnualPDF(state, year) {
     populatePocketsSelector();
     renderExtraIncomes();
     renderResumen();
+    renderBudget();  // Recalcular Margen real, Presupuesto vs Gasto, etc.
     renderPockets();
+    
+    // Toast de confirmación
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Ingreso registrado', `+${fmt(amount)} agregado al mes`);
+    }
   };
 
   window.removeExtraIncome = function(month, id) {
@@ -6284,6 +6341,7 @@ async function buildAnnualPDF(state, year) {
       populatePocketsSelector();
       renderExtraIncomes();
       renderResumen();
+      renderBudget();  // Recalcular Margen real al eliminar ingreso
       renderPockets();
     }
   };
@@ -6670,8 +6728,20 @@ async function buildAnnualPDF(state, year) {
     const method = document.getElementById('tx-payment-method').value;
     const cardId = document.getElementById('tx-card').value;
     const pocketId = document.getElementById('tx-pocket') ? document.getElementById('tx-pocket').value : '';
+    const payCardId = document.getElementById('tx-pay-card') ? document.getElementById('tx-pay-card').value : '';
+    
     if (!d || !a || a <= 0) return alert('Completa descripción y monto');
     if (method === 'tarjeta' && !cardId) return alert('Selecciona la tarjeta usada');
+
+    // Detectar si es pago de tarjeta
+    const cats = getAllCategories();
+    const selectedCat = cats.find(x => x.id === c);
+    const isPagoTarjeta = selectedCat && (selectedCat.isPagoTarjeta || selectedCat.id === 'pago_tarjeta');
+
+    // Validar que se haya seleccionado tarjeta a pagar si es categoría pago_tarjeta
+    if (isPagoTarjeta && !payCardId) {
+      return alert('Selecciona qué tarjeta estás pagando');
+    }
 
     const m = dt.substring(0, 7);
     if (!state.transactions[m]) state.transactions[m] = [];
@@ -6679,6 +6749,7 @@ async function buildAnnualPDF(state, year) {
     let cashback = 0;
     let cardIdNum = null;
     let pocketIdNum = null;
+    let payCardIdNum = null;
 
     if (method === 'tarjeta' && cardId) {
       cashback = a * 0.01;
@@ -6701,19 +6772,52 @@ async function buildAnnualPDF(state, year) {
       }
     }
 
+    // PAGO DE TARJETA: reducir saldo de la tarjeta seleccionada
+    if (isPagoTarjeta && payCardId) {
+      payCardIdNum = parseInt(payCardId);
+      const payCard = state.debts.find(x => x.id === payCardIdNum);
+      if (payCard) {
+        const previousBalance = payCard.balance || 0;
+        payCard.balance = Math.max(0, previousBalance - a);
+        const realPaid = previousBalance - payCard.balance;
+        
+        // Notificar con toast
+        if (typeof toastSuccess === 'function') {
+          if (a > previousBalance) {
+            toastSuccess(
+              'Pago aplicado',
+              `${payCard.name}: $${realPaid.toLocaleString('es-CO')} aplicado. ¡Tarjeta saldada! 🎉`
+            );
+          } else {
+            toastSuccess(
+              'Pago aplicado',
+              `${payCard.name}: nuevo saldo $${payCard.balance.toLocaleString('es-CO')}`
+            );
+          }
+        }
+      }
+    }
+
     state.transactions[m].push({
       id: Date.now(),
       date: dt, desc: d, amount: a, category: c,
       paymentMethod: method,
       cardId: cardIdNum,
       pocketId: pocketIdNum,
+      payCardId: payCardIdNum,  // NUEVO: tarjeta que se está pagando
       cashback: cashback
     });
 
     document.getElementById('tx-desc').value = '';
     document.getElementById('tx-amount').value = '';
     if (document.getElementById('tx-pocket')) document.getElementById('tx-pocket').value = '';
+    if (document.getElementById('tx-pay-card')) document.getElementById('tx-pay-card').value = '';
     document.getElementById('tx-cashback-info').style.display = 'none';
+    
+    // Ocultar fila de pago de tarjeta después de guardar
+    const payCardRow = document.getElementById('tx-pay-card-row');
+    if (payCardRow) payCardRow.style.display = 'none';
+    
     saveState(); populateMonths(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
   };
 
@@ -6733,6 +6837,16 @@ async function buildAnnualPDF(state, year) {
           const pocket = state.pockets.find(x => x.id === tx.pocketId);
           if (pocket) {
             pocket.amount = pocket.amount + tx.amount;
+          }
+        }
+        // Si fue un PAGO DE TARJETA, devolver la deuda a la tarjeta
+        if (tx.payCardId) {
+          const payCard = state.debts.find(x => x.id === tx.payCardId);
+          if (payCard) {
+            payCard.balance = (payCard.balance || 0) + tx.amount;
+            if (typeof toastInfo === 'function') {
+              toastInfo('Pago revertido', `${payCard.name}: saldo actualizado a $${payCard.balance.toLocaleString('es-CO')}`);
+            }
           }
         }
       }
@@ -7223,11 +7337,25 @@ async function buildAnnualPDF(state, year) {
     avEl.textContent = fmt(av);
     avEl.style.color = av >= 0 ? 'var(--success-text)' : 'var(--danger-text)';
 
-    const inc = totalIncome();
+    const inc = totalIncomeWithCashback();  // Incluye salario + extras + cashback
+    const incRecurrent = totalIncome();
+    const incExtras = totalMonthExtraIncome();
+    const incCashback = totalMonthCashback();
     const margin = inc - tSpent;
     const projMargin = inc - tBudget;
+    
+    // Sub-info: detalle de ingresos
+    let incomeSubInfo = '';
+    if (incExtras > 0 || incCashback > 0) {
+      const parts = [];
+      if (incRecurrent > 0) parts.push(`Salario ${fmt(incRecurrent)}`);
+      if (incExtras > 0) parts.push(`+ Extras ${fmt(incExtras)}`);
+      if (incCashback > 0) parts.push(`+ Cashback ${fmt(incCashback)}`);
+      incomeSubInfo = `<div class="metric-sub">${parts.join(' ')}</div>`;
+    }
+    
     sum.innerHTML = `<div class="fin-grid-4">
-      <div class="metric-card"><div class="metric-label">Ingreso del mes</div><div class="metric-value" style="color: var(--success-text);">${fmt(inc)}</div></div>
+      <div class="metric-card"><div class="metric-label">Ingreso del mes</div><div class="metric-value" style="color: var(--success-text);">${fmt(inc)}</div>${incomeSubInfo}</div>
       <div class="metric-card"><div class="metric-label">Presupuesto total</div><div class="metric-value" style="color: var(--info-text);">${fmt(tBudget)}</div></div>
       <div class="metric-card"><div class="metric-label">Gastado hasta hoy</div><div class="metric-value" style="color: var(--danger-text);">${fmt(tSpent)}</div></div>
       <div class="metric-card"><div class="metric-label">Margen real</div><div class="metric-value ${margin >= 0 ? 'balance-positive' : 'balance-negative'}">${fmt(margin)}</div><div class="metric-sub">Si gastas todo: ${fmt(projMargin)}</div></div>
