@@ -442,6 +442,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// ============================================================
+// CERRAR MODALES AL TOCAR EL FONDO (backdrop)
+// ============================================================
+document.addEventListener('click', function(e) {
+  // Solo si se hizo click DIRECTAMENTE en el overlay (no en el contenido)
+  if (e.target.classList && e.target.classList.contains('tutorial-overlay')) {
+    const modalId = e.target.id;
+    
+    // Mapeo de modales y sus funciones de cierre
+    const modalCloseMap = {
+      'reminder-modal': () => window.closeReminderModal && window.closeReminderModal(),
+      'privacy-info-modal': () => window.closePrivacyInfo && window.closePrivacyInfo(),
+      'welcome-tutorial': () => {
+        // No cerrar el tutorial al tocar fondo (debe ir paso a paso)
+        return;
+      }
+    };
+    
+    if (modalCloseMap[modalId]) {
+      modalCloseMap[modalId]();
+    }
+  }
+});
+
+// Cerrar modal con tecla ESC
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    // Buscar modales abiertos por orden de prioridad
+    if (document.getElementById('reminder-modal')) {
+      window.closeReminderModal && window.closeReminderModal();
+    } else if (document.getElementById('privacy-info-modal')) {
+      window.closePrivacyInfo && window.closePrivacyInfo();
+    }
+  }
+});
+
 // Exponer funciones al scope global
 window.handleAuth = handleAuth;
 window.handleLogout = handleLogout;

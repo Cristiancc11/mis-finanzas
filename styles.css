@@ -2976,22 +2976,51 @@ button.btn-loading.btn-secondary::after {
 
 .tutorial-skip {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  background: rgba(255, 255, 255, 0.18);
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
   color: white;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  min-height: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 10;
+}
+
+.tutorial-skip:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
 }
 
 .tutorial-skip:active {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(0.95);
+}
+
+/* Versión móvil con más área clickeable */
+@media (max-width: 768px) {
+  .tutorial-skip {
+    top: 8px;
+    right: 8px;
+    padding: 10px 14px;
+    min-height: 40px;
+    min-width: 40px;
+    font-size: 13px;
+  }
 }
 
 /* ========================================
@@ -4179,5 +4208,39 @@ html.density-comfortable .net-worth-hero-value {
   
   .privacy-card-title {
     font-size: 14px;
+  }
+}
+
+/* ========================================
+   BOTONES "X" PARA ELIMINAR/CERRAR
+   Mejor área tappable y feedback visual
+   ======================================== */
+
+button[onclick*="deleteReminder"],
+button[onclick*="closePrivacyInfo"],
+.delete-btn,
+.pocket-delete {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: all 0.2s ease;
+}
+
+button[onclick*="deleteReminder"]:active,
+.delete-btn:active,
+.pocket-delete:active {
+  transform: scale(0.92);
+}
+
+/* Asegurar que los modales se vean bien en mobile */
+@media (max-width: 768px) {
+  .tutorial-card {
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px;
+    width: calc(100% - 24px);
+  }
+  
+  .tutorial-overlay {
+    padding: 12px !important;
   }
 }
