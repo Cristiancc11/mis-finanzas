@@ -261,17 +261,19 @@ async function loadFromCloud() {
         // Usuario nuevo: arrancar con plantilla vacía
         console.log('🆕 Usuario nuevo - cargando plantilla vacía');
         if (typeof EMPTY_STATE !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(EMPTY_STATE));
+          // Marcar como nuevo usuario para que aparezca el tutorial
+          const newUserState = { ...EMPTY_STATE, isNewUser: true };
+          localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(newUserState));
           await supabaseClient.from('dashboard_data').upsert({
             user_id: currentUser.id,
-            data: EMPTY_STATE
+            data: newUserState
           }, { onConflict: 'user_id' });
         }
         updateSyncIndicator('Cuenta nueva ☁️');
-        // Mostrar mensaje de bienvenida después de 1 segundo
+        // Mostrar tutorial moderno después de un momento
         setTimeout(() => {
-          if (confirm('¡Bienvenido a FinanzasPro! 🎉\n\nTu cuenta está lista. Empieza por:\n\n1. 👛 Configurar tus bolsillos (pestaña Bolsillos)\n2. 💰 Agregar tus ingresos (pestaña Ingresos)\n3. 💳 Registrar tus tarjetas (pestaña Tarjetas)\n\n¿Quieres ver un tutorial rápido?')) {
-            alert('Tutorial rápido:\n\n📌 BOLSILLOS\nDistribuye tu plata por categorías (emergencia, gastos, ahorro)\n\n📌 PRESUPUESTO\nRegistra tus gastos y ve cuánto te queda en cada categoría\n\n📌 TARJETAS\nAgrega tus tarjetas de crédito con cupo y día de corte\n\n📌 METAS\nDefine objetivos de ahorro\n\n💡 Tip: cada cambio se guarda automáticamente en la nube');
+          if (typeof showWelcomeTutorial === 'function') {
+            showWelcomeTutorial();
           }
         }, 1500);
       }
@@ -2136,19 +2138,30 @@ const TUTORIAL_STEPS = [
 let currentTutorialStep = 0;
 
 function showWelcomeTutorial() {
+  console.log('🎓 Iniciando tutorial...');
   // Verificar si es nuevo usuario
   try {
     const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
-    if (!stateRaw) return;
+    if (!stateRaw) {
+      console.log('⚠️ No hay state, no se muestra tutorial');
+      return;
+    }
     const state = JSON.parse(stateRaw);
-    if (!state.isNewUser) return;
+    if (!state.isNewUser) {
+      console.log('⚠️ No es nuevo usuario, no se muestra tutorial');
+      return;
+    }
 
     currentTutorialStep = 0;
     renderTutorialStep();
+    console.log('✅ Tutorial iniciado correctamente');
   } catch(e) {
-    console.error('Error mostrando tutorial:', e);
+    console.error('❌ Error mostrando tutorial:', e);
   }
 }
+
+// Exponer a window globalmente
+window.showWelcomeTutorial = showWelcomeTutorial;
 
 function renderTutorialStep() {
   // Limpiar tutorial previo
@@ -2201,6 +2214,9 @@ function renderTutorialStep() {
   document.body.appendChild(overlay);
   if (isFirst) lockBody();
 }
+
+// Exponer a window globalmente
+window.renderTutorialStep = renderTutorialStep;
 
 window.nextTutorialStep = function() {
   if (currentTutorialStep < TUTORIAL_STEPS.length - 1) {
@@ -2368,17 +2384,36 @@ window.closePrivacyInfo = function() {
 };
 
 window.showWelcomeTutorialAgain = function() {
-  // Permitir mostrarlo manualmente desde Perfil
+  console.log('🎓 Mostrando tutorial manualmente desde Perfil...');
+  // Permitir mostrarlo manualmente desde Perfil (sin importar si es nuevo o no)
   try {
+    // Resetear el step
+    if (typeof currentTutorialStep !== 'undefined') {
+      currentTutorialStep = 0;
+    }
+
+    // Marcar como nuevo usuario temporalmente
     const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
     if (stateRaw) {
       const state = JSON.parse(stateRaw);
       state.isNewUser = true;
       localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
-      currentTutorialStep = 0;
-      renderTutorialStep();
     }
-  } catch(e) {}
+
+    // Llamar a renderTutorialStep directamente
+    if (typeof window.renderTutorialStep === 'function') {
+      window.renderTutorialStep();
+      console.log('✅ Tutorial mostrado correctamente');
+    } else if (typeof renderTutorialStep === 'function') {
+      renderTutorialStep();
+      console.log('✅ Tutorial mostrado correctamente');
+    } else {
+      console.error('❌ renderTutorialStep no está disponible');
+      alert('Error al cargar el tutorial. Recarga la página por favor.');
+    }
+  } catch(e) {
+    console.error('❌ Error mostrando tutorial:', e);
+  }
 };
 
 // ============================================================
@@ -2594,7 +2629,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const checkInterval = setInterval(() => {
     if (window.currentUser) {
       clearInterval(checkInterval);
-      setTimeout(showWelcomeTutorial, 1500);
+      // Esperar a que las funciones estén listas y luego mostrar el tutorial
+      const tryShow = () => {
+        if (typeof window.showWelcomeTutorial === 'function') {
+          console.log('🎓 Disparando tutorial automático para nuevo usuario...');
+          window.showWelcomeTutorial();
+        } else if (typeof showWelcomeTutorial === 'function') {
+          console.log('🎓 Disparando tutorial automático (fallback)...');
+          showWelcomeTutorial();
+        } else {
+          console.warn('⚠️ Tutorial no disponible aún, reintentando...');
+          setTimeout(tryShow, 500);
+        }
+      };
+      setTimeout(tryShow, 1500);
     }
   }, 500);
 
