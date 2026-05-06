@@ -5046,15 +5046,7 @@ async function buildAnnualPDF(state, year) {
         if (!state.budgets) state.budgets = { [currentMonth]: { ...DEFAULT_BUDGETS } };
         if (!state.transactions) state.transactions = {};
         if (!state.extraIncomes) state.extraIncomes = {};
-        // Asegurar que existan los bolsillos especiales
-        if (state.pockets && !state.pockets.find(p => p.isCash)) {
-          state.pockets.push({ id: Date.now(), name: 'Efectivo', amount: 0, icon: '💵', isCash: true });
-          saveState();
-        }
-        if (state.pockets && !state.pockets.find(p => p.bank === 'rappi')) {
-          state.pockets.push({ id: Date.now() + 1, name: 'Cashback RappiCard', amount: 300693.23, icon: '💳', bank: 'rappi', rate: 9 });
-          saveState();
-        }
+        // NO agregar bolsillos automáticamente - cada usuario crea los suyos
       }
     } catch(e) { console.error(e); }
     populateCategories();
@@ -5297,13 +5289,6 @@ async function buildAnnualPDF(state, year) {
         const i = JSON.parse(ev.target.result);
         if (confirm('¿Reemplazar tus datos?')) {
           state = { ...DEFAULT_STATE, ...i };
-          // Asegurar bolsillos especiales
-          if (state.pockets && !state.pockets.find(p => p.isCash)) {
-            state.pockets.push({ id: Date.now(), name: 'Efectivo', amount: 0, icon: '💵', isCash: true });
-          }
-          if (state.pockets && !state.pockets.find(p => p.bank === 'rappi')) {
-            state.pockets.push({ id: Date.now() + 1, name: 'Cashback RappiCard', amount: 300693.23, icon: '💳', bank: 'rappi', rate: 9 });
-          }
           saveState(); populateMonths(); renderAll(); alert('Importado');
         }
       } catch(err) { alert('Archivo inválido'); }
