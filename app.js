@@ -5315,11 +5315,38 @@ async function buildAnnualPDF(state, year) {
     const n = document.getElementById('pocket-name').value.trim();
     const a = parseFloat(document.getElementById('pocket-amount').value);
     const i = document.getElementById('pocket-icon').value;
+    const bankEl = document.getElementById('pocket-bank');
+    const rateEl = document.getElementById('pocket-rate');
+    const bank = bankEl ? bankEl.value : 'generic';
+    const rate = rateEl ? (parseFloat(rateEl.value) || 0) : 0;
+    
     if (!n || isNaN(a) || a < 0) return alert('Completa nombre y monto');
-    state.pockets.push({ id: Date.now(), name: n, amount: a, icon: i });
+    
+    const pocket = { 
+      id: Date.now(), 
+      name: n, 
+      amount: a, 
+      icon: i,
+      bank: bank,
+      rate: rate,
+      isCash: bank === 'cash'
+    };
+    
+    state.pockets.push(pocket);
+    
+    // Limpiar formulario
     document.getElementById('pocket-name').value = '';
     document.getElementById('pocket-amount').value = '';
-    saveState(); renderAll();
+    if (bankEl) bankEl.value = 'generic';
+    if (rateEl) rateEl.value = '0';
+    
+    saveState(); 
+    renderAll();
+    
+    // Toast de éxito si está disponible
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Bolsillo creado', `"${n}" agregado correctamente`);
+    }
   };
   window.removePocket = function(id) {
     if (!confirm('¿Eliminar?')) return;
@@ -6431,32 +6458,68 @@ async function buildAnnualPDF(state, year) {
   function renderPockets() {
     const list = document.getElementById('pocket-list');
     const total = totalPockets();
-    const cashTotal = state.pockets.filter(p => p.isCash).reduce((s, p) => s + p.amount, 0);
-    const rappiTotal = state.pockets.filter(p => p.bank === 'rappi').reduce((s, p) => s + p.amount, 0);
-    const luloTotal = total - cashTotal - rappiTotal;
+    
+    // Calcular totales dinámicamente según los bolsillos del usuario
+    const cashTotal = state.pockets.filter(p => p.isCash || p.bank === 'cash').reduce((s, p) => s + p.amount, 0);
+    
+    // Bolsillos con rentabilidad (rate > 0)
+    const investedPockets = state.pockets.filter(p => !p.isCash && p.bank !== 'cash' && (p.rate || 0) > 0);
+    const investedTotal = investedPockets.reduce((s, p) => s + p.amount, 0);
+    const avgRate = investedPockets.length > 0 
+      ? investedPockets.reduce((s, p) => s + (p.rate * p.amount), 0) / investedTotal 
+      : 0;
+    
+    // Bolsillos sin rentabilidad (cuenta tradicional, billeteras digitales sin renta)
+    const noRateTotal = total - cashTotal - investedTotal;
 
     const cashSummary = document.getElementById('cash-summary');
     if (cashSummary) {
-      cashSummary.innerHTML = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 1rem;">
-        <div class="metric-hero">
-          <div class="metric-hero-icon green">🏦</div>
-          <div class="metric-hero-label">Lulo Bank (7.87% EA)</div>
-          <p class="metric-hero-value" style="color: var(--success-text);">${fmt(luloTotal)}</p>
-          <div class="metric-hero-sub">Bolsillos digitales</div>
-        </div>
-        <div class="metric-hero">
-          <div class="metric-hero-icon red">💳</div>
-          <div class="metric-hero-label">Cashback Rappi (9% EA)</div>
-          <p class="metric-hero-value" style="color: var(--danger-text);">${fmt(rappiTotal)}</p>
-          <div class="metric-hero-sub">Tasa más alta · liquidez total</div>
-        </div>
-        <div class="metric-hero">
-          <div class="metric-hero-icon" style="background: linear-gradient(135deg, #f4d03f, #d4a017); color: white;">💵</div>
-          <div class="metric-hero-label">Efectivo en mano</div>
-          <p class="metric-hero-value" style="color: var(--warning-text);">${fmt(cashTotal)}</p>
-          <div class="metric-hero-sub">Físico · controla siempre</div>
-        </div>
-      </div>`;
+      const hasAnyPocket = state.pockets.length > 0;
+      
+      if (!hasAnyPocket) {
+        cashSummary.innerHTML = '';
+      } else {
+        let cardsHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 1rem;">';
+        
+        // Card de inversiones / cuentas con renta (solo si hay)
+        if (investedTotal > 0) {
+          cardsHtml += `
+            <div class="metric-hero">
+              <div class="metric-hero-icon green">📈</div>
+              <div class="metric-hero-label">Cuentas con rentabilidad</div>
+              <p class="metric-hero-value" style="color: var(--success-text);">${fmt(investedTotal)}</p>
+              <div class="metric-hero-sub">Promedio ${avgRate.toFixed(2)}% E.A. · ${investedPockets.length} ${investedPockets.length === 1 ? 'bolsillo' : 'bolsillos'}</div>
+            </div>
+          `;
+        }
+        
+        // Card de cuentas/billeteras sin rentabilidad (solo si hay)
+        if (noRateTotal > 0) {
+          cardsHtml += `
+            <div class="metric-hero">
+              <div class="metric-hero-icon" style="background: linear-gradient(135deg, #7F77DD, #6e69c8); color: white;">🏦</div>
+              <div class="metric-hero-label">Cuentas / billeteras</div>
+              <p class="metric-hero-value" style="color: var(--info-text);">${fmt(noRateTotal)}</p>
+              <div class="metric-hero-sub">Sin rentabilidad · disponible</div>
+            </div>
+          `;
+        }
+        
+        // Card de efectivo (solo si hay)
+        if (cashTotal > 0) {
+          cardsHtml += `
+            <div class="metric-hero">
+              <div class="metric-hero-icon" style="background: linear-gradient(135deg, #f4d03f, #d4a017); color: white;">💵</div>
+              <div class="metric-hero-label">Efectivo en mano</div>
+              <p class="metric-hero-value" style="color: var(--warning-text);">${fmt(cashTotal)}</p>
+              <div class="metric-hero-sub">Físico · controla siempre</div>
+            </div>
+          `;
+        }
+        
+        cardsHtml += '</div>';
+        cashSummary.innerHTML = cardsHtml;
+      }
     }
 
     if (state.pockets.length === 0) {
@@ -6478,9 +6541,21 @@ async function buildAnnualPDF(state, year) {
       list.innerHTML = sorted.map(p => {
         const pct = total > 0 ? ((p.amount / total) * 100).toFixed(1) : 0;
         let extraClass = '';
-        if (p.isCash) extraClass = ' cash-pocket';
-        else if (p.bank === 'rappi') extraClass = ' rappi-pocket';
-        const subLabel = p.isCash ? ' · físico' : (p.bank === 'rappi' ? ` · ${p.rate || 9}% E.A.` : '');
+        let subLabel = '';
+        
+        if (p.isCash || p.bank === 'cash') {
+          extraClass = ' cash-pocket';
+          subLabel = ' · efectivo';
+        } else if (p.bank === 'rappi') {
+          extraClass = ' rappi-pocket';
+          subLabel = ` · ${p.rate || 9}% E.A.`;
+        } else if (p.rate && p.rate > 0) {
+          subLabel = ` · ${p.rate}% E.A.`;
+        } else if (p.bank && p.bank !== 'generic') {
+          // Mostrar nombre del banco si hay
+          subLabel = ` · ${getBankLabel(p.bank)}`;
+        }
+        
         return `<div class="pocket-card${extraClass}">
           <button class="delete-btn pocket-delete" onclick="removePocket(${p.id})">×</button>
           <div style="font-size: 22px; margin-bottom: 8px;">${p.icon}</div>
@@ -6492,6 +6567,44 @@ async function buildAnnualPDF(state, year) {
       }).join('');
     }
     document.getElementById('pocket-total').textContent = fmt(total);
+  }
+
+  // Función auxiliar para obtener el nombre del banco
+  function getBankLabel(bankCode) {
+    const banks = {
+      'generic': 'Cuenta bancaria',
+      'cash': 'Efectivo',
+      'digital': 'Billetera digital',
+      'bancolombia': 'Bancolombia',
+      'davivienda': 'Davivienda',
+      'bbva': 'BBVA',
+      'bogota': 'Banco de Bogotá',
+      'popular': 'Banco Popular',
+      'caja_social': 'Caja Social',
+      'av_villas': 'AV Villas',
+      'colpatria': 'Colpatria',
+      'occidente': 'Occidente',
+      'itau': 'Itaú',
+      'lulo': 'Lulo Bank',
+      'nu': 'Nu',
+      'pichincha': 'Pichincha',
+      'agrario': 'Agrario',
+      'bancoomeva': 'Bancoomeva',
+      'banco_w': 'Banco W',
+      'nequi': 'Nequi',
+      'daviplata': 'Daviplata',
+      'rappipay': 'RappiPay',
+      'rappi': 'RappiCard',
+      'movii': 'Movii',
+      'dale': 'Dale!',
+      'tpaga': 'Tpaga',
+      'cdt': 'CDT',
+      'fondos': 'Fondo',
+      'acciones': 'Acciones',
+      'crypto': 'Crypto',
+      'otro': 'Otro'
+    };
+    return banks[bankCode] || 'Cuenta';
   }
 
   function renderIncomes() {

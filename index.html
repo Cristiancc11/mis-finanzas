@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=20">
+<link rel="stylesheet" href="styles.css?v=21">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -573,18 +573,87 @@
   <div class="fin-section" id="section-bolsillos">
     <div id="cash-summary"></div>
     <div class="raised-card">
-      <p class="card-title">Agregar bolsillo</p>
-      <div class="form-row-pocket">
-        <input type="text" id="pocket-name" placeholder="Nombre" />
-        <input type="number" id="pocket-amount" placeholder="Monto ahorrado" min="0" step="0.01" />
-        <select id="pocket-icon">
-          <option value="💰">💰 Operativo</option><option value="✈️">✈️ Viajes</option>
-          <option value="🛟">🛟 Emergencia</option><option value="🎓">🎓 Educación</option>
-          <option value="❤️">❤️ Personal</option><option value="⚡">⚡ Servicios</option>
-          <option value="🍻">🍻 Vida Social</option><option value="🏠">🏠 Vivienda</option>
-          <option value="📈">📈 Inversión</option><option value="💵">💵 Efectivo</option>
-        </select>
-        <button onclick="addPocket()">Agregar</button>
+      <p class="card-title">➕ Agregar bolsillo</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Crea un bolsillo para organizar tu dinero por bancos, efectivo, ahorros o metas.</p>
+
+      <!-- Paso 1: Información básica -->
+      <div style="display: grid; gap: 10px;">
+        <input type="text" id="pocket-name" placeholder="Nombre del bolsillo (ej: Ahorros, Vacaciones)" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <input type="number" id="pocket-amount" placeholder="Monto actual" min="0" step="0.01" />
+          <select id="pocket-icon">
+            <option value="💰">💰 Operativo</option>
+            <option value="✈️">✈️ Viajes</option>
+            <option value="🛟">🛟 Emergencia</option>
+            <option value="🎓">🎓 Educación</option>
+            <option value="❤️">❤️ Personal</option>
+            <option value="⚡">⚡ Servicios</option>
+            <option value="🍻">🍻 Vida Social</option>
+            <option value="🏠">🏠 Vivienda</option>
+            <option value="📈">📈 Inversión</option>
+            <option value="💵">💵 Efectivo</option>
+            <option value="🐷">🐷 Ahorro</option>
+            <option value="🎯">🎯 Meta</option>
+          </select>
+        </div>
+
+        <!-- Paso 2: ¿Dónde está tu dinero? -->
+        <div>
+          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Dónde tienes este dinero?</label>
+          <select id="pocket-bank">
+            <option value="generic">🏦 Cuenta bancaria (genérico)</option>
+            <option value="cash">💵 Efectivo (físico)</option>
+            <option value="digital">📱 Billetera digital (Nequi, Daviplata, etc.)</option>
+            <optgroup label="🇨🇴 Bancos colombianos">
+              <option value="bancolombia">Bancolombia</option>
+              <option value="davivienda">Davivienda</option>
+              <option value="bbva">BBVA</option>
+              <option value="bogota">Banco de Bogotá</option>
+              <option value="popular">Banco Popular</option>
+              <option value="caja_social">Banco Caja Social</option>
+              <option value="av_villas">AV Villas</option>
+              <option value="colpatria">Colpatria (Scotiabank)</option>
+              <option value="occidente">Banco de Occidente</option>
+              <option value="itau">Itaú</option>
+              <option value="lulo">Lulo Bank</option>
+              <option value="nu">Nu Colombia</option>
+              <option value="pichincha">Pichincha</option>
+              <option value="bbva">BBVA Colombia</option>
+              <option value="agrario">Banco Agrario</option>
+              <option value="bancoomeva">Bancoomeva</option>
+              <option value="banco_w">Banco W</option>
+            </optgroup>
+            <optgroup label="📱 Billeteras digitales">
+              <option value="nequi">Nequi</option>
+              <option value="daviplata">Daviplata</option>
+              <option value="rappipay">RappiPay</option>
+              <option value="movii">Movii</option>
+              <option value="dale">Dale!</option>
+              <option value="tpaga">Tpaga</option>
+            </optgroup>
+            <optgroup label="📈 Inversiones">
+              <option value="cdt">CDT (Certificado a término)</option>
+              <option value="fondos">Fondo de inversión</option>
+              <option value="acciones">Acciones / Bolsa</option>
+              <option value="crypto">Criptomonedas</option>
+            </optgroup>
+            <option value="otro">📌 Otro</option>
+          </select>
+        </div>
+
+        <!-- Paso 3: ¿Genera rentabilidad? -->
+        <div>
+          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Genera rentabilidad?</label>
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
+            <input type="number" id="pocket-rate" placeholder="0 = no genera rentabilidad" min="0" max="50" step="0.01" value="0" />
+            <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">% E.A.</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">
+            💡 Ejemplos: Lulo Bank ~7.87%, Cuenta de ahorros tradicional ~0.5%, CDT 6 meses ~10%, efectivo 0%
+          </p>
+        </div>
+
+        <button onclick="addPocket()" style="margin-top: 4px;">➕ Agregar bolsillo</button>
       </div>
     </div>
     <div class="raised-card">
@@ -1162,6 +1231,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
