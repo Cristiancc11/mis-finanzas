@@ -4077,6 +4077,137 @@ window.openReminderModal = function(dateStr) {
     year: 'numeric' 
   });
 
+  // Calcular MOVIMIENTOS DEL DÍA (gastos + ingresos extras)
+  const monthKey = dateStr.substring(0, 7);
+  const dayTransactions = (fullState.transactions && fullState.transactions[monthKey]) || [];
+  const dayExpenses = dayTransactions.filter(t => t.date === dateStr);
+  
+  const dayExtras = ((fullState.extraIncomes && fullState.extraIncomes[monthKey]) || [])
+    .filter(e => e.date === dateStr);
+  
+  // Categorías para mostrar nombres bonitos
+  let categoriesMap = {};
+  try {
+    const allCats = (fullState.customCategories || []).concat([
+      { id: 'servicios_casa', label: 'Servicios + casa', icon: '🏠' },
+      { id: 'celular', label: 'Plan celular', icon: '📞' },
+      { id: 'gimnasio', label: 'Gimnasio', icon: '💪' },
+      { id: 'streaming', label: 'Streaming', icon: '📺' },
+      { id: 'pago_tarjeta', label: 'Pago de tarjeta', icon: '💳' },
+      { id: 'uber', label: 'Uber / Transporte', icon: '🚗' },
+      { id: 'gasolina', label: 'Gasolina', icon: '⛽' },
+      { id: 'comida_fuera', label: 'Comida fuera', icon: '🍔' },
+      { id: 'rappi', label: 'Domicilios', icon: '🛵' },
+      { id: 'mercado', label: 'Mercado', icon: '🛒' },
+      { id: 'salidas', label: 'Salidas', icon: '🎭' },
+      { id: 'salud', label: 'Salud', icon: '💊' },
+      { id: 'compras', label: 'Compras', icon: '🛍️' },
+      { id: 'mascota', label: 'Mascota', icon: '🐾' },
+      { id: 'otros', label: 'Otros', icon: '📋' }
+    ]);
+    allCats.forEach(c => categoriesMap[c.id] = c);
+  } catch(e) {}
+
+  // HTML de movimientos del día
+  let movementsHtml = '';
+  
+  if (dayExpenses.length > 0 || dayExtras.length > 0) {
+    const totalGastos = dayExpenses.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    const totalIngresos = dayExtras.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const balanceDia = totalIngresos - totalGastos;
+    
+    movementsHtml += `
+      <div style="margin-bottom: 16px; padding: 14px; background: linear-gradient(135deg, rgba(127, 119, 221, 0.06), rgba(29, 158, 117, 0.04)); border-radius: 12px; border: 1px solid rgba(127, 119, 221, 0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">💸 MOVIMIENTOS DEL DÍA</div>
+          <div style="font-size: 11px; color: var(--text-tertiary);">${dayExpenses.length + dayExtras.length} ${(dayExpenses.length + dayExtras.length) === 1 ? 'movimiento' : 'movimientos'}</div>
+        </div>
+        
+        <!-- Mini resumen del día -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px;">
+          <div style="background: var(--bg-primary); padding: 8px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 9px; color: var(--text-tertiary); margin-bottom: 2px;">INGRESOS</div>
+            <div style="font-size: 12px; color: var(--success-text); font-weight: 700;">${totalIngresos > 0 ? '+$' + totalIngresos.toLocaleString('es-CO') : '$0'}</div>
+          </div>
+          <div style="background: var(--bg-primary); padding: 8px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 9px; color: var(--text-tertiary); margin-bottom: 2px;">GASTOS</div>
+            <div style="font-size: 12px; color: var(--danger-text); font-weight: 700;">${totalGastos > 0 ? '-$' + totalGastos.toLocaleString('es-CO') : '$0'}</div>
+          </div>
+          <div style="background: var(--bg-primary); padding: 8px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 9px; color: var(--text-tertiary); margin-bottom: 2px;">BALANCE</div>
+            <div style="font-size: 12px; color: ${balanceDia >= 0 ? 'var(--success-text)' : 'var(--danger-text)'}; font-weight: 700;">${balanceDia >= 0 ? '+' : ''}$${balanceDia.toLocaleString('es-CO')}</div>
+          </div>
+        </div>
+    `;
+    
+    // INGRESOS del día
+    if (dayExtras.length > 0) {
+      movementsHtml += `<div style="font-size: 10px; color: var(--success-text); font-weight: 600; margin: 8px 0 6px;">💰 INGRESOS</div>`;
+      dayExtras.forEach(e => {
+        movementsHtml += `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 4px; border-left: 3px solid var(--success-text);">
+            <div style="flex: 1; min-width: 0; overflow: hidden;">
+              <div style="font-size: 12px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${e.desc || 'Ingreso extra'}</div>
+              ${e.source ? `<div style="font-size: 10px; color: var(--text-tertiary);">${e.source}</div>` : ''}
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: var(--success-text); flex-shrink: 0; margin-left: 8px;">+$${e.amount.toLocaleString('es-CO')}</div>
+          </div>
+        `;
+      });
+    }
+    
+    // GASTOS del día
+    if (dayExpenses.length > 0) {
+      movementsHtml += `<div style="font-size: 10px; color: var(--danger-text); font-weight: 600; margin: 10px 0 6px;">💸 GASTOS</div>`;
+      
+      // Ordenar por hora si tienen, o por orden de inserción
+      const sortedExpenses = [...dayExpenses].sort((a, b) => (b.id || 0) - (a.id || 0));
+      
+      sortedExpenses.forEach(t => {
+        const cat = categoriesMap[t.category] || { icon: '📋', label: t.category };
+        const isCardPayment = t.payCardId;
+        
+        // Buscar nombre de tarjeta si fue pago de tarjeta
+        let cardInfo = '';
+        if (isCardPayment) {
+          const card = (fullState.debts || []).find(d => d.id === t.payCardId);
+          if (card) cardInfo = ` → ${card.name}`;
+        }
+        
+        // Indicar método de pago
+        let paymentInfo = '';
+        if (t.paymentMethod === 'tarjeta' && t.cardId) {
+          const card = (fullState.debts || []).find(d => d.id === t.cardId);
+          if (card) paymentInfo = `💳 ${card.name}`;
+        } else if (t.paymentMethod === 'efectivo') {
+          paymentInfo = '💵 Efectivo';
+        } else if (t.paymentMethod === 'transferencia') {
+          paymentInfo = '🏦 Transferencia';
+        } else if (t.paymentMethod === 'nequi') {
+          paymentInfo = '📱 Nequi';
+        } else if (t.paymentMethod === 'daviplata') {
+          paymentInfo = '📱 Daviplata';
+        }
+        
+        movementsHtml += `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 4px; border-left: 3px solid var(--danger-text);">
+            <div style="flex: 1; min-width: 0; overflow: hidden;">
+              <div style="font-size: 12px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cat.icon} ${t.desc || 'Gasto'}${cardInfo}</div>
+              <div style="font-size: 10px; color: var(--text-tertiary); display: flex; gap: 8px; flex-wrap: wrap;">
+                <span>${cat.label}</span>
+                ${paymentInfo ? `<span>· ${paymentInfo}</span>` : ''}
+                ${t.cashback > 0 ? `<span style="color: var(--success-text);">· +$${Math.round(t.cashback).toLocaleString('es-CO')} cashback</span>` : ''}
+              </div>
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: var(--danger-text); flex-shrink: 0; margin-left: 8px;">-$${t.amount.toLocaleString('es-CO')}</div>
+          </div>
+        `;
+      });
+    }
+    
+    movementsHtml += `</div>`;
+  }
+
   // HTML del modal - parte recordatorios existentes
   let existingListHtml = '';
   if (existingReminders.length > 0) {
@@ -4093,11 +4224,31 @@ window.openReminderModal = function(dateStr) {
                 ${r.recurring === 'monthly' ? '🔁 Cada mes' : r.recurring === 'yearly' ? '🔁 Cada año' : '📅 Único'}
               </div>
             </div>
-            <button onclick="deleteReminder('${r.id}')" style="background: var(--danger-bg); color: var(--danger-text); border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Eliminar">×</button>
+            <div style="display: flex; gap: 4px; flex-shrink: 0;">
+              <button onclick="event.stopPropagation(); editReminder('${r.id}')" style="background: var(--info-bg); color: var(--info-text); border: none; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 12px;" title="Editar">✏️</button>
+              <button onclick="event.stopPropagation(); deleteReminder('${r.id}')" style="background: var(--danger-bg); color: var(--danger-text); border: none; width: 28px; height: 28px; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Eliminar">×</button>
+            </div>
           </div>
         `).join('')}
       </div>
     `;
+  }
+
+  // Determinar el título según el contenido
+  const hasMovements = (dayExpenses.length > 0 || dayExtras.length > 0);
+  const hasReminders = existingReminders.length > 0;
+  let modalTitle = 'Recordatorio';
+  let modalIcon = '📅';
+  
+  if (hasMovements && hasReminders) {
+    modalTitle = 'Detalle del día';
+    modalIcon = '📊';
+  } else if (hasMovements) {
+    modalTitle = 'Movimientos del día';
+    modalIcon = '💰';
+  } else if (hasReminders) {
+    modalTitle = 'Recordatorios del día';
+    modalIcon = '📋';
   }
 
   const overlay = document.createElement('div');
@@ -4108,12 +4259,13 @@ window.openReminderModal = function(dateStr) {
     <div class="tutorial-card" style="max-width: 460px;">
       <div class="tutorial-header" style="padding: 20px;">
         <button class="tutorial-skip" onclick="closeReminderModal()">Cerrar ×</button>
-        <span class="tutorial-icon-big" style="font-size: 36px;">📅</span>
-        <h2 class="tutorial-title" style="font-size: 18px;">Recordatorio</h2>
+        <span class="tutorial-icon-big" style="font-size: 36px;">${modalIcon}</span>
+        <h2 class="tutorial-title" style="font-size: 18px;">${modalTitle}</h2>
         <p class="tutorial-subtitle" style="text-transform: capitalize;">${niceDate}</p>
       </div>
 
       <div class="tutorial-body" style="padding: 16px 20px;">
+        ${movementsHtml}
         ${existingListHtml}
         
         <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">➕ AGREGAR NUEVO RECORDATORIO</div>
