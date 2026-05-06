@@ -3809,18 +3809,50 @@ function renderFinancialCalendar() {
     state.debts.forEach(d => {
       if (d.cutoffDay && d.cutoffDay <= daysInMonth) {
         if (!events[d.cutoffDay]) events[d.cutoffDay] = [];
-        events[d.cutoffDay].push({ icon: '💳', label: 'Corte ' + d.name, color: '#A32D2D' });
+        events[d.cutoffDay].push({ icon: '💳', label: 'Corte ' + d.name, color: '#A32D2D', type: 'auto' });
       }
     });
   }
 
-  // Pago de salario (asumimos día 30)
-  if (events[30]) events[30].push({ icon: '💰', label: 'Pago salario', color: '#3b6d11' });
-  else if (daysInMonth >= 30) events[30] = [{ icon: '💰', label: 'Pago salario', color: '#3b6d11' }];
-
-  // Inicio de mes - revisar presupuesto
-  if (!events[1]) events[1] = [];
-  events[1].push({ icon: '📊', label: 'Revisar presupuesto', color: '#185fa5' });
+  // RECORDATORIOS DEL USUARIO (NUEVO)
+  if (state.reminders) {
+    const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+    Object.keys(state.reminders).forEach(reminderId => {
+      const reminder = state.reminders[reminderId];
+      if (!reminder) return;
+      
+      // Determinar si aplica este mes
+      const reminderDate = new Date(reminder.date);
+      let day = null;
+      
+      if (reminder.recurring === 'monthly') {
+        // Mensual - usa el día del mes
+        day = parseInt(reminder.date.substring(8, 10));
+      } else if (reminder.recurring === 'yearly') {
+        // Anual - solo si el mes coincide
+        if (reminderDate.getMonth() === month) {
+          day = reminderDate.getDate();
+        }
+      } else {
+        // Único - solo si la fecha exacta coincide
+        if (reminderDate.getFullYear() === year && reminderDate.getMonth() === month) {
+          day = reminderDate.getDate();
+        }
+      }
+      
+      if (day && day <= daysInMonth) {
+        if (!events[day]) events[day] = [];
+        events[day].push({ 
+          icon: reminder.icon || '📌', 
+          label: reminder.title, 
+          color: '#7F77DD',
+          type: 'reminder',
+          reminderId: reminderId,
+          amount: reminder.amount
+        });
+      }
+    });
+  }
 
   // Fechas que ya tienen transacciones registradas
   const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -3829,11 +3861,14 @@ function renderFinancialCalendar() {
     const day = parseInt(t.date.substring(8, 10));
     if (!events[day]) events[day] = [];
     if (!events[day].some(e => e.label === '📝 Gastos registrados')) {
-      events[day].push({ icon: '📝', label: 'Gastos registrados', color: '#854f0b', subtle: true });
+      events[day].push({ icon: '📝', label: 'Gastos registrados', color: '#854f0b', subtle: true, type: 'auto' });
     }
   });
 
-  let html = `<div style="font-weight: 500; margin-bottom: 12px; text-transform: capitalize; text-align: center;">${monthName}</div>`;
+  let html = `<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+    <div style="font-weight: 500; text-transform: capitalize;">${monthName}</div>
+    <button onclick="openReminderModal()" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">+ Recordatorio</button>
+  </div>`;
   html += `<div class="calendar-container" style="position: relative; width: 100%; max-width: 100%; overflow: hidden;">`;
   html += `<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;">`;
   ['L','M','X','J','V','S','D'].forEach(d => {
@@ -3849,17 +3884,23 @@ function renderFinancialCalendar() {
     const isToday = (day === today.getDate());
     const dayEvents = events[day] || [];
     const hasMajorEvent = dayEvents.some(e => !e.subtle);
+    const hasReminder = dayEvents.some(e => e.type === 'reminder');
 
     let bg = 'var(--bg-secondary)';
     let border = '1px solid var(--border)';
     if (isToday) {
-      bg = 'linear-gradient(135deg, #7F77DD22, #1D9E7522)';
+      bg = 'linear-gradient(135deg, var(--accent-from, #7F77DD)22, var(--accent-to, #1D9E75)22)';
       border = '2px solid var(--info-text)';
+    } else if (hasReminder) {
+      bg = 'rgba(127, 119, 221, 0.1)';
+      border = '1px solid rgba(127, 119, 221, 0.4)';
     } else if (hasMajorEvent) {
       bg = 'var(--info-bg)';
     }
 
-    html += `<div style="position: relative; aspect-ratio: 1; padding: 4px; background: ${bg}; border: ${border}; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden;">`;
+    // Cada día es clickeable
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    html += `<div onclick="openReminderModal('${dateStr}')" style="position: relative; aspect-ratio: 1; padding: 4px; background: ${bg}; border: ${border}; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 2px 8px rgba(127,119,221,0.2)'; this.style.zIndex='5';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.zIndex='1';">`;
     html += `<div style="font-size: 11px; font-weight: ${isToday ? '600' : '400'}; color: ${isToday ? 'var(--info-text)' : 'var(--text-secondary)'};">${day}</div>`;
     if (dayEvents.length > 0) {
       html += `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px; min-width: 0;">`;
@@ -3896,6 +3937,277 @@ function renderFinancialCalendar() {
 
   container.innerHTML = html;
 }
+
+// ============================================================
+// RECORDATORIOS DEL CALENDARIO
+// ============================================================
+
+window.openReminderModal = function(dateStr) {
+  // Si no se pasa fecha, usar hoy
+  if (!dateStr) {
+    const today = new Date();
+    dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  }
+
+  // Limpiar modal previo
+  const existing = document.getElementById('reminder-modal');
+  if (existing) existing.remove();
+
+  // Buscar recordatorios existentes en esta fecha
+  const fullState = getStateForNotifications();
+  const existingReminders = [];
+  if (fullState.reminders) {
+    Object.keys(fullState.reminders).forEach(id => {
+      const r = fullState.reminders[id];
+      if (!r) return;
+      
+      const rDate = new Date(r.date);
+      const targetDate = new Date(dateStr);
+      
+      let matches = false;
+      if (r.recurring === 'monthly') {
+        matches = (rDate.getDate() === targetDate.getDate());
+      } else if (r.recurring === 'yearly') {
+        matches = (rDate.getMonth() === targetDate.getMonth() && rDate.getDate() === targetDate.getDate());
+      } else {
+        matches = (r.date === dateStr);
+      }
+      
+      if (matches) {
+        existingReminders.push({ id, ...r });
+      }
+    });
+  }
+
+  // Formatear fecha bonita
+  const dateObj = new Date(dateStr);
+  const niceDate = dateObj.toLocaleDateString('es-CO', { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
+
+  // HTML del modal - parte recordatorios existentes
+  let existingListHtml = '';
+  if (existingReminders.length > 0) {
+    existingListHtml = `
+      <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
+        <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">📋 RECORDATORIOS EN ESTA FECHA</div>
+        ${existingReminders.map(r => `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; font-weight: 500; color: var(--text-primary);">${r.icon || '📌'} ${r.title}</div>
+              ${r.amount ? `<div style="font-size: 11px; color: var(--success-text);">$${r.amount.toLocaleString('es-CO')}</div>` : ''}
+              ${r.notes ? `<div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">${r.notes}</div>` : ''}
+              <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 2px;">
+                ${r.recurring === 'monthly' ? '🔁 Cada mes' : r.recurring === 'yearly' ? '🔁 Cada año' : '📅 Único'}
+              </div>
+            </div>
+            <button onclick="deleteReminder('${r.id}')" style="background: var(--danger-bg); color: var(--danger-text); border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Eliminar">×</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'reminder-modal';
+  overlay.className = 'tutorial-overlay';
+
+  overlay.innerHTML = `
+    <div class="tutorial-card" style="max-width: 460px;">
+      <div class="tutorial-header" style="padding: 20px;">
+        <button class="tutorial-skip" onclick="closeReminderModal()">Cerrar ×</button>
+        <span class="tutorial-icon-big" style="font-size: 36px;">📅</span>
+        <h2 class="tutorial-title" style="font-size: 18px;">Recordatorio</h2>
+        <p class="tutorial-subtitle" style="text-transform: capitalize;">${niceDate}</p>
+      </div>
+
+      <div class="tutorial-body" style="padding: 16px 20px;">
+        ${existingListHtml}
+        
+        <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">➕ AGREGAR NUEVO RECORDATORIO</div>
+        
+        <div style="display: grid; gap: 10px;">
+          <div>
+            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">¿Qué recordar?</label>
+            <input type="text" id="reminder-title" placeholder="Ej: Pago de luz, Renta del apartamento" style="width: 100%; padding: 10px 12px; height: 42px;" />
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Icono</label>
+              <select id="reminder-icon" style="width: 100%;">
+                <option value="📌">📌 General</option>
+                <option value="💡">💡 Servicios públicos</option>
+                <option value="🏠">🏠 Arriendo / Hipoteca</option>
+                <option value="📱">📱 Plan celular</option>
+                <option value="📺">📺 Streaming</option>
+                <option value="💳">💳 Pago de tarjeta</option>
+                <option value="💰">💰 Salario / Ingreso</option>
+                <option value="🚗">🚗 Pago vehículo</option>
+                <option value="🎓">🎓 Universidad</option>
+                <option value="🏥">🏥 Salud / Medicina</option>
+                <option value="📊">📊 Impuestos</option>
+                <option value="🎯">🎯 Meta personal</option>
+                <option value="🎂">🎂 Cumpleaños</option>
+                <option value="✈️">✈️ Viaje</option>
+                <option value="📚">📚 Suscripción</option>
+                <option value="⚠️">⚠️ Importante</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Monto (opcional)</label>
+              <input type="number" id="reminder-amount" placeholder="0" min="0" step="1000" style="width: 100%; padding: 10px 12px; height: 42px;" />
+            </div>
+          </div>
+          
+          <div>
+            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Frecuencia</label>
+            <select id="reminder-recurring" style="width: 100%;">
+              <option value="monthly">🔁 Cada mes (recurrente)</option>
+              <option value="yearly">🔁 Cada año</option>
+              <option value="once">📅 Solo esta fecha</option>
+            </select>
+          </div>
+          
+          <div>
+            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Notas (opcional)</label>
+            <textarea id="reminder-notes" placeholder="Detalles adicionales..." rows="2" style="width: 100%; padding: 10px 12px; resize: vertical; font-family: inherit; min-height: 60px;"></textarea>
+          </div>
+          
+          <input type="hidden" id="reminder-date" value="${dateStr}" />
+        </div>
+      </div>
+
+      <div class="tutorial-footer" style="padding: 12px 20px 20px;">
+        <button class="tutorial-btn tutorial-btn-secondary" onclick="closeReminderModal()">Cancelar</button>
+        <button class="tutorial-btn tutorial-btn-primary" onclick="saveReminder()">💾 Guardar</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  if (typeof lockBody === 'function') lockBody();
+  
+  // Focus en el input
+  setTimeout(() => {
+    const titleInput = document.getElementById('reminder-title');
+    if (titleInput) titleInput.focus();
+  }, 200);
+};
+
+window.closeReminderModal = function() {
+  const modal = document.getElementById('reminder-modal');
+  if (modal) {
+    modal.remove();
+    if (typeof unlockBody === 'function') unlockBody();
+  }
+};
+
+window.saveReminder = function() {
+  const title = document.getElementById('reminder-title').value.trim();
+  const icon = document.getElementById('reminder-icon').value;
+  const amount = parseFloat(document.getElementById('reminder-amount').value) || 0;
+  const recurring = document.getElementById('reminder-recurring').value;
+  const notes = document.getElementById('reminder-notes').value.trim();
+  const date = document.getElementById('reminder-date').value;
+
+  if (!title) {
+    if (typeof toastError === 'function') {
+      toastError('Falta título', 'Escribe qué quieres recordar');
+    } else {
+      alert('Escribe qué quieres recordar');
+    }
+    return;
+  }
+
+  // Cargar state actual
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (!stateRaw) return;
+    const state = JSON.parse(stateRaw);
+    
+    if (!state.reminders) state.reminders = {};
+    
+    const id = 'rem_' + Date.now();
+    state.reminders[id] = {
+      id, title, icon, amount, recurring, notes, date,
+      createdAt: new Date().toISOString()
+    };
+    
+    localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+    
+    // Sincronizar con la nube
+    if (typeof saveToCloud === 'function' && window.currentUser) {
+      saveToCloud(state);
+    }
+    
+    // Cerrar modal y refrescar calendario
+    closeReminderModal();
+    
+    if (typeof renderFinancialCalendar === 'function') {
+      renderFinancialCalendar();
+    }
+    
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Recordatorio guardado', `"${title}" agregado al calendario`);
+    }
+  } catch(e) {
+    console.error('Error guardando recordatorio:', e);
+    if (typeof toastError === 'function') {
+      toastError('Error', 'No se pudo guardar el recordatorio');
+    }
+  }
+};
+
+window.deleteReminder = async function(reminderId) {
+  let confirmed = false;
+  if (typeof showConfirm === 'function') {
+    confirmed = await showConfirm({
+      title: '¿Eliminar recordatorio?',
+      message: 'Esta acción no se puede deshacer.',
+      confirmText: 'Sí, eliminar',
+      cancelText: 'Cancelar',
+      type: 'danger',
+      icon: '🗑️'
+    });
+  } else {
+    confirmed = confirm('¿Eliminar este recordatorio?');
+  }
+  
+  if (!confirmed) return;
+
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (!stateRaw) return;
+    const state = JSON.parse(stateRaw);
+    
+    if (state.reminders && state.reminders[reminderId]) {
+      delete state.reminders[reminderId];
+      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+      
+      // Sincronizar con la nube
+      if (typeof saveToCloud === 'function' && window.currentUser) {
+        saveToCloud(state);
+      }
+      
+      // Cerrar modal y refrescar
+      closeReminderModal();
+      
+      if (typeof renderFinancialCalendar === 'function') {
+        renderFinancialCalendar();
+      }
+      
+      if (typeof toastSuccess === 'function') {
+        toastSuccess('Eliminado', 'Recordatorio eliminado');
+      }
+    }
+  } catch(e) {
+    console.error('Error eliminando recordatorio:', e);
+  }
+};
 
 // === 3. COMPARATIVA MENSUAL ===
 function renderMonthComparison() {
