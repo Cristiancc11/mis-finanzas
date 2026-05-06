@@ -3939,11 +3939,33 @@ function renderFinancialCalendar() {
     html += `<div onclick="openReminderModal('${dateStr}')" style="position: relative; aspect-ratio: 1; padding: 4px; background: ${bg}; border: ${border}; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 2px 8px rgba(127,119,221,0.2)'; this.style.zIndex='5';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.zIndex='1';">`;
     html += `<div style="font-size: 11px; font-weight: ${isToday ? '600' : '400'}; color: ${isToday ? 'var(--info-text)' : 'var(--text-secondary)'};">${day}</div>`;
     if (dayEvents.length > 0) {
-      html += `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px; min-width: 0;">`;
-      dayEvents.slice(0, 3).forEach(e => {
-        html += `<span title="${e.label}" style="font-size: 10px; opacity: ${e.subtle ? '0.6' : '1'};">${e.icon}</span>`;
-      });
-      html += `</div>`;
+      // Mostrar el primer evento NO sutil con nombre completo (si hay)
+      const mainEvent = dayEvents.find(e => !e.subtle);
+      if (mainEvent) {
+        // Color especial para recordatorios del usuario
+        const isReminder = mainEvent.type === 'reminder';
+        const labelBg = isReminder 
+          ? 'linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75))' 
+          : 'var(--info-bg)';
+        const labelColor = isReminder ? 'white' : 'var(--info-text)';
+        
+        html += `<div style="margin-top: 3px; min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 2px;">`;
+        html += `<div style="font-size: 9px; font-weight: 600; padding: 2px 4px; background: ${labelBg}; color: ${labelColor}; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;" title="${mainEvent.label}">${mainEvent.icon} <span class="reminder-name-mobile">${mainEvent.label.length > 8 ? mainEvent.label.substring(0, 8) + '…' : mainEvent.label}</span></div>`;
+        
+        // Si hay más eventos, mostrar contador
+        const otherEvents = dayEvents.filter(e => e !== mainEvent && !e.subtle);
+        if (otherEvents.length > 0) {
+          html += `<div style="font-size: 9px; color: var(--text-tertiary); padding-left: 4px;">+${otherEvents.length} más</div>`;
+        }
+        html += `</div>`;
+      } else {
+        // Solo eventos sutiles (gastos registrados, etc.)
+        html += `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px; min-width: 0;">`;
+        dayEvents.slice(0, 3).forEach(e => {
+          html += `<span title="${e.label}" style="font-size: 10px; opacity: 0.6;">${e.icon}</span>`;
+        });
+        html += `</div>`;
+      }
     }
     html += `</div>`;
   }
@@ -3963,12 +3985,43 @@ function renderFinancialCalendar() {
       else if (dayDiff > 0) dayLabel = `en ${dayDiff} días`;
       else dayLabel = `hace ${Math.abs(dayDiff)} días`;
 
-      html += `<div style="padding: 8px 10px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">`;
-      html += `<span>${e.icon} ${e.label} - <strong>Día ${d}</strong></span>`;
-      html += `<span style="font-size: 11px; color: var(--text-tertiary);">${dayLabel}</span>`;
+      // Si es recordatorio del usuario, agregar botones de editar/eliminar
+      const isReminder = e.type === 'reminder';
+      const bgColor = isReminder ? 'linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06))' : 'var(--bg-secondary)';
+      const borderLeft = isReminder ? 'border-left: 3px solid var(--accent-from, #7F77DD);' : '';
+
+      html += `<div style="padding: 10px 12px; background: ${bgColor}; ${borderLeft} border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; gap: 8px;">`;
+      html += `<div style="flex: 1; min-width: 0;">`;
+      html += `<div style="font-weight: 500; color: var(--text-primary);">${e.icon} ${e.label}</div>`;
+      
+      // Mostrar monto si tiene
+      if (e.amount && e.amount > 0) {
+        html += `<div style="font-size: 11px; color: var(--success-text); font-weight: 500; margin-top: 2px;">$${e.amount.toLocaleString('es-CO')}</div>`;
+      }
+      
+      html += `<div style="font-size: 10px; color: var(--text-tertiary); margin-top: 2px;">Día ${d} · ${dayLabel}</div>`;
+      html += `</div>`;
+      
+      // Botones solo para recordatorios del usuario
+      if (isReminder && e.reminderId) {
+        html += `<div style="display: flex; gap: 4px; flex-shrink: 0;">`;
+        html += `<button onclick="event.stopPropagation(); editReminder('${e.reminderId}')" style="background: var(--info-bg); color: var(--info-text); border: none; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="Editar">✏️</button>`;
+        html += `<button onclick="event.stopPropagation(); deleteReminder('${e.reminderId}')" style="background: var(--danger-bg); color: var(--danger-text); border: none; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="Eliminar">×</button>`;
+        html += `</div>`;
+      }
+      
       html += `</div>`;
     });
   });
+  
+  // Si no hay recordatorios del usuario, mostrar mensaje
+  const userReminders = sortedDays.flatMap(d => events[d].filter(e => e.type === 'reminder'));
+  if (userReminders.length === 0) {
+    html += `<div style="text-align: center; padding: 16px; color: var(--text-tertiary); font-size: 12px;">
+      💡 Toca cualquier día del calendario para agregar un recordatorio
+    </div>`;
+  }
+  
   html += `</div>`;
 
   container.innerHTML = html;
@@ -4149,6 +4202,10 @@ window.saveReminder = function() {
   const recurring = document.getElementById('reminder-recurring').value;
   const notes = document.getElementById('reminder-notes').value.trim();
   const date = document.getElementById('reminder-date').value;
+  
+  // Verificar si estamos editando un recordatorio existente
+  const editingIdEl = document.getElementById('reminder-editing-id');
+  const editingId = editingIdEl ? editingIdEl.value : null;
 
   if (!title) {
     if (typeof toastError === 'function') {
@@ -4167,11 +4224,24 @@ window.saveReminder = function() {
     
     if (!state.reminders) state.reminders = {};
     
-    const id = 'rem_' + Date.now();
-    state.reminders[id] = {
-      id, title, icon, amount, recurring, notes, date,
-      createdAt: new Date().toISOString()
-    };
+    let id, isEditing = false;
+    if (editingId && state.reminders[editingId]) {
+      // Modo edición: actualizar el existente
+      id = editingId;
+      isEditing = true;
+      state.reminders[id] = {
+        ...state.reminders[id],
+        title, icon, amount, recurring, notes, date,
+        updatedAt: new Date().toISOString()
+      };
+    } else {
+      // Modo creación: nuevo recordatorio
+      id = 'rem_' + Date.now();
+      state.reminders[id] = {
+        id, title, icon, amount, recurring, notes, date,
+        createdAt: new Date().toISOString()
+      };
+    }
     
     localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
     
@@ -4188,12 +4258,93 @@ window.saveReminder = function() {
     }
     
     if (typeof toastSuccess === 'function') {
-      toastSuccess('Recordatorio guardado', `"${title}" agregado al calendario`);
+      toastSuccess(
+        isEditing ? 'Recordatorio actualizado' : 'Recordatorio guardado', 
+        `"${title}" ${isEditing ? 'modificado correctamente' : 'agregado al calendario'}`
+      );
     }
   } catch(e) {
     console.error('Error guardando recordatorio:', e);
     if (typeof toastError === 'function') {
       toastError('Error', 'No se pudo guardar el recordatorio');
+    }
+  }
+};
+
+// FUNCIÓN: Editar recordatorio existente
+window.editReminder = function(reminderId) {
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (!stateRaw) return;
+    const state = JSON.parse(stateRaw);
+    
+    if (!state.reminders || !state.reminders[reminderId]) {
+      console.error('Recordatorio no encontrado:', reminderId);
+      if (typeof toastError === 'function') {
+        toastError('Error', 'No se encontró el recordatorio');
+      }
+      return;
+    }
+    
+    const reminder = state.reminders[reminderId];
+    
+    // Abrir el modal con la fecha del recordatorio
+    openReminderModal(reminder.date);
+    
+    // Esperar a que el modal renderice y pre-llenar campos
+    setTimeout(() => {
+      const titleEl = document.getElementById('reminder-title');
+      const iconEl = document.getElementById('reminder-icon');
+      const amountEl = document.getElementById('reminder-amount');
+      const recurringEl = document.getElementById('reminder-recurring');
+      const notesEl = document.getElementById('reminder-notes');
+      const dateEl = document.getElementById('reminder-date');
+      
+      if (titleEl) titleEl.value = reminder.title || '';
+      if (iconEl) iconEl.value = reminder.icon || '📌';
+      if (amountEl && reminder.amount) amountEl.value = reminder.amount;
+      if (recurringEl) recurringEl.value = reminder.recurring || 'monthly';
+      if (notesEl) notesEl.value = reminder.notes || '';
+      if (dateEl) dateEl.value = reminder.date;
+      
+      // Crear input oculto con el ID que se está editando
+      let editingIdInput = document.getElementById('reminder-editing-id');
+      if (!editingIdInput) {
+        editingIdInput = document.createElement('input');
+        editingIdInput.type = 'hidden';
+        editingIdInput.id = 'reminder-editing-id';
+        const modal = document.getElementById('reminder-modal');
+        if (modal) modal.appendChild(editingIdInput);
+      }
+      editingIdInput.value = reminderId;
+      
+      // Cambiar título del modal y botón
+      const modalTitle = document.querySelector('#reminder-modal .tutorial-title');
+      if (modalTitle) modalTitle.textContent = 'Editar recordatorio';
+      
+      const saveBtn = document.querySelector('#reminder-modal .tutorial-btn-primary');
+      if (saveBtn) saveBtn.textContent = '💾 Actualizar';
+      
+      // Ocultar la sección "Recordatorios en esta fecha" porque vamos a editar uno
+      const existingSection = document.querySelector('#reminder-modal .tutorial-body > div:first-child');
+      if (existingSection && existingSection.textContent.includes('RECORDATORIOS EN ESTA FECHA')) {
+        existingSection.style.display = 'none';
+      }
+      
+      // Cambiar el subtítulo
+      const subtitle = document.querySelector('#reminder-modal .tutorial-subtitle');
+      if (subtitle) {
+        subtitle.innerHTML = `✏️ Modificando: <strong>${reminder.title}</strong>`;
+      }
+      
+      // Focus en el title
+      if (titleEl) titleEl.focus();
+    }, 250);
+    
+  } catch(e) {
+    console.error('Error editando recordatorio:', e);
+    if (typeof toastError === 'function') {
+      toastError('Error', 'No se pudo abrir el editor');
     }
   }
 };
@@ -4221,6 +4372,7 @@ window.deleteReminder = async function(reminderId) {
     const state = JSON.parse(stateRaw);
     
     if (state.reminders && state.reminders[reminderId]) {
+      const reminderTitle = state.reminders[reminderId].title || 'Recordatorio';
       delete state.reminders[reminderId];
       localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
       
@@ -4229,19 +4381,31 @@ window.deleteReminder = async function(reminderId) {
         saveToCloud(state);
       }
       
-      // Cerrar modal y refrescar
-      closeReminderModal();
+      // Cerrar modal SI está abierto
+      const modal = document.getElementById('reminder-modal');
+      if (modal) {
+        closeReminderModal();
+      }
       
+      // Refrescar el calendario
       if (typeof renderFinancialCalendar === 'function') {
         renderFinancialCalendar();
       }
       
       if (typeof toastSuccess === 'function') {
-        toastSuccess('Eliminado', 'Recordatorio eliminado');
+        toastSuccess('Recordatorio eliminado', `"${reminderTitle}" se ha eliminado`);
+      }
+    } else {
+      console.warn('Recordatorio no encontrado:', reminderId);
+      if (typeof toastError === 'function') {
+        toastError('Error', 'No se pudo encontrar el recordatorio');
       }
     }
   } catch(e) {
     console.error('Error eliminando recordatorio:', e);
+    if (typeof toastError === 'function') {
+      toastError('Error', 'No se pudo eliminar el recordatorio');
+    }
   }
 };
 
