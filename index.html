@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=35">
+<link rel="stylesheet" href="styles.css?v=37">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -630,7 +630,104 @@
       </div>
 
       <div class="raised-card">
-        <p class="card-title">📋 Movimientos del mes</p>
+        <div class="tx-header">
+          <p class="card-title" style="margin: 0;">📋 Movimientos del mes</p>
+          <span id="tx-total-count" class="tx-count-badge">0</span>
+        </div>
+
+        <!-- v37: Barra de búsqueda + botón filtros -->
+        <div class="tx-search-bar">
+          <div class="tx-search-input-wrap">
+            <span class="tx-search-icon">🔍</span>
+            <input type="text" id="tx-search" placeholder="Buscar por descripción..." autocomplete="off" enterkeyhint="search" oninput="onTxSearchInput()" />
+            <button type="button" id="tx-search-clear" class="tx-search-clear" onclick="clearTxSearch()" style="display: none;" aria-label="Limpiar búsqueda">✕</button>
+          </div>
+          <button type="button" id="tx-filters-toggle" class="tx-filters-btn" onclick="toggleTxFiltersPanel()">
+            <span>⚙</span>
+            <span class="tx-filters-btn-label">Filtros</span>
+            <span id="tx-filters-count" class="tx-filters-count" style="display: none;">0</span>
+          </button>
+        </div>
+
+        <!-- Chips de filtros activos -->
+        <div id="tx-active-chips" class="tx-active-chips" style="display: none;"></div>
+
+        <!-- Banner de stats vivo (cuando hay filtros) -->
+        <div id="tx-filter-stats" class="tx-filter-stats" style="display: none;"></div>
+
+        <!-- Panel de filtros (oculto por default) -->
+        <div id="tx-filters-panel" class="tx-filters-panel" style="display: none;">
+          <div class="tx-filters-panel-header">
+            <h3 style="margin: 0; font-size: 16px;">⚙ Filtros avanzados</h3>
+            <button type="button" class="tx-filters-close" onclick="toggleTxFiltersPanel()" aria-label="Cerrar">✕</button>
+          </div>
+
+          <div class="tx-filters-panel-body">
+
+            <div class="tx-filter-group">
+              <label class="tx-filter-label">📅 Rango de fechas <span class="tx-filter-hint">(busca en todo el histórico)</span></label>
+              <div class="tx-filter-row">
+                <input type="date" id="tx-filter-date-from" />
+                <span class="tx-filter-arrow">→</span>
+                <input type="date" id="tx-filter-date-to" />
+              </div>
+            </div>
+
+            <div class="tx-filter-group">
+              <label class="tx-filter-label">📋 Categorías <span class="tx-filter-hint">(selecciona varias)</span></label>
+              <div id="tx-filter-categories" class="tx-filter-checkboxes"></div>
+            </div>
+
+            <div class="tx-filter-group">
+              <label class="tx-filter-label">💳 Tarjeta</label>
+              <select id="tx-filter-card" class="tx-filter-select">
+                <option value="">Todas</option>
+              </select>
+            </div>
+
+            <div class="tx-filter-group">
+              <label class="tx-filter-label">👛 Bolsillo</label>
+              <select id="tx-filter-pocket" class="tx-filter-select">
+                <option value="">Todos</option>
+              </select>
+            </div>
+
+            <div class="tx-filter-group">
+              <label class="tx-filter-label">💵 Rango de monto (COP)</label>
+              <div class="tx-filter-row">
+                <input type="number" inputmode="decimal" id="tx-filter-amount-min" placeholder="Mínimo" min="0" step="1000" />
+                <span class="tx-filter-arrow">→</span>
+                <input type="number" inputmode="decimal" id="tx-filter-amount-max" placeholder="Máximo" min="0" step="1000" />
+              </div>
+            </div>
+
+            <div class="tx-filter-group">
+              <label class="tx-filter-label">💳 Método de pago</label>
+              <select id="tx-filter-payment" class="tx-filter-select">
+                <option value="">Todos</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="debito">Débito</option>
+                <option value="pse">PSE</option>
+                <option value="llave">Llave / Bre-B</option>
+                <option value="efectivo">Efectivo</option>
+              </select>
+            </div>
+
+            <div class="tx-filter-group">
+              <label class="tx-filter-toggle">
+                <input type="checkbox" id="tx-filter-cashback-only" />
+                <span>🎁 Solo movimientos con cashback</span>
+              </label>
+            </div>
+
+          </div>
+
+          <div class="tx-filters-panel-footer">
+            <button type="button" class="tx-filter-btn-clear" onclick="clearTxFilters()">Limpiar todo</button>
+            <button type="button" class="tx-filter-btn-apply" onclick="applyTxFiltersFromPanel()">Aplicar filtros</button>
+          </div>
+        </div>
+
         <div id="tx-list"></div>
       </div>
     </div>
@@ -1346,6 +1443,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=35"></script>
+<script src="app.js?v=37"></script>
 </body>
 </html>

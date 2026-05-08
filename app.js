@@ -3977,7 +3977,8 @@ window.confirmImport = function() {
         paymentMethod: 'debito',
         cardId: null,
         pocketId: null,
-        cashback: 0
+        cashback: 0,
+        createdAt: Date.now() + imported
       });
       imported++;
     });
@@ -5284,7 +5285,13 @@ async function buildMonthlyPDF(state, monthKey) {
 
     const txBody = transactions
       .slice()
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => {
+        const dateCompare = (b.date || '').localeCompare(a.date || '');
+        if (dateCompare !== 0) return dateCompare;
+        const aTime = a.createdAt || a.id || 0;
+        const bTime = b.createdAt || b.id || 0;
+        return bTime - aTime;
+      })
       .map(t => [
         t.date.substring(5),
         removeEmojis(t.desc).substring(0, 30),
@@ -6077,6 +6084,12 @@ async function buildAnnualPDF(state, year) {
       if (!state.budgets[currentMonth]) {
         state.budgets[currentMonth] = { ...DEFAULT_BUDGETS };
         saveState();
+      }
+      // v37: limpiar búsqueda al cambiar mes (filtros se mantienen)
+      if (window.txFilters && window.txFilters.search) {
+        window.txFilters.search = '';
+        const inp = document.getElementById('tx-search'); if (inp) inp.value = '';
+        const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
       }
       renderBudget(); renderTransactions();
     };
@@ -7566,7 +7579,8 @@ async function buildAnnualPDF(state, year) {
       cardId: cardIdNum,
       pocketId: pocketIdNum,
       payCardId: payCardIdNum,  // NUEVO: tarjeta que se está pagando
-      cashback: cashback
+      cashback: cashback,
+      createdAt: Date.now()
     });
 
     document.getElementById('tx-desc').value = '';
@@ -8193,24 +8207,388 @@ async function buildAnnualPDF(state, year) {
     </div>`;
   }
 
+  // ============================================================
+  // v37 — SISTEMA DE FILTROS DE MOVIMIENTOS
+  // ============================================================
+  window.txFilters = {
+    search: '',
+    categories: [],   // array de category ids
+    cardId: '',       // id de tarjeta (string vacío = todas)
+    pocketId: '',     // id de bolsillo
+    dateFrom: '',     // YYYY-MM-DD
+    dateTo: '',
+    amountMin: null,
+    amountMax: null,
+    cashbackOnly: false,
+    paymentMethod: ''
+  };
+
+  let txSearchDebounce = null;
+
+  function applyTxFilters(txs) {
+    const f = window.txFilters || {};
+    return txs.filter(t => {
+      // Búsqueda por descripción (case-insensitive)
+      if (f.search && f.search.trim()) {
+        const q = f.search.trim().toLowerCase();
+        const desc = (t.desc || '').toLowerCase();
+        if (!desc.includes(q)) return false;
+      }
+      // Categorías
+      if (f.categories && f.categories.length > 0) {
+        if (!f.categories.includes(t.category)) return false;
+      }
+      // Tarjeta
+      if (f.cardId !== '' && f.cardId != null) {
+        const targetId = String(f.cardId);
+        if (String(t.cardId || '') !== targetId) return false;
+      }
+      // Bolsillo
+      if (f.pocketId !== '' && f.pocketId != null) {
+        const targetId = String(f.pocketId);
+        if (String(t.pocketId || '') !== targetId) return false;
+      }
+      // Rango de fechas
+      if (f.dateFrom && t.date < f.dateFrom) return false;
+      if (f.dateTo && t.date > f.dateTo) return false;
+      // Rango de montos
+      const amt = parseFloat(t.amount) || 0;
+      if (f.amountMin != null && f.amountMin !== '' && amt < parseFloat(f.amountMin)) return false;
+      if (f.amountMax != null && f.amountMax !== '' && amt > parseFloat(f.amountMax)) return false;
+      // Solo con cashback
+      if (f.cashbackOnly && (!t.cashback || t.cashback <= 0)) return false;
+      // Método de pago
+      if (f.paymentMethod && t.paymentMethod !== f.paymentMethod) return false;
+
+      return true;
+    });
+  }
+
+  function countActiveTxFilters() {
+    const f = window.txFilters || {};
+    let count = 0;
+    if (f.search && f.search.trim()) count++;
+    if (f.categories && f.categories.length > 0) count++;
+    if (f.cardId !== '' && f.cardId != null) count++;
+    if (f.pocketId !== '' && f.pocketId != null) count++;
+    if (f.dateFrom || f.dateTo) count++;
+    if ((f.amountMin != null && f.amountMin !== '') || (f.amountMax != null && f.amountMax !== '')) count++;
+    if (f.cashbackOnly) count++;
+    if (f.paymentMethod) count++;
+    return count;
+  }
+
+  function updateTxFilterStats(filteredTxs) {
+    const totalCount = (state.transactions[currentMonth] || []).length;
+    const totalBadge = document.getElementById('tx-total-count');
+    const filterStats = document.getElementById('tx-filter-stats');
+    const activeCount = countActiveTxFilters();
+
+    // Badge "82 total"
+    if (totalBadge) {
+      totalBadge.textContent = totalCount;
+    }
+
+    // Banner stats vivo (solo si hay filtros)
+    if (activeCount > 0 && filterStats) {
+      const sumAmount = filteredTxs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+      const sumCashback = filteredTxs.reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
+      const cashbackHtml = sumCashback > 0
+        ? `<span class="tx-filter-stats-cashback">+${fmt(sumCashback)} cashback</span>`
+        : '';
+      filterStats.innerHTML = `
+        <span class="tx-filter-stats-count">${filteredTxs.length} ${filteredTxs.length === 1 ? 'resultado' : 'resultados'}</span>
+        <span class="tx-filter-stats-amount">· Total: ${fmt(sumAmount)}</span>
+        ${cashbackHtml ? `<span class="tx-filter-stats-amount">·</span> ${cashbackHtml}` : ''}
+      `;
+      filterStats.style.display = 'flex';
+    } else if (filterStats) {
+      filterStats.style.display = 'none';
+    }
+
+    // Badge de filtros activos en el botón
+    const filterCountBadge = document.getElementById('tx-filters-count');
+    const filterBtn = document.getElementById('tx-filters-toggle');
+    if (filterCountBadge) {
+      if (activeCount > 0) {
+        filterCountBadge.textContent = activeCount;
+        filterCountBadge.style.display = 'inline-flex';
+        if (filterBtn) filterBtn.classList.add('active');
+      } else {
+        filterCountBadge.style.display = 'none';
+        if (filterBtn) filterBtn.classList.remove('active');
+      }
+    }
+
+    // Actualizar chips
+    renderTxFilterChips();
+  }
+
+  function renderTxFilterChips() {
+    const container = document.getElementById('tx-active-chips');
+    if (!container) return;
+    const f = window.txFilters || {};
+    const chips = [];
+
+    if (f.search && f.search.trim()) {
+      chips.push(`<span class="tx-chip" onclick="removeTxFilterChip('search')">🔍 "${esc(f.search.trim())}" <span class="tx-chip-x">✕</span></span>`);
+    }
+    if (f.categories && f.categories.length > 0) {
+      f.categories.forEach(catId => {
+        const cat = (typeof CATEGORIES !== 'undefined' ? CATEGORIES : []).find(c => c.id === catId) || { icon: '📋', label: catId };
+        chips.push(`<span class="tx-chip teal" onclick="removeTxFilterChip('category', '${esc(catId)}')">${cat.icon} ${esc(cat.label)} <span class="tx-chip-x">✕</span></span>`);
+      });
+    }
+    if (f.cardId !== '' && f.cardId != null) {
+      const card = (state.debts || []).find(d => String(d.id) === String(f.cardId));
+      const name = card ? card.name : 'Tarjeta';
+      chips.push(`<span class="tx-chip pink" onclick="removeTxFilterChip('cardId')">💳 ${esc(name)} <span class="tx-chip-x">✕</span></span>`);
+    }
+    if (f.pocketId !== '' && f.pocketId != null) {
+      const pocket = (state.pockets || []).find(p => String(p.id) === String(f.pocketId));
+      const name = pocket ? pocket.name : 'Bolsillo';
+      chips.push(`<span class="tx-chip amber" onclick="removeTxFilterChip('pocketId')">👛 ${esc(name)} <span class="tx-chip-x">✕</span></span>`);
+    }
+    if (f.dateFrom || f.dateTo) {
+      const from = f.dateFrom ? f.dateFrom.substring(5) : '...';
+      const to = f.dateTo ? f.dateTo.substring(5) : '...';
+      chips.push(`<span class="tx-chip coral" onclick="removeTxFilterChip('dateRange')">📅 ${from} → ${to} <span class="tx-chip-x">✕</span></span>`);
+    }
+    if ((f.amountMin != null && f.amountMin !== '') || (f.amountMax != null && f.amountMax !== '')) {
+      const min = f.amountMin ? fmt(f.amountMin) : '0';
+      const max = f.amountMax ? fmt(f.amountMax) : '∞';
+      chips.push(`<span class="tx-chip" onclick="removeTxFilterChip('amountRange')">💵 ${min} → ${max} <span class="tx-chip-x">✕</span></span>`);
+    }
+    if (f.cashbackOnly) {
+      chips.push(`<span class="tx-chip teal" onclick="removeTxFilterChip('cashbackOnly')">🎁 Con cashback <span class="tx-chip-x">✕</span></span>`);
+    }
+    if (f.paymentMethod) {
+      const labels = { tarjeta: 'Tarjeta', debito: 'Débito', pse: 'PSE', llave: 'Llave/Bre-B', efectivo: 'Efectivo' };
+      chips.push(`<span class="tx-chip" onclick="removeTxFilterChip('paymentMethod')">💳 ${labels[f.paymentMethod] || f.paymentMethod} <span class="tx-chip-x">✕</span></span>`);
+    }
+
+    if (chips.length > 0) {
+      chips.push(`<button type="button" class="tx-chip-clear" onclick="clearTxFilters()">Limpiar</button>`);
+      container.innerHTML = chips.join('');
+      container.style.display = 'flex';
+    } else {
+      container.innerHTML = '';
+      container.style.display = 'none';
+    }
+  }
+
+  function removeTxFilterChip(type, value) {
+    if (!window.txFilters) return;
+    if (type === 'search') {
+      window.txFilters.search = '';
+      const inp = document.getElementById('tx-search'); if (inp) inp.value = '';
+      const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
+    } else if (type === 'category') {
+      window.txFilters.categories = window.txFilters.categories.filter(c => c !== value);
+    } else if (type === 'cardId') {
+      window.txFilters.cardId = '';
+    } else if (type === 'pocketId') {
+      window.txFilters.pocketId = '';
+    } else if (type === 'dateRange') {
+      window.txFilters.dateFrom = '';
+      window.txFilters.dateTo = '';
+    } else if (type === 'amountRange') {
+      window.txFilters.amountMin = null;
+      window.txFilters.amountMax = null;
+    } else if (type === 'cashbackOnly') {
+      window.txFilters.cashbackOnly = false;
+    } else if (type === 'paymentMethod') {
+      window.txFilters.paymentMethod = '';
+    }
+    syncTxFilterPanelUI();
+    renderTransactions();
+  }
+
+  function syncTxFilterPanelUI() {
+    const f = window.txFilters || {};
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v != null ? v : ''; };
+    setVal('tx-filter-date-from', f.dateFrom);
+    setVal('tx-filter-date-to', f.dateTo);
+    setVal('tx-filter-card', f.cardId);
+    setVal('tx-filter-pocket', f.pocketId);
+    setVal('tx-filter-amount-min', f.amountMin);
+    setVal('tx-filter-amount-max', f.amountMax);
+    setVal('tx-filter-payment', f.paymentMethod);
+    const cb = document.getElementById('tx-filter-cashback-only');
+    if (cb) cb.checked = !!f.cashbackOnly;
+    document.querySelectorAll('#tx-filter-categories input[type="checkbox"]').forEach(input => {
+      input.checked = (f.categories || []).includes(input.value);
+    });
+  }
+
+  function onTxSearchInput() {
+    const inp = document.getElementById('tx-search');
+    const clr = document.getElementById('tx-search-clear');
+    if (!inp) return;
+    const val = inp.value;
+    if (clr) clr.style.display = val.length > 0 ? 'flex' : 'none';
+    if (txSearchDebounce) clearTimeout(txSearchDebounce);
+    txSearchDebounce = setTimeout(() => {
+      window.txFilters.search = val;
+      renderTransactions();
+    }, 200);
+  }
+
+  function clearTxSearch() {
+    const inp = document.getElementById('tx-search'); if (inp) inp.value = '';
+    const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
+    window.txFilters.search = '';
+    renderTransactions();
+  }
+
+  function toggleTxFiltersPanel() {
+    const panel = document.getElementById('tx-filters-panel');
+    if (!panel) return;
+    if (panel.style.display === 'none' || !panel.style.display) {
+      populateTxFilterOptions();
+      syncTxFilterPanelUI();
+      panel.style.display = 'block';
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+
+  function populateTxFilterOptions() {
+    // Tarjetas
+    const cardSel = document.getElementById('tx-filter-card');
+    if (cardSel) {
+      const current = cardSel.value;
+      cardSel.innerHTML = '<option value="">Todas</option>';
+      (state.debts || []).forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.name + (d.lastFour ? ' (••' + d.lastFour + ')' : '');
+        cardSel.appendChild(opt);
+      });
+      cardSel.value = current;
+    }
+    // Bolsillos
+    const pocketSel = document.getElementById('tx-filter-pocket');
+    if (pocketSel) {
+      const current = pocketSel.value;
+      pocketSel.innerHTML = '<option value="">Todos</option>';
+      (state.pockets || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        pocketSel.appendChild(opt);
+      });
+      pocketSel.value = current;
+    }
+    // Categorías
+    const catContainer = document.getElementById('tx-filter-categories');
+    if (catContainer && typeof CATEGORIES !== 'undefined') {
+      const selected = window.txFilters.categories || [];
+      catContainer.innerHTML = CATEGORIES.map(c => `
+        <label class="tx-filter-cat-option">
+          <input type="checkbox" value="${esc(c.id)}" ${selected.includes(c.id) ? 'checked' : ''} />
+          <span>${c.icon} ${esc(c.label)}</span>
+        </label>
+      `).join('');
+    }
+  }
+
+  function applyTxFiltersFromPanel() {
+    const get = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+    window.txFilters.dateFrom = get('tx-filter-date-from');
+    window.txFilters.dateTo = get('tx-filter-date-to');
+    window.txFilters.cardId = get('tx-filter-card');
+    window.txFilters.pocketId = get('tx-filter-pocket');
+    window.txFilters.amountMin = get('tx-filter-amount-min');
+    window.txFilters.amountMax = get('tx-filter-amount-max');
+    window.txFilters.paymentMethod = get('tx-filter-payment');
+    const cb = document.getElementById('tx-filter-cashback-only');
+    window.txFilters.cashbackOnly = cb ? cb.checked : false;
+    window.txFilters.categories = Array.from(document.querySelectorAll('#tx-filter-categories input[type="checkbox"]:checked')).map(i => i.value);
+    // Cerrar panel y renderizar
+    document.getElementById('tx-filters-panel').style.display = 'none';
+    renderTransactions();
+  }
+
+  function clearTxFilters() {
+    window.txFilters = {
+      search: '', categories: [], cardId: '', pocketId: '',
+      dateFrom: '', dateTo: '', amountMin: null, amountMax: null,
+      cashbackOnly: false, paymentMethod: ''
+    };
+    const inp = document.getElementById('tx-search'); if (inp) inp.value = '';
+    const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
+    syncTxFilterPanelUI();
+    renderTransactions();
+  }
+
+  // Exponer funciones para los onclick en HTML
+  window.toggleTxFiltersPanel = toggleTxFiltersPanel;
+  window.applyTxFiltersFromPanel = applyTxFiltersFromPanel;
+  window.clearTxFilters = clearTxFilters;
+  window.removeTxFilterChip = removeTxFilterChip;
+  window.onTxSearchInput = onTxSearchInput;
+  window.clearTxSearch = clearTxSearch;
+
   function renderTransactions() {
     const list = document.getElementById('tx-list');
     if (!list) return;
-    const txs = (state.transactions[currentMonth] || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+
+    // v37: aplicar filtros antes del sort
+    let txs;
+    const usingDateRange = !!(window.txFilters && (window.txFilters.dateFrom || window.txFilters.dateTo));
+
+    if (usingDateRange) {
+      // Si hay rango de fechas, busca en TODOS los meses
+      txs = [];
+      const allMonths = Object.keys(state.transactions || {});
+      allMonths.forEach(m => {
+        (state.transactions[m] || []).forEach(t => txs.push(t));
+      });
+    } else {
+      txs = (state.transactions[currentMonth] || []).slice();
+    }
+
+    // v37: aplicar filtros
+    txs = applyTxFilters(txs);
+
+    // v36: ordenar por fecha desc + createdAt/id desc como desempate (más recientes arriba)
+    txs = txs.sort((a, b) => {
+      const dateCompare = (b.date || '').localeCompare(a.date || '');
+      if (dateCompare !== 0) return dateCompare;
+      const aTime = a.createdAt || a.id || 0;
+      const bTime = b.createdAt || b.id || 0;
+      return bTime - aTime;
+    });
+
+    // v37: actualizar count badge total y stats banner
+    updateTxFilterStats(txs);
     if (txs.length === 0) {
-      list.innerHTML = `
-        <div class="empty-state-fancy">
-          <div class="empty-state-icon">📝</div>
-          <h3 class="empty-state-title">Sin movimientos en ${getMonthLabel(currentMonth)}</h3>
-          <p class="empty-state-message">
-            Registra tus gastos para hacer seguimiento del presupuesto y
-            descubrir patrones de consumo.
-          </p>
-          <button class="empty-state-action" onclick="document.getElementById('tx-desc')?.focus()">
-            💸 Registrar primer gasto
-          </button>
-        </div>
-      `;
+      const hasActiveFilters = countActiveTxFilters() > 0;
+      if (hasActiveFilters) {
+        list.innerHTML = `
+          <div class="tx-no-results">
+            <div class="tx-no-results-icon">🔍</div>
+            <div class="tx-no-results-title">Sin resultados</div>
+            <div class="tx-no-results-msg">No se encontraron movimientos con esos filtros. Prueba quitar algún filtro o cambiar la búsqueda.</div>
+            <button class="tx-no-results-btn" onclick="clearTxFilters()">Limpiar filtros</button>
+          </div>
+        `;
+      } else {
+        list.innerHTML = `
+          <div class="empty-state-fancy">
+            <div class="empty-state-icon">📝</div>
+            <h3 class="empty-state-title">Sin movimientos en ${getMonthLabel(currentMonth)}</h3>
+            <p class="empty-state-message">
+              Registra tus gastos para hacer seguimiento del presupuesto y
+              descubrir patrones de consumo.
+            </p>
+            <button class="empty-state-action" onclick="document.getElementById('tx-desc')?.focus()">
+              💸 Registrar primer gasto
+            </button>
+          </div>
+        `;
+      }
       return;
     }
 
