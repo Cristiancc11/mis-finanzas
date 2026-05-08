@@ -8824,13 +8824,27 @@ async function buildAnnualPDF(state, year) {
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
   function renderAll() {
-    renderPockets(); renderIncomes(); renderDebts(); renderGoals();
-    renderResumen(); renderBudget(); renderTransactions(); renderCharts();
-    populateExtraMonths();
-    renderExtraIncomes();
-    renderIncomeTypesSelect();
-    renderCategoriesSelect();
-    renderPaymentMethodsSelect();
+    // Cada render en su propio try/catch para que un error no rompa los demás
+    try { renderPockets(); } catch(e) { console.error('❌ Error en renderPockets:', e); }
+    try { renderIncomes(); } catch(e) { console.error('❌ Error en renderIncomes:', e); }
+    try { renderDebts(); } catch(e) { console.error('❌ Error en renderDebts:', e); }
+    try { renderGoals(); } catch(e) { console.error('❌ Error en renderGoals:', e); }
+    try { renderResumen(); } catch(e) { console.error('❌ Error en renderResumen:', e); }
+    try { renderBudget(); } catch(e) { console.error('❌ Error en renderBudget:', e); }
+    try { renderTransactions(); } catch(e) { console.error('❌ Error en renderTransactions:', e); }
+    try { renderCharts(); } catch(e) { console.error('❌ Error en renderCharts:', e); }
+    try { populateExtraMonths(); } catch(e) { console.error('❌ Error en populateExtraMonths:', e); }
+    try { renderExtraIncomes(); } catch(e) { console.error('❌ Error en renderExtraIncomes:', e); }
+    try { renderIncomeTypesSelect(); } catch(e) { console.error('❌ Error en renderIncomeTypesSelect:', e); }
+    try { renderCategoriesSelect(); } catch(e) { console.error('❌ Error en renderCategoriesSelect:', e); }
+    try { renderPaymentMethodsSelect(); } catch(e) { console.error('❌ Error en renderPaymentMethodsSelect:', e); }
+    
+    console.log('🎨 Render completado. Estado actual:', {
+      bolsillos: state.pockets ? state.pockets.length : 'N/A',
+      tarjetas: state.debts ? state.debts.length : 'N/A',
+      ingresos: state.incomes ? state.incomes.length : 'N/A',
+      metas: state.goals ? state.goals.length : 'N/A'
+    });
   }
 
   if (typeof Chart !== 'undefined') loadState();
