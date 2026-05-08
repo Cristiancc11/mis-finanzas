@@ -585,6 +585,15 @@ function closeWelcomeTour() {
 }
 
 function shouldShowOnboardingChecklist() {
+  // v37.3: PRIMERO chequear si el usuario lo descartó (debe respetarse siempre)
+  try {
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (stateRaw) {
+      const localState = JSON.parse(stateRaw);
+      if (localState.onboardingDismissed === true) return false;
+    }
+  } catch (e) {}
+
   // Mostrar si hay <3 bolsillos o no hay tarjetas o no hay ingresos
   try {
     const fewPockets = !state.pockets || state.pockets.length < 3;
@@ -2731,18 +2740,23 @@ window.dismissOnboarding = async function() {
 
   if (!confirmed) return;
 
-  // v37.2: actualizar state EN MEMORIA primero (eso es la fuente de verdad del IIFE)
-  // Luego saveState() persiste a localStorage + Supabase vía interceptor
+  // v37.3: triple aseguramiento — state IIFE + localStorage + Supabase directo (sin debounce)
   try {
+    // 1. Actualizar state IIFE en memoria (fuente de verdad de la app)
     if (typeof window.persistOnboardingDismissed === 'function') {
       window.persistOnboardingDismissed(true);
-    } else {
-      // Fallback (no debería pasar)
-      const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
-      if (stateRaw) {
-        const localState = JSON.parse(stateRaw);
-        localState.onboardingDismissed = true;
-        localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(localState));
+    }
+    // 2. Actualizar localStorage manualmente por si acaso
+    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+    if (stateRaw) {
+      const localState = JSON.parse(stateRaw);
+      localState.onboardingDismissed = true;
+      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(localState));
+      // 3. Forzar guardado a Supabase SIN debounce
+      if (window.supabaseClient && window.currentUser) {
+        await window.supabaseClient
+          .from('dashboard_data')
+          .upsert({ user_id: window.currentUser.id, data: localState }, { onConflict: 'user_id' });
       }
     }
   } catch(e) {
@@ -8483,20 +8497,23 @@ async function buildAnnualPDF(state, year) {
     panel.style.display = 'block';
     document.body.classList.add('tx-filters-open');
 
-    // v37.2: backdrop real clickeable para cerrar (móvil)
-    if (window.innerWidth <= 768) {
-      let backdrop = document.getElementById('tx-filters-backdrop');
-      if (!backdrop) {
-        backdrop = document.createElement('div');
-        backdrop.id = 'tx-filters-backdrop';
-        backdrop.className = 'tx-filters-backdrop';
-        backdrop.onclick = closeTxFiltersPanel;
-        document.body.appendChild(backdrop);
-      }
-      backdrop.style.display = 'block';
+    // v37.3: backdrop SIEMPRE (no solo móvil) — clickeable para cerrar
+    let backdrop = document.getElementById('tx-filters-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'tx-filters-backdrop';
+      backdrop.className = 'tx-filters-backdrop';
+      // Múltiples handlers de cierre por si uno falla
+      backdrop.addEventListener('click', closeTxFiltersPanel);
+      backdrop.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        closeTxFiltersPanel();
+      });
+      document.body.appendChild(backdrop);
     }
+    backdrop.style.display = 'block';
 
-    // Cerrar con tecla Escape
+    // Cerrar con tecla Escape (PC)
     document.addEventListener('keydown', onTxFiltersEscape);
   }
 
@@ -8504,13 +8521,22 @@ async function buildAnnualPDF(state, year) {
     const panel = document.getElementById('tx-filters-panel');
     if (panel) panel.style.display = 'none';
     document.body.classList.remove('tx-filters-open');
+
+    // Limpiar backdrop
     const backdrop = document.getElementById('tx-filters-backdrop');
-    if (backdrop) backdrop.remove();
+    if (backdrop) {
+      try { backdrop.remove(); } catch(e) { backdrop.style.display = 'none'; }
+    }
+
+    // Limpiar listener de Escape
     document.removeEventListener('keydown', onTxFiltersEscape);
+
+    // v37.3: garantizar que el body NUNCA quede bloqueado
+    document.body.style.overflow = '';
   }
 
   function onTxFiltersEscape(e) {
-    if (e.key === 'Escape') closeTxFiltersPanel();
+    if (e.key === 'Escape' || e.key === 'Esc') closeTxFiltersPanel();
   }
 
   function populateTxFilterOptions() {

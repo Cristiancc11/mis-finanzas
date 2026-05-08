@@ -5126,6 +5126,23 @@ button[onclick*="deleteReminder"]:active,
   cursor: pointer;
 }
 
+/* v37.3: Backdrop siempre visible al abrir filtros */
+.tx-filters-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 9998;
+  cursor: pointer;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* === Móvil: panel como bottom-sheet === */
 @media (max-width: 768px) {
   .tx-search-bar {
