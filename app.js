@@ -7662,7 +7662,19 @@ async function buildAnnualPDF(state, year) {
 
   function renderDebts() {
     const list = document.getElementById('debt-list');
+    if (!list) {
+      console.warn('⚠️ Elemento debt-list no existe en el DOM');
+      return;
+    }
+    
+    // Asegurar que state.debts es un array
+    if (!Array.isArray(state.debts)) {
+      console.warn('⚠️ state.debts no es array, inicializando vacío');
+      state.debts = [];
+    }
+    
     const debt = totalDebt(), limit = totalLimit();
+    
     if (state.debts.length === 0) {
       list.innerHTML = `
         <div class="empty-state-fancy">
@@ -7678,55 +7690,75 @@ async function buildAnnualPDF(state, year) {
         </div>
       `;
     } else {
+      console.log('💳 Renderizando', state.debts.length, 'tarjetas');
+      
+      // Verificar que BANK_INFO y BRAND_INFO existan
+      const safeBank = (typeof BANK_INFO !== 'undefined' && BANK_INFO) ? BANK_INFO : {};
+      const safeBrand = (typeof BRAND_INFO !== 'undefined' && BRAND_INFO) ? BRAND_INFO : {};
+      
       list.innerHTML = '<div class="cards-grid">' + state.debts.map(d => {
-        const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
-        const bank = BANK_INFO[d.bank] || { name: '', logo: '', cardClass: '' };
-        const brand = BRAND_INFO[d.brand] || { name: '', logo: '' };
-        const lastDigits = d.lastDigits || d.id.toString().slice(-4);
+        try {
+          const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
+          const bank = safeBank[d.bank] || { name: '', logo: '', cardClass: '' };
+          const brand = safeBrand[d.brand] || { name: '', logo: '' };
+          const lastDigits = d.lastDigits || (d.id ? d.id.toString().slice(-4) : '0000');
 
-        return `<div class="credit-card ${bank.cardClass}">
-          <div class="credit-card-top">
-            ${bank.logo || `<div class="credit-card-bank-name">${esc(d.name)}</div>`}
-            <div class="credit-card-info-label" style="text-align: right;">CUPO TOTAL<br><span class="credit-card-info-value">${fmt(d.payment)}</span></div>
-          </div>
-          <div>
-            <div class="credit-card-chip"></div>
-            <div class="credit-card-number">•••• •••• •••• ${lastDigits}</div>
-            <div class="credit-card-bottom">
-              <div>
-                <div class="credit-card-info-label">Saldo actual</div>
-                <div class="credit-card-info-value">${fmt(d.balance)}</div>
-              </div>
-              <div class="credit-card-brand">${brand.logo}</div>
+          return `<div class="credit-card ${bank.cardClass || ''}">
+            <div class="credit-card-top">
+              ${bank.logo || `<div class="credit-card-bank-name">${esc(d.name || 'Tarjeta')}</div>`}
+              <div class="credit-card-info-label" style="text-align: right;">CUPO TOTAL<br><span class="credit-card-info-value">${fmt(d.payment || 0)}</span></div>
             </div>
-          </div>
-        </div>`;
+            <div>
+              <div class="credit-card-chip"></div>
+              <div class="credit-card-number">•••• •••• •••• ${lastDigits}</div>
+              <div class="credit-card-bottom">
+                <div>
+                  <div class="credit-card-info-label">Saldo actual</div>
+                  <div class="credit-card-info-value">${fmt(d.balance || 0)}</div>
+                </div>
+                <div class="credit-card-brand">${brand.logo || ''}</div>
+              </div>
+            </div>
+          </div>`;
+        } catch(e) {
+          console.error('❌ Error renderizando tarjeta:', d.name, e);
+          return `<div class="credit-card" style="background: #d4d4d4;">
+            <div class="credit-card-top">
+              <div class="credit-card-bank-name">${esc(d.name || 'Tarjeta')}</div>
+            </div>
+            <div class="credit-card-bottom">
+              <div class="credit-card-info-value">${fmt(d.balance || 0)} / ${fmt(d.payment || 0)}</div>
+            </div>
+          </div>`;
+        }
       }).join('') + '</div>';
 
       // Detalles editables debajo de las tarjetas
       list.innerHTML += state.debts.map(d => {
-        const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
-        const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay, d.balance, d.payment) : null;
-        const cardStats = getCardMonthStats(d.id);
-        const bank = BANK_INFO[d.bank] || { name: 'Banco' };
-        const brand = BRAND_INFO[d.brand] || { name: 'Tarjeta' };
+        try {
+          const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
+          const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay, d.balance, d.payment) : null;
+          const cardStats = getCardMonthStats(d.id);
+          const bank = safeBank[d.bank] || { name: 'Banco' };
+          const brand = safeBrand[d.brand] || { name: 'Tarjeta' };
+          const lastDigits = d.lastDigits || (d.id ? d.id.toString().slice(-4) : '0000');
 
-        // Determinar si necesita pago para mantener utilización ≤3%
-        let utilizationAlert = '';
-        if (cutoffInfo && cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
-          const recommendedPayment = cutoffInfo.paymentNeeded;
-          const targetMax = cutoffInfo.targetMaxBalance;
-          utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
-            <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener score óptimo</div>
-            <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
-            <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (3% utilización)</div>
-            <div style="color: var(--success-text); font-weight: 600; margin-top: 4px;">→ Paga <strong>${fmt(recommendedPayment)}</strong> antes del ${cutoffInfo.dateStr}</div>
-          </div>`;
-        } else if (cutoffInfo && !cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
-          utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: var(--success-bg); border-left: 3px solid var(--success-text); border-radius: var(--radius-md); font-size: 12px; color: var(--success-text);">
-            <strong>✅ Utilización óptima:</strong> Tu saldo de ${fmt(d.balance)} (${u}%) está debajo del 3% objetivo. No necesitas pago anticipado.
-          </div>`;
-        }
+          // Determinar si necesita pago para mantener utilización ≤3%
+          let utilizationAlert = '';
+          if (cutoffInfo && cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
+            const recommendedPayment = cutoffInfo.paymentNeeded;
+            const targetMax = cutoffInfo.targetMaxBalance;
+            utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
+              <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener score óptimo</div>
+              <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
+              <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (3% utilización)</div>
+              <div style="color: var(--success-text); font-weight: 600; margin-top: 4px;">→ Paga <strong>${fmt(recommendedPayment)}</strong> antes del ${cutoffInfo.dateStr}</div>
+            </div>`;
+          } else if (cutoffInfo && !cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
+            utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: var(--success-bg); border-left: 3px solid var(--success-text); border-radius: var(--radius-md); font-size: 12px; color: var(--success-text);">
+              <strong>✅ Utilización óptima:</strong> Tu saldo de ${fmt(d.balance)} (${u}%) está debajo del 3% objetivo. No necesitas pago anticipado.
+            </div>`;
+          }
 
         return `<div class="card-detail-section">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px;">
@@ -7765,15 +7797,39 @@ async function buildAnnualPDF(state, year) {
             💡 Para cambiar nombre, cupo o número, usa el botón "Editar" arriba
           </p>
         </div>`;
+        } catch(e) {
+          console.error('❌ Error renderizando detalle de tarjeta:', d.name, e);
+          return `<div class="card-detail-section">
+            <strong>${esc(d.name || 'Tarjeta')}</strong>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">
+              Cupo: ${fmt(d.payment || 0)} · Saldo: ${fmt(d.balance || 0)}
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 8px;">
+              <button onclick="editCard(${d.id})" style="background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px;">✏️ Editar</button>
+              <button onclick="removeDebt(${d.id})" style="background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px;">🗑️ Eliminar</button>
+            </div>
+          </div>`;
+        }
       }).join('');
     }
-    document.getElementById('debt-total').textContent = fmt(debt);
-    document.getElementById('debt-available').textContent = fmt(limit - debt);
-    document.getElementById('debt-utilization').textContent = limit > 0 ? ((debt / limit) * 100).toFixed(1) + '%' : '—';
+    
+    // Actualizar totales (con verificación de elementos)
+    const debtTotalEl = document.getElementById('debt-total');
+    if (debtTotalEl) debtTotalEl.textContent = fmt(debt);
+    
+    const debtAvailEl = document.getElementById('debt-available');
+    if (debtAvailEl) debtAvailEl.textContent = fmt(limit - debt);
+    
+    const debtUtilEl = document.getElementById('debt-utilization');
+    if (debtUtilEl) debtUtilEl.textContent = limit > 0 ? ((debt / limit) * 100).toFixed(1) + '%' : '—';
 
-    const totalCashbackMonth = state.debts.reduce((s, d) => s + getCardMonthStats(d.id).totalCashback, 0);
-    const cashbackEl = document.getElementById('cashback-total');
-    if (cashbackEl) cashbackEl.textContent = totalCashbackMonth > 0 ? '+' + fmt(totalCashbackMonth) : '—';
+    try {
+      const totalCashbackMonth = state.debts.reduce((s, d) => s + getCardMonthStats(d.id).totalCashback, 0);
+      const cashbackEl = document.getElementById('cashback-total');
+      if (cashbackEl) cashbackEl.textContent = totalCashbackMonth > 0 ? '+' + fmt(totalCashbackMonth) : '—';
+    } catch(e) {
+      console.error('❌ Error calculando cashback total:', e);
+    }
   }
 
   function getCardMonthStats(cardId) {
