@@ -4955,17 +4955,6 @@ button[onclick*="deleteReminder"]:active,
   gap: 8px;
 }
 
-.tx-filter-row input {
-  flex: 1;
-  padding: 10px 12px;
-  background: var(--bg-primary, rgba(255,255,255,0.04));
-  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 13px;
-  min-width: 0;
-}
-
 .tx-filter-arrow {
   color: var(--text-tertiary);
   font-size: 14px;
@@ -4974,12 +4963,30 @@ button[onclick*="deleteReminder"]:active,
 
 .tx-filter-select {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px 14px !important;
   background: var(--bg-primary, rgba(255,255,255,0.04));
   border: 1px solid var(--border-color, rgba(255,255,255,0.08));
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
+  height: auto !important;
+  min-height: 44px;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.tx-filter-row input {
+  flex: 1;
+  padding: 12px 14px !important;
+  background: var(--bg-primary, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  min-width: 0;
+  height: auto !important;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
 .tx-filter-checkboxes {
@@ -5119,7 +5126,7 @@ button[onclick*="deleteReminder"]:active,
   cursor: pointer;
 }
 
-/* === Móvil: panel ocupa más pantalla === */
+/* === Móvil: panel como bottom-sheet === */
 @media (max-width: 768px) {
   .tx-search-bar {
     flex-direction: row;
@@ -5132,11 +5139,91 @@ button[onclick*="deleteReminder"]:active,
 
   .tx-filters-btn {
     padding: 11px 12px;
+    min-height: 48px;
+  }
+
+  #tx-search {
+    min-height: 48px;
+    font-size: 16px !important;
+  }
+
+  /* Panel: bottom sheet en móvil */
+  .tx-filters-panel {
+    position: fixed !important;
+    inset: auto 0 0 0;
+    margin: 0 !important;
+    z-index: 9999;
+    border-radius: 20px 20px 0 0;
+    max-height: 88vh;
+    display: flex !important;
+    flex-direction: column;
+    background: var(--bg-primary, #1a1a2e);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    animation: txPanelSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes txPanelSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* Backdrop overlay */
+  body.tx-filters-open::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+    z-index: 9998;
+    animation: fadeIn 0.2s ease;
+  }
+
+  body.tx-filters-open {
+    overflow: hidden;
+  }
+
+  /* Header del panel: drag handle visual */
+  .tx-filters-panel-header {
+    position: relative;
+    padding: 18px 16px 14px;
+    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  }
+
+  .tx-filters-panel-header::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+  }
+
+  .tx-filters-panel-body {
+    padding: 18px 16px;
+    gap: 18px;
+    overflow-y: auto;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
   }
 
   .tx-filter-checkboxes {
     grid-template-columns: 1fr 1fr;
-    max-height: 220px;
+    max-height: none;
+    padding: 8px;
+  }
+
+  .tx-filter-cat-option {
+    padding: 10px 12px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  .tx-filter-cat-option input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
   }
 
   .tx-filter-row {
@@ -5149,13 +5236,49 @@ button[onclick*="deleteReminder"]:active,
     padding: 2px 0;
   }
 
-  .tx-filters-panel-body {
-    padding: 14px;
-    gap: 16px;
+  .tx-filter-row input,
+  .tx-filter-select {
+    min-height: 48px !important;
+    font-size: 16px !important;
+    padding: 13px 14px !important;
+  }
+
+  .tx-filter-toggle {
+    min-height: 52px;
+    padding: 14px 14px;
+    font-size: 14px;
   }
 
   .tx-filter-stats {
     font-size: 11px;
+    padding: 10px 12px;
+  }
+
+  /* Footer sticky en bottom-sheet */
+  .tx-filters-panel-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-primary, #1a1a2e);
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.08));
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+  }
+
+  .tx-filter-btn-clear,
+  .tx-filter-btn-apply {
+    min-height: 50px;
+    font-size: 14px;
+  }
+
+  /* Chips: scrollable horizontal en móvil para no romper layout */
+  .tx-active-chips {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tx-chip {
+    font-size: 11px;
+    padding: 5px 9px;
   }
 }
 

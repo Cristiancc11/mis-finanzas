@@ -2731,14 +2731,22 @@ window.dismissOnboarding = async function() {
 
   if (!confirmed) return;
 
+  // v37.1: el setItem está interceptado y sincroniza automáticamente con Supabase
   try {
     const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
     if (stateRaw) {
-      const state = JSON.parse(stateRaw);
-      state.onboardingDismissed = true;
-      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+      const localState = JSON.parse(stateRaw);
+      localState.onboardingDismissed = true;
+      // Esto dispara el interceptor que sincroniza con Supabase automáticamente
+      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(localState));
     }
-  } catch(e) {}
+    // Sincronizar también el state en memoria del IIFE
+    if (typeof window.syncOnboardingDismissed === 'function') {
+      window.syncOnboardingDismissed(true);
+    }
+  } catch(e) {
+    console.error('Error guardando dismiss del onboarding:', e);
+  }
 
   const checklist = document.getElementById('onboarding-checklist');
   if (checklist) {
@@ -8448,8 +8456,10 @@ async function buildAnnualPDF(state, year) {
       populateTxFilterOptions();
       syncTxFilterPanelUI();
       panel.style.display = 'block';
+      document.body.classList.add('tx-filters-open');
     } else {
       panel.style.display = 'none';
+      document.body.classList.remove('tx-filters-open');
     }
   }
 
@@ -8507,6 +8517,7 @@ async function buildAnnualPDF(state, year) {
     window.txFilters.categories = Array.from(document.querySelectorAll('#tx-filter-categories input[type="checkbox"]:checked')).map(i => i.value);
     // Cerrar panel y renderizar
     document.getElementById('tx-filters-panel').style.display = 'none';
+    document.body.classList.remove('tx-filters-open');
     renderTransactions();
   }
 
@@ -8529,6 +8540,12 @@ async function buildAnnualPDF(state, year) {
   window.removeTxFilterChip = removeTxFilterChip;
   window.onTxSearchInput = onTxSearchInput;
   window.clearTxSearch = clearTxSearch;
+
+  // v37.1: sincronizar onboardingDismissed con state en memoria
+  window.syncOnboardingDismissed = function(value) {
+    state.onboardingDismissed = !!value;
+    // saveState ya se llamó vía localStorage.setItem, no duplicar
+  };
 
   function renderTransactions() {
     const list = document.getElementById('tx-list');
