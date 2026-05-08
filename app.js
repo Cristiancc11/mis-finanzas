@@ -14,6 +14,18 @@ const SUPABASE_URL = 'https://safxdvagmrkpkyzpghtt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_sc5mjkLrctQfU4AEz3rfAg_Q8SFLJpY';
 const STORAGE_KEY_GLOBAL = 'finance-dashboard-cristian-v20';
 
+// v38.2: Helper para obtener fecha de hoy en zona horaria LOCAL (no UTC).
+// toISOString() siempre devuelve UTC, lo que causa que después de las 7pm en Bogotá
+// el "día de hoy" salga con la fecha del día siguiente.
+function getTodayLocal() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+window.getTodayLocal = getTodayLocal;
+
 let supabaseClient = null;
 let currentUser = null;
 let authMode = 'login'; // 'login' o 'signup'
@@ -2972,7 +2984,7 @@ function checkSmartNotifications() {
 
   const notifications = [];
   const today = new Date();
-  const todayKey = today.toISOString().split('T')[0];
+  const todayKey = getTodayLocal();
 
   // Notificaciones ya mostradas hoy (para no spamear)
   let shownToday = {};
@@ -3110,7 +3122,7 @@ function showNotificationsPanel() {
   document.body.appendChild(panel);
 
   // Auto-marcar como mostradas
-  const todayKey = new Date().toISOString().split('T')[0];
+  const todayKey = getTodayLocal();
   const shown = { date: todayKey, ids: notifs.map(n => n.id) };
   try {
     const existing = JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) || '{}');
@@ -4002,7 +4014,9 @@ function renderFinancialCalendar() {
       if (!reminder) return;
       
       // Determinar si aplica este mes
-      const reminderDate = new Date(reminder.date);
+      // v38.1: parsear fecha como LOCAL para evitar desfase timezone
+      const [rY, rM, rD] = (reminder.date || '').split('-').map(Number);
+      const reminderDate = new Date(rY, (rM || 1) - 1, rD || 1);
       let day = null;
       
       if (reminder.recurring === 'monthly') {
@@ -4194,14 +4208,20 @@ window.openReminderModal = function(dateStr) {
       const r = fullState.reminders[id];
       if (!r) return;
       
-      const rDate = new Date(r.date);
-      const targetDate = new Date(dateStr);
+      // v38.1: parsear fechas como LOCAL para evitar bug de timezone
+      const parseLocal = (s) => {
+        if (!s) return null;
+        const [y, m, d] = s.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+      const rDate = parseLocal(r.date);
+      const targetDate = parseLocal(dateStr);
       
       let matches = false;
       if (r.recurring === 'monthly') {
-        matches = (rDate.getDate() === targetDate.getDate());
+        matches = (rDate && targetDate && rDate.getDate() === targetDate.getDate());
       } else if (r.recurring === 'yearly') {
-        matches = (rDate.getMonth() === targetDate.getMonth() && rDate.getDate() === targetDate.getDate());
+        matches = (rDate && targetDate && rDate.getMonth() === targetDate.getMonth() && rDate.getDate() === targetDate.getDate());
       } else {
         matches = (r.date === dateStr);
       }
@@ -4213,7 +4233,11 @@ window.openReminderModal = function(dateStr) {
   }
 
   // Formatear fecha bonita
-  const dateObj = new Date(dateStr);
+  // v38.1: parsear como fecha LOCAL (no UTC) para evitar desfase de timezone
+  // new Date("2026-05-08") interpreta como UTC, en Bogotá UTC-5 cae al día anterior.
+  // Solución: separar año/mes/día y crear con constructor local
+  const [yyyy, mm, dd] = dateStr.split('-').map(Number);
+  const dateObj = new Date(yyyy, mm - 1, dd);
   const niceDate = dateObj.toLocaleDateString('es-CO', { 
     weekday: 'long', 
     day: 'numeric', 
@@ -5879,7 +5903,7 @@ async function buildAnnualPDF(state, year) {
   }
 
   function setDefaultDate() {
-    const d = new Date().toISOString().split('T')[0];
+    const d = getTodayLocal();
     const el = document.getElementById('tx-date');
     if (el && !el.value) el.value = d;
     const el2 = document.getElementById('extra-date');
@@ -6797,7 +6821,7 @@ async function buildAnnualPDF(state, year) {
     const desc = document.getElementById('extra-desc').value.trim();
     const amount = parseFloat(document.getElementById('extra-amount').value);
     const source = document.getElementById('extra-source').value;
-    const date = document.getElementById('extra-date').value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById('extra-date').value || getTodayLocal();
     const pocketId = document.getElementById('extra-pocket') ? document.getElementById('extra-pocket').value : '';
     if (!desc || !amount || amount <= 0) return alert('Completa descripción y monto');
 
@@ -7461,7 +7485,7 @@ async function buildAnnualPDF(state, year) {
     const d = document.getElementById('tx-desc').value.trim();
     const a = parseFloat(document.getElementById('tx-amount').value);
     const c = document.getElementById('tx-category').value;
-    const dt = document.getElementById('tx-date').value || new Date().toISOString().split('T')[0];
+    const dt = document.getElementById('tx-date').value || getTodayLocal();
     const method = document.getElementById('tx-payment-method').value;
     const cardId = document.getElementById('tx-card').value;
     const pocketId = document.getElementById('tx-pocket') ? document.getElementById('tx-pocket').value : '';
@@ -9093,7 +9117,7 @@ async function buildAnnualPDF(state, year) {
     const a = [];
 
     // Cargar alertas descartadas (con expiración por día)
-    const todayKey = new Date().toISOString().split('T')[0];
+    const todayKey = getTodayLocal();
     let dismissed = {};
     try {
       const raw = localStorage.getItem('dashboard-dismissed-alerts');
@@ -9193,7 +9217,7 @@ async function buildAnnualPDF(state, year) {
   }
 
   window.dismissAlert = function(id) {
-    const todayKey = new Date().toISOString().split('T')[0];
+    const todayKey = getTodayLocal();
     let dismissed = { date: todayKey, ids: {} };
     try {
       const raw = localStorage.getItem('dashboard-dismissed-alerts');
@@ -9624,7 +9648,7 @@ async function buildAnnualPDF(state, year) {
 
   window.updateCreditScoreFull = function() {
     const score = parseInt(document.getElementById('cs-score').value);
-    const date = document.getElementById('cs-date').value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById('cs-date').value || getTodayLocal();
     if (!score || score < 150 || score > 950) return alert('Ingresa un puntaje válido (150-950)');
 
     if (!state.creditScore) state.creditScore = { history: [] };
