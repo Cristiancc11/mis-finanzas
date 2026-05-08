@@ -443,7 +443,7 @@
   .quick-add { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; align-items: center; }
   .month-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
   .month-selector select { width: auto; min-width: 140px; }
-  .tx-row { display: grid; grid-template-columns: 70px 1.5fr 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); align-items: center; font-size: 12px; }
+  .tx-row { display: grid; grid-template-columns: 70px 1.5fr 1fr auto auto; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); align-items: center; font-size: 12px; }
   .tx-row .tx-date { color: var(--text-tertiary); font-size: 11px; }
 
   /* HERO BANNER */
@@ -1135,7 +1135,7 @@
      LISTA DE TRANSACCIONES MÓVIL
      ======================================== */
   .tx-row {
-    grid-template-columns: 1fr auto auto !important;
+    grid-template-columns: 1fr auto auto auto !important;
     gap: 8px !important;
     padding: 10px !important;
     font-size: 12px !important;
@@ -5342,5 +5342,248 @@ button[onclick*="deleteReminder"]:active,
 @media (max-width: 380px) {
   .tx-filter-checkboxes {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   v38 — EDICIÓN DE MOVIMIENTOS (Cristian, May 2026)
+   ============================================================ */
+
+/* Botón de editar al lado del de borrar */
+.edit-tx-btn {
+  background: rgba(127, 119, 221, 0.12);
+  border: 1px solid rgba(127, 119, 221, 0.25);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  transition: all 0.15s ease;
+  color: #afa9ec;
+  flex-shrink: 0;
+}
+
+.edit-tx-btn:hover {
+  background: rgba(127, 119, 221, 0.22);
+  transform: translateY(-1px);
+}
+
+.edit-tx-btn:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+  .edit-tx-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+}
+
+/* Modal de edición de movimientos */
+.edit-tx-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.edit-tx-modal {
+  background: var(--bg-primary, #1a1a2e);
+  border-radius: 16px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: editModalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+}
+
+@keyframes editModalSlideIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.edit-tx-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.edit-tx-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-tx-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 0;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.edit-tx-close:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+.edit-tx-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.edit-tx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-tx-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.edit-tx-field input,
+.edit-tx-field select {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-secondary, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  box-sizing: border-box;
+  height: auto !important;
+  min-height: 44px;
+}
+
+.edit-tx-field input:focus,
+.edit-tx-field select:focus {
+  outline: none;
+  border-color: rgba(127, 119, 221, 0.5);
+  background: var(--bg-primary, rgba(255,255,255,0.06));
+}
+
+.edit-tx-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.edit-tx-changes {
+  background: rgba(127, 119, 221, 0.08);
+  border-left: 3px solid #7F77DD;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.edit-tx-changes-title {
+  color: #afa9ec;
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-tx-footer {
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  display: flex;
+  gap: 10px;
+  background: var(--bg-tertiary, rgba(0,0,0,0.15));
+  flex-shrink: 0;
+}
+
+.edit-tx-cancel {
+  flex: 1;
+  padding: 12px 16px;
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.edit-tx-cancel:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+}
+
+.edit-tx-save {
+  flex: 2;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #7F77DD, #1D9E75);
+  border: 0;
+  border-radius: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+  box-shadow: 0 4px 14px rgba(127, 119, 221, 0.25);
+  transition: transform 0.1s;
+}
+
+.edit-tx-save:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 768px) {
+  .edit-tx-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+  .edit-tx-modal {
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+  }
+  .edit-tx-row-2 {
+    grid-template-columns: 1fr;
+  }
+  .edit-tx-field input,
+  .edit-tx-field select {
+    font-size: 16px;
+    min-height: 48px;
   }
 }

@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=37.5">
+<link rel="stylesheet" href="styles.css?v=38">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -149,6 +149,90 @@
         Cumplimos con la <strong>Ley 1581 de Habeas Data</strong> de Colombia
       </p>
     </div>
+  </div>
+</div>
+
+<!-- v38: MODAL DE EDICIÓN DE MOVIMIENTOS -->
+<div id="edit-tx-overlay" class="edit-tx-overlay" style="display: none;" onclick="if(event.target.id==='edit-tx-overlay') window.closeEditTxModal()">
+  <div class="edit-tx-modal" onclick="event.stopPropagation()">
+
+    <div class="edit-tx-header">
+      <h3 class="edit-tx-title">✏️ Editar movimiento</h3>
+      <button type="button" class="edit-tx-close" onclick="window.closeEditTxModal()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="edit-tx-body">
+
+      <div class="edit-tx-field">
+        <label class="edit-tx-label">¿En qué gastaste?</label>
+        <input type="text" id="edit-tx-desc" placeholder="Descripción" autocomplete="off" />
+      </div>
+
+      <div class="edit-tx-row-2">
+        <div class="edit-tx-field">
+          <label class="edit-tx-label">Monto</label>
+          <input type="number" inputmode="decimal" id="edit-tx-amount" min="0" step="0.01" />
+        </div>
+        <div class="edit-tx-field">
+          <label class="edit-tx-label">Fecha</label>
+          <input type="date" id="edit-tx-date" />
+        </div>
+      </div>
+
+      <div class="edit-tx-field">
+        <label class="edit-tx-label">Categoría</label>
+        <select id="edit-tx-category"></select>
+      </div>
+
+      <div class="edit-tx-field">
+        <label class="edit-tx-label">Método de pago</label>
+        <select id="edit-tx-method">
+          <option value="tarjeta">💳 Tarjeta de crédito</option>
+          <option value="debito">💳 Débito</option>
+          <option value="pse">🏦 PSE</option>
+          <option value="llave">🔑 Llave / Bre-B</option>
+          <option value="efectivo">💵 Efectivo</option>
+        </select>
+      </div>
+
+      <div class="edit-tx-field" id="edit-tx-card-row" style="display: none;">
+        <label class="edit-tx-label">Tarjeta</label>
+        <select id="edit-tx-card">
+          <option value="">Selecciona tarjeta</option>
+        </select>
+      </div>
+
+      <div class="edit-tx-field" id="edit-tx-pocket-row" style="display: none;">
+        <label class="edit-tx-label">Bolsillo (de dónde sale el dinero)</label>
+        <select id="edit-tx-pocket">
+          <option value="">Selecciona bolsillo</option>
+        </select>
+      </div>
+
+      <div class="edit-tx-field" id="edit-tx-cashback-row" style="display: none;">
+        <label class="edit-tx-label">Cashback (puedes ajustarlo si quieres)</label>
+        <input type="number" inputmode="decimal" id="edit-tx-cashback" min="0" step="1" placeholder="0" />
+      </div>
+
+      <div class="edit-tx-field" id="edit-tx-pay-card-row" style="display: none;">
+        <label class="edit-tx-label">Tarjeta a pagar</label>
+        <select id="edit-tx-pay-card">
+          <option value="">Selecciona tarjeta a pagar</option>
+        </select>
+      </div>
+
+      <div id="edit-tx-changes" class="edit-tx-changes" style="display: none;">
+        <div class="edit-tx-changes-title">📊 Ajustes que se aplicarán</div>
+        <div id="edit-tx-changes-content"></div>
+      </div>
+
+    </div>
+
+    <div class="edit-tx-footer">
+      <button type="button" class="edit-tx-cancel" onclick="window.closeEditTxModal()">Cancelar</button>
+      <button type="button" class="edit-tx-save" onclick="window.saveEditedTx()">Guardar cambios</button>
+    </div>
+
   </div>
 </div>
 
@@ -1443,6 +1527,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=37.5"></script>
+<script src="app.js?v=38"></script>
 </body>
 </html>

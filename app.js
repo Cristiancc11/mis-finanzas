@@ -8553,6 +8553,343 @@ async function buildAnnualPDF(state, year) {
   // Mantener compatibilidad por si algún código viejo la llama
   window.syncOnboardingDismissed = window.persistOnboardingDismissed;
 
+  // ============================================================
+  // v38 — SISTEMA DE EDICIÓN DE MOVIMIENTOS
+  // ============================================================
+
+  let editingTxState = { month: null, id: null, originalTx: null };
+
+  function openEditTxModal(month, id) {
+    const txArr = state.transactions[month] || [];
+    const tx = txArr.find(t => t.id === id);
+    if (!tx) {
+      if (typeof toastError === 'function') toastError('No encontrado', 'No se encontró el movimiento a editar');
+      return;
+    }
+
+    // Guardar referencia para usar al guardar
+    editingTxState = {
+      month: month,
+      id: id,
+      originalTx: JSON.parse(JSON.stringify(tx))
+    };
+
+    // Llenar select de categorías
+    const catSel = document.getElementById('edit-tx-category');
+    if (catSel) {
+      catSel.innerHTML = CATEGORIES.map(c =>
+        `<option value="${c.id}" ${c.id === tx.category ? 'selected' : ''}>${c.icon} ${c.label}</option>`
+      ).join('');
+    }
+
+    // Llenar selects de tarjetas
+    const cardSel = document.getElementById('edit-tx-card');
+    const payCardSel = document.getElementById('edit-tx-pay-card');
+    if (cardSel) {
+      cardSel.innerHTML = '<option value="">Selecciona tarjeta</option>' +
+        (state.debts || []).map(d =>
+          `<option value="${d.id}" ${d.id === tx.cardId ? 'selected' : ''}>${esc(d.name)}</option>`
+        ).join('');
+    }
+    if (payCardSel) {
+      payCardSel.innerHTML = '<option value="">Selecciona tarjeta a pagar</option>' +
+        (state.debts || []).map(d =>
+          `<option value="${d.id}" ${d.id === tx.payCardId ? 'selected' : ''}>${esc(d.name)}</option>`
+        ).join('');
+    }
+
+    // Llenar select de bolsillos
+    const pocketSel = document.getElementById('edit-tx-pocket');
+    if (pocketSel) {
+      pocketSel.innerHTML = '<option value="">Selecciona bolsillo</option>' +
+        (state.pockets || []).map(p =>
+          `<option value="${p.id}" ${p.id === tx.pocketId ? 'selected' : ''}>${p.icon || '👛'} ${esc(p.name)}</option>`
+        ).join('');
+    }
+
+    // Llenar campos
+    document.getElementById('edit-tx-desc').value = tx.desc || '';
+    document.getElementById('edit-tx-amount').value = tx.amount || 0;
+    document.getElementById('edit-tx-date').value = tx.date || '';
+    document.getElementById('edit-tx-method').value = tx.paymentMethod || 'efectivo';
+    document.getElementById('edit-tx-cashback').value = tx.cashback || 0;
+
+    // Mostrar/ocultar campos condicionales según método
+    updateEditTxFieldsVisibility();
+
+    // Listener para cambio de método (mostrar/ocultar tarjeta vs bolsillo)
+    const methodSel = document.getElementById('edit-tx-method');
+    if (methodSel && !methodSel._v38listener) {
+      methodSel.addEventListener('change', updateEditTxFieldsVisibility);
+      methodSel._v38listener = true;
+    }
+
+    // Listener para preview de cambios en saldos
+    ['edit-tx-amount', 'edit-tx-method', 'edit-tx-card', 'edit-tx-pocket', 'edit-tx-cashback'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el._v38listener) {
+        el.addEventListener('input', updateEditTxChangesPreview);
+        el.addEventListener('change', updateEditTxChangesPreview);
+        el._v38listener = true;
+      }
+    });
+
+    // Mostrar modal
+    document.getElementById('edit-tx-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onEditTxEscape);
+
+    // Calcular preview inicial (puede no haber cambios aún)
+    updateEditTxChangesPreview();
+
+    // Focus en descripción
+    setTimeout(() => {
+      const descInput = document.getElementById('edit-tx-desc');
+      if (descInput) descInput.focus();
+    }, 100);
+  }
+
+  function updateEditTxFieldsVisibility() {
+    const method = document.getElementById('edit-tx-method')?.value || '';
+    const cardRow = document.getElementById('edit-tx-card-row');
+    const pocketRow = document.getElementById('edit-tx-pocket-row');
+    const cashbackRow = document.getElementById('edit-tx-cashback-row');
+    const payCardRow = document.getElementById('edit-tx-pay-card-row');
+
+    if (method === 'tarjeta') {
+      if (cardRow) cardRow.style.display = '';
+      if (pocketRow) pocketRow.style.display = 'none';
+      if (cashbackRow) cashbackRow.style.display = '';
+    } else {
+      if (cardRow) cardRow.style.display = 'none';
+      if (pocketRow) pocketRow.style.display = '';
+      if (cashbackRow) cashbackRow.style.display = 'none';
+    }
+
+    // Pago de tarjeta: mostrar selector de tarjeta a pagar si la categoría es "pagar tarjeta"
+    const cat = document.getElementById('edit-tx-category')?.value || '';
+    const isPagoTarjeta = cat === 'pagoTarjeta' || cat === 'pago-tarjeta' || cat === 'pago_tarjeta';
+    if (payCardRow) payCardRow.style.display = isPagoTarjeta ? '' : 'none';
+  }
+
+  function updateEditTxChangesPreview() {
+    if (!editingTxState.originalTx) return;
+    const orig = editingTxState.originalTx;
+
+    const newAmount = parseFloat(document.getElementById('edit-tx-amount')?.value) || 0;
+    const newMethod = document.getElementById('edit-tx-method')?.value || '';
+    const newCardId = parseInt(document.getElementById('edit-tx-card')?.value) || null;
+    const newPocketId = parseInt(document.getElementById('edit-tx-pocket')?.value) || null;
+    const newCashback = parseFloat(document.getElementById('edit-tx-cashback')?.value) || 0;
+
+    const changes = [];
+
+    // Cambio de monto
+    if (Math.abs((orig.amount || 0) - newAmount) > 0.01) {
+      changes.push(`Monto: ${fmt(orig.amount)} → ${fmt(newAmount)}`);
+    }
+
+    // Cambio de método de pago
+    if (orig.paymentMethod !== newMethod) {
+      const methodLabels = { tarjeta: '💳 Tarjeta', debito: 'Débito', pse: 'PSE', llave: 'Llave', efectivo: 'Efectivo' };
+      changes.push(`Método: ${methodLabels[orig.paymentMethod] || orig.paymentMethod} → ${methodLabels[newMethod] || newMethod}`);
+    }
+
+    // Cambio de tarjeta
+    if ((orig.cardId || null) !== (newCardId || null)) {
+      const oldCard = orig.cardId ? (state.debts.find(d => d.id === orig.cardId)?.name || 'desconocida') : 'ninguna';
+      const newCard = newCardId ? (state.debts.find(d => d.id === newCardId)?.name || 'desconocida') : 'ninguna';
+      changes.push(`Tarjeta: ${oldCard} → ${newCard}`);
+    }
+
+    // Cambio de bolsillo
+    if ((orig.pocketId || null) !== (newPocketId || null)) {
+      const oldP = orig.pocketId ? (state.pockets.find(p => p.id === orig.pocketId)?.name || 'desconocido') : 'ninguno';
+      const newP = newPocketId ? (state.pockets.find(p => p.id === newPocketId)?.name || 'desconocido') : 'ninguno';
+      changes.push(`Bolsillo: ${oldP} → ${newP}`);
+    }
+
+    // Cambio de cashback
+    if (Math.abs((orig.cashback || 0) - newCashback) > 0.01) {
+      changes.push(`Cashback: ${fmt(orig.cashback || 0)} → ${fmt(newCashback)}`);
+    }
+
+    const banner = document.getElementById('edit-tx-changes');
+    const content = document.getElementById('edit-tx-changes-content');
+    if (changes.length > 0 && banner && content) {
+      content.innerHTML = changes.map(c => `• ${c}`).join('<br>');
+      banner.style.display = 'block';
+    } else if (banner) {
+      banner.style.display = 'none';
+    }
+  }
+
+  function saveEditedTx() {
+    if (!editingTxState.originalTx) {
+      closeEditTxModal();
+      return;
+    }
+
+    const orig = editingTxState.originalTx;
+    const month = editingTxState.month;
+    const txArr = state.transactions[month] || [];
+    const txIndex = txArr.findIndex(t => t.id === editingTxState.id);
+    if (txIndex === -1) {
+      if (typeof toastError === 'function') toastError('Error', 'No se pudo encontrar el movimiento');
+      closeEditTxModal();
+      return;
+    }
+
+    // Recoger valores nuevos
+    const newDesc = (document.getElementById('edit-tx-desc')?.value || '').trim();
+    const newAmount = parseFloat(document.getElementById('edit-tx-amount')?.value) || 0;
+    const newDate = document.getElementById('edit-tx-date')?.value || orig.date;
+    const newCategory = document.getElementById('edit-tx-category')?.value || orig.category;
+    const newMethod = document.getElementById('edit-tx-method')?.value || 'efectivo';
+    const newCardId = parseInt(document.getElementById('edit-tx-card')?.value) || null;
+    const newPocketId = parseInt(document.getElementById('edit-tx-pocket')?.value) || null;
+    const newCashback = parseFloat(document.getElementById('edit-tx-cashback')?.value) || 0;
+    const newPayCardId = parseInt(document.getElementById('edit-tx-pay-card')?.value) || null;
+
+    // Validaciones
+    if (!newDesc) {
+      if (typeof toastError === 'function') toastError('Falta descripción', 'Escribe una descripción para el movimiento');
+      return;
+    }
+    if (newAmount <= 0) {
+      if (typeof toastError === 'function') toastError('Monto inválido', 'El monto debe ser mayor a 0');
+      return;
+    }
+
+    // ===========================================================
+    // PASO 1: REVERTIR EFECTOS DEL GASTO ORIGINAL
+    // ===========================================================
+    // Si era con tarjeta, devolver el saldo a la tarjeta original
+    if (orig.paymentMethod === 'tarjeta' && orig.cardId) {
+      const oldCard = state.debts.find(d => d.id === orig.cardId);
+      if (oldCard) {
+        oldCard.balance = Math.max(0, (oldCard.balance || 0) - (orig.amount || 0));
+      }
+    }
+    // Si descontó de un bolsillo, devolver el dinero
+    if (orig.pocketId) {
+      const oldPocket = state.pockets.find(p => p.id === orig.pocketId);
+      if (oldPocket) {
+        oldPocket.amount = (oldPocket.amount || 0) + (orig.amount || 0);
+      }
+    }
+    // Si era pago de tarjeta, devolver la deuda a la tarjeta pagada
+    if (orig.payCardId) {
+      const oldPayCard = state.debts.find(d => d.id === orig.payCardId);
+      if (oldPayCard) {
+        oldPayCard.balance = (oldPayCard.balance || 0) + (orig.amount || 0);
+      }
+    }
+
+    // ===========================================================
+    // PASO 2: APLICAR EFECTOS DEL GASTO NUEVO
+    // ===========================================================
+    // Si nuevo es con tarjeta, sumar al saldo de la tarjeta nueva
+    if (newMethod === 'tarjeta' && newCardId) {
+      const newCard = state.debts.find(d => d.id === newCardId);
+      if (newCard) {
+        newCard.balance = (newCard.balance || 0) + newAmount;
+      }
+    }
+    // Si nuevo es con bolsillo, descontar del bolsillo nuevo
+    if (newMethod !== 'tarjeta' && newPocketId) {
+      const newPocket = state.pockets.find(p => p.id === newPocketId);
+      if (newPocket) {
+        newPocket.amount = (newPocket.amount || 0) - newAmount;
+      }
+    }
+    // Si nuevo es pago de tarjeta, descontar saldo de la tarjeta pagada
+    const isPagoTarjeta = newCategory === 'pagoTarjeta' || newCategory === 'pago-tarjeta' || newCategory === 'pago_tarjeta';
+    if (isPagoTarjeta && newPayCardId) {
+      const newPayCard = state.debts.find(d => d.id === newPayCardId);
+      if (newPayCard) {
+        newPayCard.balance = Math.max(0, (newPayCard.balance || 0) - newAmount);
+      }
+    }
+
+    // ===========================================================
+    // PASO 3: ACTUALIZAR LA TRANSACCIÓN EN EL ARRAY
+    // ===========================================================
+    const updatedTx = {
+      ...orig,  // Preservar campos antiguos como id, createdAt
+      desc: newDesc,
+      amount: newAmount,
+      date: newDate,
+      category: newCategory,
+      paymentMethod: newMethod,
+      cardId: (newMethod === 'tarjeta') ? newCardId : null,
+      pocketId: (newMethod !== 'tarjeta') ? newPocketId : null,
+      payCardId: isPagoTarjeta ? newPayCardId : null,
+      cashback: (newMethod === 'tarjeta') ? newCashback : 0,
+      updatedAt: Date.now()  // Marca de última edición
+    };
+
+    // Si la fecha cambió a otro mes, mover la transacción al mes correcto
+    const newMonth = newDate.substring(0, 7);
+    if (newMonth !== month) {
+      // Quitar del mes original
+      state.transactions[month].splice(txIndex, 1);
+      // Agregar al mes nuevo
+      if (!state.transactions[newMonth]) state.transactions[newMonth] = [];
+      state.transactions[newMonth].push(updatedTx);
+    } else {
+      // Mismo mes: solo actualizar
+      state.transactions[month][txIndex] = updatedTx;
+    }
+
+    // ===========================================================
+    // PASO 4: GUARDAR Y RE-RENDERIZAR
+    // ===========================================================
+    saveState();
+    populatePocketsSelector();
+    populateMonths();
+    renderBudget();
+    renderTransactions();
+    renderResumen();
+    renderDebts();
+    renderPockets();
+
+    // Toast de éxito
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('✅ Movimiento actualizado', `${updatedTx.desc} · ${fmt(updatedTx.amount)}`);
+    }
+
+    closeEditTxModal();
+  }
+
+  function closeEditTxModal() {
+    const overlay = document.getElementById('edit-tx-overlay');
+    if (overlay) overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onEditTxEscape);
+    editingTxState = { month: null, id: null, originalTx: null };
+  }
+
+  function onEditTxEscape(e) {
+    if (e.key === 'Escape' || e.key === 'Esc') closeEditTxModal();
+  }
+
+  // Exponer funciones globalmente
+  window.openEditTxModal = openEditTxModal;
+  window.closeEditTxModal = closeEditTxModal;
+  window.saveEditedTx = saveEditedTx;
+  window.updateEditTxChangesPreview = updateEditTxChangesPreview;
+  window.updateEditTxFieldsVisibility = updateEditTxFieldsVisibility;
+
+  // Listener especial: cuando cambia categoría también revisar visibilidad (por pago de tarjeta)
+  setTimeout(() => {
+    const catSel = document.getElementById('edit-tx-category');
+    if (catSel && !catSel._v38listener) {
+      catSel.addEventListener('change', updateEditTxFieldsVisibility);
+      catSel._v38listener = true;
+    }
+  }, 1000);
+
   function renderTransactions() {
     const list = document.getElementById('tx-list');
     if (!list) return;
@@ -8638,6 +8975,7 @@ async function buildAnnualPDF(state, year) {
         <div class="tx-date">${ds}</div>
         <div>${esc(t.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span></div>
         <div style="color: var(--danger-text); font-weight: 500;">${fmt(t.amount)}</div>
+        <button class="edit-tx-btn" title="Editar" aria-label="Editar movimiento" onclick="window.openEditTxModal('${currentMonth}', ${t.id})">✏️</button>
         <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>
       </div>`;
     }).join('');
