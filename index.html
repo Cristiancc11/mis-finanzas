@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=34">
+<link rel="stylesheet" href="styles.css?v=35">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -88,12 +88,12 @@
 
     <div style="margin-bottom: 12px;">
       <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">Correo electrónico</label>
-      <input type="email" id="auth-email" placeholder="tu@correo.com" style="width: 100%; padding: 10px 14px; height: 42px; font-size: 14px;" />
+      <input type="email" id="auth-email" placeholder="tu@correo.com" autocomplete="email" inputmode="email" enterkeyhint="next" autocapitalize="none" autocorrect="off" spellcheck="false" style="width: 100%; padding: 10px 14px; height: 42px; font-size: 14px;" />
     </div>
 
     <div style="margin-bottom: 16px;">
       <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">Contraseña</label>
-      <input type="password" id="auth-password" placeholder="Mínimo 6 caracteres" style="width: 100%; padding: 10px 14px; height: 42px; font-size: 14px;" />
+      <input type="password" id="auth-password" placeholder="Mínimo 6 caracteres" autocomplete="current-password" enterkeyhint="go" style="width: 100%; padding: 10px 14px; height: 42px; font-size: 14px;" />
     </div>
 
     <button id="auth-submit" onclick="handleAuth()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(127, 119, 221, 0.3);">Iniciar sesión</button>
@@ -149,6 +149,86 @@
         Cumplimos con la <strong>Ley 1581 de Habeas Data</strong> de Colombia
       </p>
     </div>
+  </div>
+</div>
+
+<!-- TOUR DE BIENVENIDA v35 (modal de 5 slides para usuarios nuevos) -->
+<div id="welcome-tour" class="welcome-tour-overlay" style="display: none;">
+  <div class="welcome-tour-modal">
+
+    <!-- Slide 1: Bienvenida -->
+    <div class="welcome-slide" data-slide="0">
+      <div class="welcome-slide-icon">💎</div>
+      <h2 class="welcome-slide-title">¡Bienvenido a FinanzasPro!</h2>
+      <p class="welcome-slide-desc">Tu dashboard financiero personal. Organiza tu dinero, paga tus tarjetas a tiempo y alcanza tus metas — todo en un solo lugar.</p>
+      <ul class="welcome-slide-features">
+        <li>Sincroniza en todos tus dispositivos</li>
+        <li>Tus datos cifrados en la nube</li>
+        <li>100% gratis, sin anuncios</li>
+      </ul>
+    </div>
+
+    <!-- Slide 2: Bolsillos -->
+    <div class="welcome-slide" data-slide="1" style="display: none;">
+      <div class="welcome-slide-icon">👛</div>
+      <h2 class="welcome-slide-title">Bolsillos: dónde tienes tu dinero</h2>
+      <p class="welcome-slide-desc">Crea un bolsillo por cada cuenta o lugar donde guardas plata: Nequi, Bancolombia, Daviplata, efectivo, ahorros...</p>
+      <ul class="welcome-slide-features">
+        <li>Suma automática de tu patrimonio</li>
+        <li>Saldo de cada banco siempre visible</li>
+        <li>Distingue cash, ahorros y rentabilidad</li>
+      </ul>
+    </div>
+
+    <!-- Slide 3: Tarjetas -->
+    <div class="welcome-slide" data-slide="2" style="display: none;">
+      <div class="welcome-slide-icon">💳</div>
+      <h2 class="welcome-slide-title">Tarjetas de crédito sin sustos</h2>
+      <p class="welcome-slide-desc">Registra tus tarjetas con cupo, fecha de corte y cashback. La app te recuerda cuándo pagar y te dice cuál usar para maximizar beneficios.</p>
+      <ul class="welcome-slide-features">
+        <li>Calendario con tus fechas de corte</li>
+        <li>Calcula cashback antes de gastar</li>
+        <li>Pago automático al registrar gasto</li>
+      </ul>
+    </div>
+
+    <!-- Slide 4: Presupuesto -->
+    <div class="welcome-slide" data-slide="3" style="display: none;">
+      <div class="welcome-slide-icon">📊</div>
+      <h2 class="welcome-slide-title">Presupuesto que sí funciona</h2>
+      <p class="welcome-slide-desc">Define cuánto vas a gastar por categoría cada mes. Al registrar un gasto, ves al instante si vas bien o te estás pasando.</p>
+      <ul class="welcome-slide-features">
+        <li>Alertas cuando te acercas al límite</li>
+        <li>Categorías 100% personalizables</li>
+        <li>Reportes mensuales en PDF</li>
+      </ul>
+    </div>
+
+    <!-- Slide 5: Empezar -->
+    <div class="welcome-slide" data-slide="4" style="display: none;">
+      <div class="welcome-slide-icon">🚀</div>
+      <h2 class="welcome-slide-title">¡Listo para empezar!</h2>
+      <p class="welcome-slide-desc">Te llevamos paso a paso. Tu próxima parada es configurar tus bolsillos. Tranquilo, te tomará menos de 5 minutos.</p>
+      <ul class="welcome-slide-features">
+        <li>Verás un checklist en el resumen</li>
+        <li>Cada paso suma a tu progreso</li>
+        <li>Puedes editar todo cuando quieras</li>
+      </ul>
+    </div>
+
+    <!-- Footer con dots y botones -->
+    <div class="welcome-tour-footer">
+      <div class="welcome-dots" id="welcome-dots">
+        <div class="welcome-dot active"></div>
+        <div class="welcome-dot"></div>
+        <div class="welcome-dot"></div>
+        <div class="welcome-dot"></div>
+        <div class="welcome-dot"></div>
+      </div>
+      <button class="welcome-btn-skip" id="welcome-skip" onclick="closeWelcomeTour()">Saltar</button>
+      <button class="welcome-btn-next" id="welcome-next" onclick="nextWelcomeSlide()">Siguiente →</button>
+    </div>
+
   </div>
 </div>
 
@@ -460,7 +540,7 @@
         <p class="card-title" style="margin: 0;">💎 Rendimientos de tus ahorros</p>
         <div style="display: flex; gap: 8px; align-items: center; font-size: 12px;">
           <label style="color: var(--text-secondary);">Tasa anual:</label>
-          <input type="number" id="interest-rate" step="0.01" min="0" max="100" style="width: 80px; height: 30px; font-size: 12px;" />
+          <input type="number" inputmode="decimal" id="interest-rate" step="0.01" min="0" max="100" style="width: 80px; height: 30px; font-size: 12px;" />
           <span style="color: var(--text-secondary);">% EA</span>
         </div>
       </div>
@@ -510,7 +590,7 @@
         <p class="card-title">➕ Registrar gasto</p>
         <div class="quick-add">
           <input type="text" id="tx-desc" placeholder="¿En qué gastaste?" />
-          <input type="number" id="tx-amount" placeholder="Monto" min="0" step="0.01" />
+          <input type="number" inputmode="decimal" id="tx-amount" placeholder="Monto" min="0" step="0.01" />
           <select id="tx-category"></select>
           <button onclick="addTransaction()">Agregar</button>
         </div>
@@ -615,7 +695,7 @@
       <div style="display: grid; gap: 10px;">
         <input type="text" id="pocket-name" placeholder="Nombre del bolsillo (ej: Ahorros, Vacaciones)" />
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <input type="number" id="pocket-amount" placeholder="Monto actual" min="0" step="0.01" />
+          <input type="number" inputmode="decimal" id="pocket-amount" placeholder="Monto actual" min="0" step="0.01" />
           <select id="pocket-icon">
             <option value="💰">💰 Operativo</option>
             <option value="✈️">✈️ Viajes</option>
@@ -680,7 +760,7 @@
         <div>
           <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Genera rentabilidad?</label>
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
-            <input type="number" id="pocket-rate" placeholder="0 = no genera rentabilidad" min="0" max="50" step="0.01" value="0" />
+            <input type="number" inputmode="decimal" id="pocket-rate" placeholder="0 = no genera rentabilidad" min="0" max="50" step="0.01" value="0" />
             <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">% E.A.</span>
           </div>
           <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">
@@ -704,7 +784,7 @@
       <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Salario, rentas, suscripciones que recibes regularmente</p>
       <div class="form-row-3">
         <input type="text" id="income-name" placeholder="Concepto" />
-        <input type="number" id="income-amount" placeholder="Monto" min="0" step="0.01" />
+        <input type="number" inputmode="decimal" id="income-amount" placeholder="Monto" min="0" step="0.01" />
         <select id="income-frequency"><option value="monthly">Mensual</option><option value="biweekly">Quincenal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option><option value="once">Una sola vez</option></select>
         <button onclick="addIncome()">Agregar</button>
       </div>
@@ -720,7 +800,7 @@
       <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Bonos, devoluciones, regalos, ventas, freelance ocasional</p>
       <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center;">
         <input type="text" id="extra-desc" placeholder="¿De dónde viene?" />
-        <input type="number" id="extra-amount" placeholder="Monto" min="0" step="0.01" />
+        <input type="number" inputmode="decimal" id="extra-amount" placeholder="Monto" min="0" step="0.01" />
         <select id="extra-source"></select>
         <button onclick="addExtraIncome()">Agregar</button>
       </div>
@@ -829,9 +909,9 @@
 
       <div class="form-row-debt" id="debt-form">
         <input type="text" id="debt-name" placeholder="Nombre de la tarjeta" />
-        <input type="number" id="debt-balance" placeholder="Saldo actual" min="0" step="0.01" />
-        <input type="number" id="debt-rate" placeholder="Tasa % anual" min="0" step="0.01" value="0" />
-        <input type="number" id="debt-payment" placeholder="Cupo total" min="0" step="0.01" />
+        <input type="number" inputmode="decimal" id="debt-balance" placeholder="Saldo actual" min="0" step="0.01" />
+        <input type="number" inputmode="decimal" id="debt-rate" placeholder="Tasa % anual" min="0" step="0.01" value="0" />
+        <input type="number" inputmode="decimal" id="debt-payment" placeholder="Cupo total" min="0" step="0.01" />
         <button onclick="addDebt()">Agregar</button>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
@@ -864,10 +944,10 @@
           <option value="cmr">CMR</option>
         </select>
         <input type="text" id="debt-digits" placeholder="Últimos 4 dígitos" maxlength="4" pattern="[0-9]{4}" />
-        <input type="number" id="debt-cutoff" placeholder="Día corte (1-31)" min="1" max="31" />
+        <input type="number" inputmode="numeric" id="debt-cutoff" placeholder="Día corte (1-31)" min="1" max="31" />
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
-        <input type="number" id="debt-cashback" placeholder="Cashback %" min="0" max="100" step="0.1" value="0" title="% de cashback que da esta tarjeta" />
+        <input type="number" inputmode="decimal" id="debt-cashback" placeholder="Cashback %" min="0" max="100" step="0.1" value="0" title="% de cashback que da esta tarjeta" />
         <input type="text" id="debt-benefits" placeholder="Beneficios (opcional)" />
       </div>
     </div>
@@ -887,8 +967,8 @@
       <p class="card-title">Agregar meta</p>
       <div class="form-row-goal">
         <input type="text" id="goal-name" placeholder="Meta" />
-        <input type="number" id="goal-target" placeholder="Monto objetivo" min="0" step="0.01" />
-        <input type="number" id="goal-current" placeholder="Ya ahorrado" min="0" step="0.01" value="0" />
+        <input type="number" inputmode="decimal" id="goal-target" placeholder="Monto objetivo" min="0" step="0.01" />
+        <input type="number" inputmode="decimal" id="goal-current" placeholder="Ya ahorrado" min="0" step="0.01" value="0" />
         <button onclick="addGoal()">Agregar</button>
       </div>
     </div>
@@ -1012,7 +1092,7 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
         <div>
           <label style="font-size: 11px; color: var(--text-secondary);">Puntaje de este reporte</label>
-          <input type="number" id="cr-score-upload" placeholder="ej. 691" min="150" max="950" />
+          <input type="number" inputmode="numeric" id="cr-score-upload" placeholder="ej. 691" min="150" max="950" />
         </div>
         <div>
           <label style="font-size: 11px; color: var(--text-secondary);">Fecha del reporte</label>
@@ -1266,6 +1346,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>

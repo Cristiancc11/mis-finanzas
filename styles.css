@@ -4244,3 +4244,417 @@ button[onclick*="deleteReminder"]:active,
     padding: 12px !important;
   }
 }
+
+/* ============================================================
+   v35 — MOBILE OPTIMIZATION (Cristian, May 2026)
+   Mejora performance/UX móvil sin romper nada del desktop
+   ============================================================ */
+
+/* === 1. INPUTS CÓMODOS PARA MÓVIL === */
+/* Aplica a TODOS los inputs/selects/textareas de la app */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="search"],
+  input[type="url"],
+  input[type="date"],
+  input[type="month"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    font-size: 16px !important;     /* CRÍTICO: previene zoom automático en iOS */
+    min-height: 48px !important;    /* Touch target cómodo (Apple/Google guideline) */
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+    appearance: none;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Excepción: inputs muy pequeños inline (interest rate, etc) */
+  input[style*="width: 80px"],
+  input[style*="width: 60px"],
+  input[style*="width: 100px"] {
+    min-height: 40px !important;
+    font-size: 16px !important;
+    padding: 8px 10px !important;
+  }
+
+  /* Labels más legibles */
+  label {
+    font-size: 13px !important;
+  }
+
+  /* Botones principales más grandes en móvil */
+  button:not(.icon-btn):not(.btn-tab):not(.fin-tab):not(.tab-btn):not(.onboarding-dismiss):not(.toast-close):not(.modal-close):not(.fab) {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  /* Botón submit auth más cómodo */
+  #auth-submit, #auth-google {
+    min-height: 52px !important;
+    font-size: 15px !important;
+  }
+
+  /* Auto-focus removido en móvil para no abrir teclado de golpe */
+  body.is-mobile input:focus {
+    transform: none;
+  }
+}
+
+/* === 2. TIPOGRAFÍA RESPONSIVE === */
+@media (max-width: 768px) {
+  /* Subir mínimos: nada por debajo de 12px */
+  [style*="font-size: 11px"],
+  [style*="font-size:11px"] {
+    font-size: 12px !important;
+  }
+
+  /* Hero/montos principales: usar clamp para que escalen bien */
+  .hero-amount,
+  .summary-amount,
+  .big-number,
+  .pocket-amount,
+  .total-amount {
+    font-size: clamp(20px, 6vw, 32px) !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  /* Patrimonio total - número estrella */
+  #total-amount,
+  #patrimonio-total,
+  .net-worth-amount {
+    font-size: clamp(22px, 7vw, 36px) !important;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  /* Cards de bolsillos: amount no se corta */
+  .pocket-card .pocket-amount,
+  .raised-card [class*="amount"] {
+    font-size: clamp(15px, 4.5vw, 18px) !important;
+    word-break: break-word;
+  }
+
+  /* Títulos de sección más legibles */
+  h1 { font-size: clamp(20px, 5.5vw, 26px) !important; }
+  h2 { font-size: clamp(17px, 4.5vw, 22px) !important; }
+  h3 { font-size: clamp(15px, 4vw, 18px) !important; }
+
+  /* Contadores de tarjetas (saldo grande) */
+  .debt-card-amount,
+  .card-balance {
+    font-size: clamp(16px, 5vw, 22px) !important;
+  }
+}
+
+/* En pantallas muy chicas (<380px - iPhone SE), aún más compacto */
+@media (max-width: 380px) {
+  .fin-container {
+    padding: 10px !important;
+  }
+
+  /* Reducir gaps en grids para evitar overflow */
+  .summary-grid,
+  .pocket-grid,
+  .card-grid {
+    gap: 8px !important;
+  }
+}
+
+/* === 3. GRÁFICOS Y TABLAS LEGIBLES EN MÓVIL === */
+@media (max-width: 768px) {
+  /* Wrapper para charts: scroll horizontal cuando hay overflow */
+  .chart-container,
+  .recharts-wrapper,
+  [class*="chart-wrapper"] {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    position: relative;
+  }
+
+  /* Indicador "desliza →" cuando hay scroll */
+  .chart-container::after,
+  [class*="chart-wrapper"]::after {
+    content: '⇢ desliza';
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
+    font-size: 10px;
+    color: var(--text-tertiary, #888);
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 999px;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  /* Tablas con scroll horizontal */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Recharts: leyendas más compactas */
+  .recharts-legend-wrapper {
+    font-size: 11px !important;
+  }
+
+  /* Tooltip más grande para dedos */
+  .recharts-tooltip-wrapper {
+    font-size: 13px !important;
+  }
+}
+
+/* === 4. TOUR DE BIENVENIDA (welcome modal) === */
+.welcome-tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.welcome-tour-modal {
+  background: var(--bg-primary);
+  border-radius: 20px;
+  max-width: 460px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-slide {
+  padding: 32px 28px 24px;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 380px;
+}
+
+.welcome-slide-icon {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #7F77DD, #1D9E75);
+  border-radius: 24px;
+  font-size: 42px;
+  box-shadow: 0 12px 40px rgba(127, 119, 221, 0.35);
+  animation: bounceIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-slide-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.welcome-slide-desc {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.welcome-slide-features {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.welcome-slide-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.welcome-slide-features li::before {
+  content: '✓';
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--success-bg, #E1F5EE);
+  color: var(--success-text, #0F6E56);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.welcome-tour-footer {
+  padding: 16px 28px 24px;
+  border-top: 1px solid var(--border-color, rgba(0,0,0,0.06));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.welcome-dots {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.welcome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-color, rgba(0,0,0,0.15));
+  transition: all 0.3s ease;
+}
+
+.welcome-dot.active {
+  background: linear-gradient(135deg, #7F77DD, #1D9E75);
+  width: 24px;
+  border-radius: 999px;
+}
+
+.welcome-btn-skip {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 12px;
+  text-decoration: underline;
+}
+
+.welcome-btn-next {
+  background: linear-gradient(135deg, #7F77DD, #1D9E75);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 44px;
+  box-shadow: 0 4px 14px rgba(127, 119, 221, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.welcome-btn-next:active {
+  transform: scale(0.97);
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.1); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Móvil: tour ocupa más pantalla */
+@media (max-width: 480px) {
+  .welcome-tour-overlay {
+    padding: 12px;
+  }
+  .welcome-slide {
+    padding: 24px 20px 20px;
+    min-height: 340px;
+  }
+  .welcome-slide-icon {
+    width: 72px;
+    height: 72px;
+    font-size: 36px;
+  }
+  .welcome-slide-title {
+    font-size: 19px;
+  }
+  .welcome-slide-desc {
+    font-size: 14px;
+  }
+}
+
+/* === 5. ONBOARDING CHECKLIST MEJORADO === */
+.onboarding-checklist {
+  /* Forzar visibilidad por default - JS decide cuándo ocultar */
+  animation: slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Animación de pulso en pasos pendientes */
+.onboarding-step:not(.completed) .onboarding-step-check {
+  animation: pulseSubtle 2.5s ease-in-out infinite;
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Celebración al completar paso */
+.onboarding-step.completed .onboarding-step-check {
+  background: linear-gradient(135deg, #1D9E75, #5DCAA5);
+  color: white;
+  border: none;
+  animation: checkPop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.onboarding-step.completed {
+  opacity: 0.7;
+}
+
+.onboarding-step.completed .onboarding-step-title {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+/* Móvil: checklist más compacto */
+@media (max-width: 768px) {
+  .onboarding-step {
+    padding: 12px !important;
+  }
+  .onboarding-step-title {
+    font-size: 14px !important;
+  }
+  .onboarding-step-desc {
+    font-size: 12px !important;
+  }
+}

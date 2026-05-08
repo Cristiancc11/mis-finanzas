@@ -59,6 +59,8 @@ async function checkAuth() {
       hideAuthScreen();
       // Mostrar botón migrar si hay datos locales
       checkLocalData();
+      // v35: tour de bienvenida si es usuario nuevo
+      if (typeof maybeShowWelcomeTour === 'function') maybeShowWelcomeTour();
     } else {
       clearTimeout(safetyTimeout);
       hideLoadingScreen();
@@ -178,6 +180,7 @@ async function handleAuth() {
         await loadFromCloud();
         hideLoadingScreen();
         checkLocalData();
+        if (typeof maybeShowWelcomeTour === 'function') maybeShowWelcomeTour();
       }, 800);
     } else {
       currentUser = result.data.user;
@@ -191,6 +194,7 @@ async function handleAuth() {
       await loadFromCloud();
       hideLoadingScreen();
       checkLocalData();
+      if (typeof maybeShowWelcomeTour === 'function') maybeShowWelcomeTour();
     }
   } catch (e) {
     console.error('Auth error:', e);
@@ -534,6 +538,128 @@ document.addEventListener('keydown', function(e) {
 // Exponer funciones al scope global
 window.handleAuth = handleAuth;
 window.handleGoogleSignIn = handleGoogleSignIn;
+
+// ============================================================
+// TOUR DE BIENVENIDA v35 (5 slides para usuarios nuevos)
+// ============================================================
+const WELCOME_TOUR_KEY = 'finanzaspro-welcome-tour-seen-v1';
+let currentWelcomeSlide = 0;
+const TOTAL_WELCOME_SLIDES = 5;
+
+function shouldShowWelcomeTour() {
+  // No mostrar si ya lo vio antes
+  if (localStorage.getItem(WELCOME_TOUR_KEY) === '1') return false;
+  // No mostrar si tiene datos significativos (es usuario existente)
+  try {
+    if (state && state.pockets && state.pockets.length > 2) return false;
+    if (state && state.debts && state.debts.length > 0) return false;
+  } catch (e) {}
+  return true;
+}
+
+function showWelcomeTour() {
+  const overlay = document.getElementById('welcome-tour');
+  if (!overlay) return;
+  currentWelcomeSlide = 0;
+  updateWelcomeSlide();
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeWelcomeTour() {
+  const overlay = document.getElementById('welcome-tour');
+  if (!overlay) return;
+  overlay.style.display = 'none';
+  document.body.style.overflow = '';
+  try { localStorage.setItem(WELCOME_TOUR_KEY, '1'); } catch (e) {}
+  // Forzar mostrar el onboarding-checklist tras cerrar el tour
+  setTimeout(() => {
+    if (typeof updateOnboardingChecklist === 'function') {
+      updateOnboardingChecklist();
+    }
+    const checklist = document.getElementById('onboarding-checklist');
+    if (checklist && shouldShowOnboardingChecklist()) {
+      checklist.style.display = 'block';
+    }
+  }, 300);
+}
+
+function shouldShowOnboardingChecklist() {
+  // Mostrar si hay <3 bolsillos o no hay tarjetas o no hay ingresos
+  try {
+    const fewPockets = !state.pockets || state.pockets.length < 3;
+    const noDebts = !state.debts || state.debts.length === 0;
+    const noIncomes = !state.incomes || state.incomes.length === 0;
+    return fewPockets || noDebts || noIncomes;
+  } catch (e) {
+    return true;
+  }
+}
+
+function nextWelcomeSlide() {
+  currentWelcomeSlide++;
+  if (currentWelcomeSlide >= TOTAL_WELCOME_SLIDES) {
+    closeWelcomeTour();
+    return;
+  }
+  updateWelcomeSlide();
+}
+
+function updateWelcomeSlide() {
+  // Ocultar todos los slides
+  const slides = document.querySelectorAll('.welcome-slide');
+  slides.forEach((s, i) => {
+    s.style.display = (i === currentWelcomeSlide) ? 'flex' : 'none';
+  });
+
+  // Actualizar dots
+  const dots = document.querySelectorAll('.welcome-dot');
+  dots.forEach((d, i) => {
+    d.classList.toggle('active', i === currentWelcomeSlide);
+  });
+
+  // Actualizar botón
+  const nextBtn = document.getElementById('welcome-next');
+  const skipBtn = document.getElementById('welcome-skip');
+  if (nextBtn) {
+    if (currentWelcomeSlide === TOTAL_WELCOME_SLIDES - 1) {
+      nextBtn.textContent = '¡Empezar! 🚀';
+    } else {
+      nextBtn.textContent = 'Siguiente →';
+    }
+  }
+  if (skipBtn) {
+    skipBtn.style.visibility = (currentWelcomeSlide === TOTAL_WELCOME_SLIDES - 1) ? 'hidden' : 'visible';
+  }
+}
+
+// Disparador: tras cargar datos exitosamente, decidir si mostrar tour
+function maybeShowWelcomeTour() {
+  setTimeout(() => {
+    if (shouldShowWelcomeTour()) {
+      showWelcomeTour();
+    } else {
+      // Si no ve el tour pero es usuario nuevo, asegurar que vea el checklist
+      const checklist = document.getElementById('onboarding-checklist');
+      if (checklist && shouldShowOnboardingChecklist()) {
+        checklist.style.display = 'block';
+      }
+    }
+  }, 600);
+}
+
+// Detectar si es móvil para clases body útiles
+(function detectMobile() {
+  try {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 769;
+    if (isMobile) document.body.classList.add('is-mobile');
+  } catch (e) {}
+})();
+
+window.closeWelcomeTour = closeWelcomeTour;
+window.nextWelcomeSlide = nextWelcomeSlide;
+window.showWelcomeTour = showWelcomeTour;
+window.maybeShowWelcomeTour = maybeShowWelcomeTour;
 window.handleLogout = handleLogout;
 window.switchAuthTab = switchAuthTab;
 window.migrateLocalData = migrateLocalData;
