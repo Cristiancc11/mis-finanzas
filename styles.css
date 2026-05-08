@@ -5126,16 +5126,24 @@ button[onclick*="deleteReminder"]:active,
   cursor: pointer;
 }
 
-/* v37.3: Backdrop siempre visible al abrir filtros */
+/* v37.4: Backdrop SOLO en móvil donde el panel es bottom-sheet flotante.
+   En PC el panel es inline y no necesita overlay (causaba blur a toda la pantalla). */
 .tx-filters-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  z-index: 9998;
-  cursor: pointer;
-  animation: fadeIn 0.2s ease;
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .tx-filters-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 9998;
+    cursor: pointer;
+    animation: fadeIn 0.2s ease;
+  }
 }
 
 @keyframes fadeIn {

@@ -3235,78 +3235,14 @@ let transactionFilters = {
 };
 
 function injectTransactionFilters() {
-  const txList = document.getElementById('tx-list-container') || document.getElementById('transaction-list');
-  if (!txList) return;
-
-  // Solo agregar si no existen los filtros
-  if (document.getElementById('tx-filters-bar')) return;
-
-  const filtersBar = document.createElement('div');
-  filtersBar.id = 'tx-filters-bar';
-  filtersBar.className = 'raised-card';
-  filtersBar.style.marginBottom = '12px';
-  filtersBar.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; cursor: pointer;" onclick="toggleFiltersPanel()">
-      <p class="card-title" style="margin: 0;">🔍 Buscar y filtrar transacciones</p>
-      <span id="filters-toggle-icon" style="font-size: 14px; color: var(--text-secondary);">▼</span>
-    </div>
-    <div id="tx-filters-panel" style="display: none;">
-      <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px;">
-        <input type="text" id="tx-filter-search" placeholder="🔍 Buscar por descripción..." />
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-        <select id="tx-filter-category"><option value="all">Todas las categorías</option></select>
-        <select id="tx-filter-method">
-          <option value="all">Todos los métodos</option>
-          <option value="tarjeta">💳 Tarjeta</option>
-          <option value="pse">🏦 PSE</option>
-          <option value="llave">🔑 Llave/Bre-B</option>
-          <option value="efectivo">💵 Efectivo</option>
-          <option value="debito">💳 Débito</option>
-        </select>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-        <input type="date" id="tx-filter-start" placeholder="Desde" />
-        <input type="date" id="tx-filter-end" placeholder="Hasta" />
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-        <button onclick="clearFilters()" style="font-size: 11px; padding: 6px 12px;">🗑️ Limpiar filtros</button>
-        <span id="filter-results-count" style="font-size: 12px; color: var(--text-secondary);"></span>
-      </div>
-    </div>
-  `;
-  txList.parentElement.insertBefore(filtersBar, txList);
-
-  // Llenar opciones de categorías
-  const catSelect = document.getElementById('tx-filter-category');
-  if (catSelect && typeof CATEGORIES !== 'undefined') {
-    // CATEGORIES está dentro del IIFE, accedemos por el select original
-    const origCatSelect = document.getElementById('tx-category');
-    if (origCatSelect) {
-      Array.from(origCatSelect.options).forEach(opt => {
-        catSelect.innerHTML += `<option value="${opt.value}">${opt.textContent}</option>`;
-      });
-    }
-  }
-
-  // Listeners
-  ['tx-filter-search', 'tx-filter-category', 'tx-filter-method', 'tx-filter-start', 'tx-filter-end'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('input', applyTransactionFilters);
-      el.addEventListener('change', applyTransactionFilters);
-    }
-  });
+  // v37.4: DESACTIVADO. El sistema de filtros viejo se reemplazó por el nuevo v37.
+  // Ya NO inyecta nada porque colisiona con el panel nuevo y causa que reaparezca al cerrarlo.
+  return;
 }
 
 window.toggleFiltersPanel = function() {
-  const panel = document.getElementById('tx-filters-panel');
-  const icon = document.getElementById('filters-toggle-icon');
-  if (panel) {
-    const isHidden = panel.style.display === 'none';
-    panel.style.display = isHidden ? 'block' : 'none';
-    if (icon) icon.textContent = isHidden ? '▲' : '▼';
-  }
+  // v37.4: DESACTIVADO. Reemplazado por toggleTxFiltersPanel del nuevo sistema v37.
+  return;
 };
 
 window.clearFilters = function() {
@@ -3379,20 +3315,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 500);
 });
 
-// Re-aplicar filtros cada vez que se renderice
-const observer = new MutationObserver(() => {
-  if (document.getElementById('tx-filters-bar')) {
-    applyTransactionFilters();
-  } else {
-    injectTransactionFilters();
-  }
-});
-setTimeout(() => {
-  const txContainer = document.getElementById('section-presupuesto');
-  if (txContainer) {
-    observer.observe(txContainer, { childList: true, subtree: true });
-  }
-}, 2000);
+// v37.4: MutationObserver DESACTIVADO. Era para el sistema viejo de filtros y causaba
+// que el panel reapareciera constantemente al cerrarlo.
+// const observer = new MutationObserver(...);
+// (eliminado)
 
 // ============================================================
 // SEMANA 2 - IMPORTACIÓN, CALENDARIO, COMPARATIVAS, HORMIGAS
