@@ -454,6 +454,7 @@ document.addEventListener('click', function(e) {
     const modalCloseMap = {
       'reminder-modal': () => window.closeReminderModal && window.closeReminderModal(),
       'privacy-info-modal': () => window.closePrivacyInfo && window.closePrivacyInfo(),
+      'edit-card-modal': () => window.closeEditCardModal && window.closeEditCardModal(),
       'welcome-tutorial': () => {
         // No cerrar el tutorial al tocar fondo (debe ir paso a paso)
         return;
@@ -472,6 +473,8 @@ document.addEventListener('keydown', function(e) {
     // Buscar modales abiertos por orden de prioridad
     if (document.getElementById('reminder-modal')) {
       window.closeReminderModal && window.closeReminderModal();
+    } else if (document.getElementById('edit-card-modal')) {
+      window.closeEditCardModal && window.closeEditCardModal();
     } else if (document.getElementById('privacy-info-modal')) {
       window.closePrivacyInfo && window.closePrivacyInfo();
     }
@@ -7039,13 +7042,242 @@ async function buildAnnualPDF(state, year) {
 
     saveState(); renderAll();
   };
-  window.removeDebt = function(id) { state.debts = state.debts.filter(d => d.id !== id); saveState(); renderAll(); };
+  window.removeDebt = async function(id) {
+    const card = state.debts.find(x => x.id === id);
+    if (!card) return;
+    
+    let confirmed = false;
+    const message = card.balance > 0 
+      ? `Vas a eliminar "${card.name}" que tiene un saldo pendiente de ${fmt(card.balance)}. Esta acción no se puede deshacer.`
+      : `Vas a eliminar "${card.name}". Esta acción no se puede deshacer.`;
+    
+    if (typeof showConfirm === 'function') {
+      confirmed = await showConfirm({
+        title: '¿Eliminar tarjeta?',
+        message: message,
+        confirmText: 'Sí, eliminar',
+        cancelText: 'Cancelar',
+        type: 'danger',
+        icon: '🗑️'
+      });
+    } else {
+      confirmed = confirm(message);
+    }
+    
+    if (!confirmed) return;
+    
+    state.debts = state.debts.filter(d => d.id !== id);
+    saveState(); 
+    renderAll();
+    
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Tarjeta eliminada', `"${card.name}" se eliminó correctamente`);
+    }
+  };
+  
   window.updateDebt = function(id, field, val) {
     const d = state.debts.find(x => x.id === id);
     if (d) {
       if (field === 'balance') d.balance = parseFloat(val) || 0;
       else if (field === 'cutoffDay') d.cutoffDay = parseInt(val) || null;
       saveState(); renderResumen(); renderDebts();
+    }
+  };
+  
+  // ============================================================
+  // EDITAR TARJETA - Modal completo
+  // ============================================================
+  window.editCard = function(cardId) {
+    const card = state.debts.find(d => d.id === cardId);
+    if (!card) {
+      if (typeof toastError === 'function') {
+        toastError('Error', 'No se encontró la tarjeta');
+      }
+      return;
+    }
+    
+    // Limpiar modal previo
+    const existing = document.getElementById('edit-card-modal');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'edit-card-modal';
+    overlay.className = 'tutorial-overlay';
+    
+    // Listas de bancos y tipos de tarjeta para los selects
+    const bankOptions = Object.keys(BANK_INFO || {}).map(key => {
+      const info = BANK_INFO[key];
+      return `<option value="${key}" ${card.bank === key ? 'selected' : ''}>${info.name}</option>`;
+    }).join('');
+    
+    const brandOptions = Object.keys(BRAND_INFO || {}).map(key => {
+      const info = BRAND_INFO[key];
+      return `<option value="${key}" ${card.brand === key ? 'selected' : ''}>${info.name}</option>`;
+    }).join('');
+    
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 480px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeEditCardModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">💳</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">Editar tarjeta</h2>
+          <p class="tutorial-subtitle">${esc(card.name)}</p>
+        </div>
+        
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Nombre de la tarjeta</label>
+              <input type="text" id="edit-card-name" value="${esc(card.name)}" placeholder="Ej: RappiCard Davivienda" style="width: 100%; padding: 10px 12px; height: 42px;" />
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Banco</label>
+                <select id="edit-card-bank" style="width: 100%;">
+                  ${bankOptions}
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Marca</label>
+                <select id="edit-card-brand" style="width: 100%;">
+                  ${brandOptions}
+                </select>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Cupo total</label>
+                <input type="number" id="edit-card-payment" value="${card.payment || 0}" min="0" step="100000" placeholder="Cupo" style="width: 100%; padding: 10px 12px; height: 42px;" />
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Saldo actual</label>
+                <input type="number" id="edit-card-balance" value="${card.balance || 0}" min="0" step="1000" placeholder="Saldo" style="width: 100%; padding: 10px 12px; height: 42px;" />
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Día de corte</label>
+                <input type="number" id="edit-card-cutoff" value="${card.cutoffDay || ''}" min="1" max="31" placeholder="Ej: 28" style="width: 100%; padding: 10px 12px; height: 42px;" />
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Últimos 4 dígitos</label>
+                <input type="text" id="edit-card-digits" value="${card.lastDigits || ''}" maxlength="4" placeholder="3101" style="width: 100%; padding: 10px 12px; height: 42px;" />
+              </div>
+            </div>
+            
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; font-weight: 500;">Tasa interés (% mensual, opcional)</label>
+              <input type="number" id="edit-card-rate" value="${card.rate || 0}" min="0" max="10" step="0.01" placeholder="Ej: 2.5" style="width: 100%; padding: 10px 12px; height: 42px;" />
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 4px 0 0;">
+                💡 Solo si la usas para diferir compras a cuotas con interés
+              </p>
+            </div>
+            
+            <div style="background: var(--info-bg); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--info-text);">
+              <p style="font-size: 11px; color: var(--info-text); margin: 0; line-height: 1.5;">
+                ℹ️ Si cambias el cupo o saldo, la utilización se recalcula automáticamente.
+              </p>
+            </div>
+            
+          </div>
+        </div>
+        
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeEditCardModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="saveEditCard(${cardId})">💾 Guardar cambios</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+    
+    // Focus en el primer input
+    setTimeout(() => {
+      const nameInput = document.getElementById('edit-card-name');
+      if (nameInput) {
+        nameInput.focus();
+        nameInput.select();
+      }
+    }, 200);
+  };
+  
+  window.closeEditCardModal = function() {
+    const modal = document.getElementById('edit-card-modal');
+    if (modal) {
+      modal.remove();
+      if (typeof unlockBody === 'function') unlockBody();
+    }
+  };
+  
+  window.saveEditCard = function(cardId) {
+    const card = state.debts.find(d => d.id === cardId);
+    if (!card) {
+      if (typeof toastError === 'function') {
+        toastError('Error', 'No se encontró la tarjeta');
+      }
+      return;
+    }
+    
+    // Obtener valores nuevos
+    const name = document.getElementById('edit-card-name').value.trim();
+    const bank = document.getElementById('edit-card-bank').value;
+    const brand = document.getElementById('edit-card-brand').value;
+    const payment = parseFloat(document.getElementById('edit-card-payment').value) || 0;
+    const balance = parseFloat(document.getElementById('edit-card-balance').value) || 0;
+    const cutoffDay = parseInt(document.getElementById('edit-card-cutoff').value) || null;
+    const lastDigits = document.getElementById('edit-card-digits').value.trim();
+    const rate = parseFloat(document.getElementById('edit-card-rate').value) || 0;
+    
+    // Validaciones
+    if (!name) {
+      if (typeof toastError === 'function') {
+        toastError('Falta nombre', 'La tarjeta necesita un nombre');
+      }
+      return;
+    }
+    
+    if (payment <= 0) {
+      if (typeof toastError === 'function') {
+        toastError('Cupo inválido', 'El cupo debe ser mayor a $0');
+      }
+      return;
+    }
+    
+    if (cutoffDay && (cutoffDay < 1 || cutoffDay > 31)) {
+      if (typeof toastError === 'function') {
+        toastError('Día inválido', 'El día de corte debe estar entre 1 y 31');
+      }
+      return;
+    }
+    
+    if (lastDigits && lastDigits.length !== 4) {
+      if (typeof toastError === 'function') {
+        toastError('Dígitos inválidos', 'Deben ser exactamente 4 dígitos (o vacío)');
+      }
+      return;
+    }
+    
+    // Actualizar tarjeta
+    card.name = name;
+    card.bank = bank;
+    card.brand = brand;
+    card.payment = payment;
+    card.balance = balance;
+    card.cutoffDay = cutoffDay;
+    card.lastDigits = lastDigits;
+    card.rate = rate;
+    
+    saveState();
+    closeEditCardModal();
+    renderAll();
+    
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Tarjeta actualizada', `"${name}" se actualizó correctamente`);
     }
   };
 
@@ -7495,9 +7727,21 @@ async function buildAnnualPDF(state, year) {
         }
 
         return `<div class="card-detail-section">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <strong style="font-size: 14px;">${esc(d.name)} · ${brand.name}</strong>
-            <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--bg-secondary); color: var(--text-secondary);">${bank.name}</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px;">
+            <div style="flex: 1; min-width: 0;">
+              <strong style="font-size: 14px;">${esc(d.name)} · ${brand.name}</strong>
+              <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">
+                ${bank.name} · Termina en ${lastDigits}
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+              <button onclick="editCard(${d.id})" style="background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                ✏️ <span class="btn-text">Editar</span>
+              </button>
+              <button onclick="removeDebt(${d.id})" style="background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                🗑️ <span class="btn-text">Eliminar</span>
+              </button>
+            </div>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
             <span>Utilización: <strong>${u}%</strong></span>
@@ -7510,12 +7754,14 @@ async function buildAnnualPDF(state, year) {
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: var(--text-secondary);">📊 Compras este mes:</span><span style="font-weight: 500;">${cardStats.txCount} (${fmt(cardStats.totalSpent)})</span></div>
             <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">💰 Cashback ganado:</span><span style="font-weight: 500; color: var(--success-text);">+${fmt(cardStats.totalCashback)}</span></div>
           </div>` : ''}
-          <div style="display: grid; grid-template-columns: 1fr 100px auto auto; gap: 8px; margin-top: 10px; align-items: center;">
-            <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, 'balance', this.value)" placeholder="Saldo" />
+          <div style="display: grid; grid-template-columns: 1fr 100px auto; gap: 8px; margin-top: 10px; align-items: center;">
+            <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, 'balance', this.value)" placeholder="Saldo actual" title="Editar saldo rápido" />
             <input type="number" value="${d.cutoffDay || ''}" min="1" max="31" onchange="updateDebt(${d.id}, 'cutoffDay', this.value)" placeholder="Día corte" title="Día del mes que cierra el periodo" />
-            <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">corte</span>
-            <button class="delete-btn" onclick="removeDebt(${d.id})">×</button>
+            <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">día corte</span>
           </div>
+          <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0; text-align: center;">
+            💡 Para cambiar nombre, cupo o número, usa el botón "Editar" arriba
+          </p>
         </div>`;
       }).join('');
     }
