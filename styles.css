@@ -5183,7 +5183,8 @@ button[onclick*="deleteReminder"]:active,
     animation: fadeIn 0.2s ease;
   }
 
-  /* Panel: bottom sheet en móvil */
+  /* v37.5: Panel SOLO visible cuando está abierto (body class).
+     Antes el !important pisaba el style="display:none" del HTML. */
   .tx-filters-panel {
     position: fixed !important;
     inset: auto 0 0 0;
@@ -5191,12 +5192,16 @@ button[onclick*="deleteReminder"]:active,
     z-index: 9999;
     border-radius: 20px 20px 0 0;
     max-height: 88vh;
-    display: flex !important;
     flex-direction: column;
     background: var(--bg-primary, #1a1a2e);
     box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
     animation: txPanelSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
+    display: none;
+  }
+
+  body.tx-filters-open .tx-filters-panel {
+    display: flex !important;
   }
 
   @keyframes txPanelSlideUp {
