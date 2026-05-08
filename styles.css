@@ -5147,6 +5147,17 @@ button[onclick*="deleteReminder"]:active,
     font-size: 16px !important;
   }
 
+  /* Backdrop overlay (clickeable para cerrar) */
+  .tx-filters-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 9998;
+    animation: fadeIn 0.2s ease;
+  }
+
   /* Panel: bottom sheet en móvil */
   .tx-filters-panel {
     position: fixed !important;
@@ -5160,6 +5171,7 @@ button[onclick*="deleteReminder"]:active,
     background: var(--bg-primary, #1a1a2e);
     box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
     animation: txPanelSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
   }
 
   @keyframes txPanelSlideUp {
@@ -5167,26 +5179,18 @@ button[onclick*="deleteReminder"]:active,
     to { transform: translateY(0); }
   }
 
-  /* Backdrop overlay */
-  body.tx-filters-open::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(2px);
-    z-index: 9998;
-    animation: fadeIn 0.2s ease;
-  }
-
   body.tx-filters-open {
     overflow: hidden;
   }
 
-  /* Header del panel: drag handle visual */
+  /* Header del panel STICKY en móvil */
   .tx-filters-panel-header {
     position: relative;
     padding: 18px 16px 14px;
     border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+    background: var(--bg-primary, #1a1a2e);
+    flex-shrink: 0;
+    z-index: 2;
   }
 
   .tx-filters-panel-header::before {
@@ -5201,12 +5205,34 @@ button[onclick*="deleteReminder"]:active,
     border-radius: 2px;
   }
 
+  /* Botón de cerrar más grande y visible en móvil */
+  .tx-filters-close {
+    width: 44px !important;
+    height: 44px !important;
+    background: rgba(255,255,255,0.08) !important;
+    border-radius: 50% !important;
+    font-size: 18px !important;
+    border: 0;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .tx-filters-close:active {
+    background: rgba(255,255,255,0.15) !important;
+    transform: scale(0.95);
+  }
+
   .tx-filters-panel-body {
     padding: 18px 16px;
     gap: 18px;
     overflow-y: auto;
     flex: 1;
     -webkit-overflow-scrolling: touch;
+    min-height: 0;
   }
 
   .tx-filter-checkboxes {
@@ -5262,6 +5288,8 @@ button[onclick*="deleteReminder"]:active,
     background: var(--bg-primary, #1a1a2e);
     border-top: 1px solid var(--border-color, rgba(255,255,255,0.08));
     box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+    z-index: 2;
   }
 
   .tx-filter-btn-clear,
@@ -5270,7 +5298,6 @@ button[onclick*="deleteReminder"]:active,
     font-size: 14px;
   }
 
-  /* Chips: scrollable horizontal en móvil para no romper layout */
   .tx-active-chips {
     flex-wrap: wrap;
     gap: 6px;

@@ -2731,18 +2731,19 @@ window.dismissOnboarding = async function() {
 
   if (!confirmed) return;
 
-  // v37.1: el setItem está interceptado y sincroniza automáticamente con Supabase
+  // v37.2: actualizar state EN MEMORIA primero (eso es la fuente de verdad del IIFE)
+  // Luego saveState() persiste a localStorage + Supabase vía interceptor
   try {
-    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
-    if (stateRaw) {
-      const localState = JSON.parse(stateRaw);
-      localState.onboardingDismissed = true;
-      // Esto dispara el interceptor que sincroniza con Supabase automáticamente
-      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(localState));
-    }
-    // Sincronizar también el state en memoria del IIFE
-    if (typeof window.syncOnboardingDismissed === 'function') {
-      window.syncOnboardingDismissed(true);
+    if (typeof window.persistOnboardingDismissed === 'function') {
+      window.persistOnboardingDismissed(true);
+    } else {
+      // Fallback (no debería pasar)
+      const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+      if (stateRaw) {
+        const localState = JSON.parse(stateRaw);
+        localState.onboardingDismissed = true;
+        localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(localState));
+      }
     }
   } catch(e) {
     console.error('Error guardando dismiss del onboarding:', e);
@@ -2761,18 +2762,32 @@ window.dismissOnboarding = async function() {
 // Función para resetear el onboarding (desde Perfil)
 window.resetOnboarding = function() {
   try {
-    const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
-    if (stateRaw) {
-      const state = JSON.parse(stateRaw);
-      state.onboardingDismissed = false;
-      localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+    // v37.2: usar el helper que actualiza state IIFE y persiste correctamente
+    if (typeof window.persistOnboardingDismissed === 'function') {
+      window.persistOnboardingDismissed(false);
+    } else {
+      // Fallback
+      const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
+      if (stateRaw) {
+        const localState = JSON.parse(stateRaw);
+        localState.onboardingDismissed = false;
+        localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(localState));
+      }
     }
     updateOnboardingChecklist();
+    // Mostrar el checklist
+    const checklist = document.getElementById('onboarding-checklist');
+    if (checklist) {
+      checklist.style.opacity = '1';
+      checklist.style.display = 'block';
+    }
     // Navegar a resumen
     const resumenTab = document.querySelector('.fin-tab[data-tab="resumen"]');
     if (resumenTab) resumenTab.click();
     toastSuccess('Guía activada', 'Verás el checklist en tu Resumen');
-  } catch(e) {}
+  } catch(e) {
+    console.error('Error reseteando onboarding:', e);
+  }
 };
 
 // ============================================================
@@ -8452,15 +8467,50 @@ async function buildAnnualPDF(state, year) {
   function toggleTxFiltersPanel() {
     const panel = document.getElementById('tx-filters-panel');
     if (!panel) return;
-    if (panel.style.display === 'none' || !panel.style.display) {
-      populateTxFilterOptions();
-      syncTxFilterPanelUI();
-      panel.style.display = 'block';
-      document.body.classList.add('tx-filters-open');
+    const isOpen = panel.style.display === 'block' || panel.style.display === 'flex';
+    if (!isOpen) {
+      openTxFiltersPanel();
     } else {
-      panel.style.display = 'none';
-      document.body.classList.remove('tx-filters-open');
+      closeTxFiltersPanel();
     }
+  }
+
+  function openTxFiltersPanel() {
+    const panel = document.getElementById('tx-filters-panel');
+    if (!panel) return;
+    populateTxFilterOptions();
+    syncTxFilterPanelUI();
+    panel.style.display = 'block';
+    document.body.classList.add('tx-filters-open');
+
+    // v37.2: backdrop real clickeable para cerrar (móvil)
+    if (window.innerWidth <= 768) {
+      let backdrop = document.getElementById('tx-filters-backdrop');
+      if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'tx-filters-backdrop';
+        backdrop.className = 'tx-filters-backdrop';
+        backdrop.onclick = closeTxFiltersPanel;
+        document.body.appendChild(backdrop);
+      }
+      backdrop.style.display = 'block';
+    }
+
+    // Cerrar con tecla Escape
+    document.addEventListener('keydown', onTxFiltersEscape);
+  }
+
+  function closeTxFiltersPanel() {
+    const panel = document.getElementById('tx-filters-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.classList.remove('tx-filters-open');
+    const backdrop = document.getElementById('tx-filters-backdrop');
+    if (backdrop) backdrop.remove();
+    document.removeEventListener('keydown', onTxFiltersEscape);
+  }
+
+  function onTxFiltersEscape(e) {
+    if (e.key === 'Escape') closeTxFiltersPanel();
   }
 
   function populateTxFilterOptions() {
@@ -8516,8 +8566,7 @@ async function buildAnnualPDF(state, year) {
     window.txFilters.cashbackOnly = cb ? cb.checked : false;
     window.txFilters.categories = Array.from(document.querySelectorAll('#tx-filter-categories input[type="checkbox"]:checked')).map(i => i.value);
     // Cerrar panel y renderizar
-    document.getElementById('tx-filters-panel').style.display = 'none';
-    document.body.classList.remove('tx-filters-open');
+    closeTxFiltersPanel();
     renderTransactions();
   }
 
@@ -8535,17 +8584,22 @@ async function buildAnnualPDF(state, year) {
 
   // Exponer funciones para los onclick en HTML
   window.toggleTxFiltersPanel = toggleTxFiltersPanel;
+  window.closeTxFiltersPanel = closeTxFiltersPanel;
   window.applyTxFiltersFromPanel = applyTxFiltersFromPanel;
   window.clearTxFilters = clearTxFilters;
   window.removeTxFilterChip = removeTxFilterChip;
   window.onTxSearchInput = onTxSearchInput;
   window.clearTxSearch = clearTxSearch;
 
-  // v37.1: sincronizar onboardingDismissed con state en memoria
-  window.syncOnboardingDismissed = function(value) {
+  // v37.2: persistir onboardingDismissed correctamente (state en memoria + Supabase)
+  window.persistOnboardingDismissed = function(value) {
     state.onboardingDismissed = !!value;
-    // saveState ya se llamó vía localStorage.setItem, no duplicar
+    saveState(); // Esto dispara localStorage.setItem que es interceptado y sincroniza con Supabase
+    return state.onboardingDismissed;
   };
+
+  // Mantener compatibilidad por si algún código viejo la llama
+  window.syncOnboardingDismissed = window.persistOnboardingDismissed;
 
   function renderTransactions() {
     const list = document.getElementById('tx-list');
