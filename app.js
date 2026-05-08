@@ -237,10 +237,12 @@ async function loadFromCloud() {
 
     if (error && error.code !== 'PGRST116') throw error;
 
-    if (data && data.data && Object.keys(data.data).length > 0 && data.data.pockets) {
+    // CONDICIÓN MEJORADA: solo verificamos que haya datos en la nube (cualquier dato)
+    // No exigimos que tenga pockets específicamente, porque eso causaba que se borraran datos
+    if (data && data.data && typeof data.data === 'object' && Object.keys(data.data).length > 0) {
       // Hay datos en la nube → cargarlos
       localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(data.data));
-      console.log('✅ Datos cargados desde la nube');
+      console.log('✅ Datos cargados desde la nube. Bolsillos:', (data.data.pockets || []).length, 'Tarjetas:', (data.data.debts || []).length);
       updateSyncIndicator('Sincronizado ☁️');
     } else {
       // No hay datos en la nube → arrancar con datos según el tipo de usuario
@@ -249,7 +251,7 @@ async function loadFromCloud() {
 
       if (isOwner && typeof MY_STATE !== 'undefined') {
         // Si es el dueño, cargar sus datos
-        console.log('👑 Cargando datos del propietario');
+        console.log('👑 Cargando datos del propietario por primera vez');
         localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(MY_STATE));
         // Subir inmediatamente a la nube para que queden sincronizados
         await supabaseClient.from('dashboard_data').upsert({
