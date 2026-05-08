@@ -205,6 +205,54 @@ async function handleAuth() {
   }
 }
 
+// ============================================================
+// GOOGLE SIGN-IN (OAuth) - v34
+// ============================================================
+async function handleGoogleSignIn() {
+  const btn = document.getElementById('auth-google');
+
+  if (!initSupabase()) {
+    showAuthMessage('Error de conexión con Supabase', 'error');
+    return;
+  }
+
+  // Estado de carga
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    btn.style.cursor = 'wait';
+    const span = btn.querySelector('span');
+    if (span) span.textContent = 'Conectando con Google...';
+  }
+
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + window.location.pathname,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
+      }
+    });
+
+    if (error) throw error;
+    // Si todo va bien, Supabase redirige a Google y luego de vuelta automáticamente.
+    // checkAuth() detectará la sesión al volver y cargará los datos.
+  } catch (e) {
+    console.error('Google Sign-In error:', e);
+    showAuthMessage(e.message || 'Error al conectar con Google. Intenta de nuevo.', 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      const span = btn.querySelector('span');
+      if (span) span.textContent = 'Continuar con Google';
+    }
+  }
+}
+
 async function handleLogout() {
   const confirmed = await showConfirm({
     title: '¿Cerrar sesión?',
@@ -485,6 +533,7 @@ document.addEventListener('keydown', function(e) {
 
 // Exponer funciones al scope global
 window.handleAuth = handleAuth;
+window.handleGoogleSignIn = handleGoogleSignIn;
 window.handleLogout = handleLogout;
 window.switchAuthTab = switchAuthTab;
 window.migrateLocalData = migrateLocalData;
