@@ -9813,18 +9813,16 @@ async function buildAnnualPDF(state, year) {
         return;
       }
       
-      // v48 FIX: AUTO-DETECTAR montos personalizados en EDICIÓN
+      // v49 FIX: usar la variable del closure (igual que el preview del modal en línea 9466)
+      // Además mantenemos auto-detección como red de seguridad por si el usuario escribió
+      // valores sin pulsar el botón.
       const editCustomCheck = (typeof getCustomAmounts === 'function')
         ? getCustomAmounts('edit-tx-shared-custom-list')
         : {};
       const hasCustomValues = Object.values(editCustomCheck).some(v => v > 0);
-      // Leer el modo del botón si existe (puede no estar seteado)
-      const editSharedModeBtn = document.getElementById('edit-tx-shared-mode-custom');
-      const isCustomBtnActive = editSharedModeBtn && editSharedModeBtn.style.background &&
-        !editSharedModeBtn.style.background.includes('var(--bg-secondary)');
-      const useCustomMode = isCustomBtnActive || hasCustomValues;
+      const useCustomMode = (editSharedSplitMode === 'custom') || hasCustomValues;
       
-      console.log('🔍 EDIT MODO DETECTADO:', { hasCustomValues, isCustomBtnActive, useCustomMode, editCustomCheck });
+      console.log('🔍 EDIT MODO DETECTADO:', { editSharedSplitMode, hasCustomValues, useCustomMode, editCustomCheck });
       
       if (useCustomMode) {
         // Modo personalizado: usar los valores asignados a cada persona
@@ -9871,17 +9869,14 @@ async function buildAnnualPDF(state, year) {
         return;
       }
       
-      // v48 FIX: AUTO-DETECTAR montos personalizados en EDICIÓN (prestado)
+      // v49 FIX: usar la variable del closure (igual que el preview del modal en línea 9519)
       const editCustomCheckLent = (typeof getCustomAmounts === 'function')
         ? getCustomAmounts('edit-tx-lent-custom-list')
         : {};
       const hasCustomValuesLent = Object.values(editCustomCheckLent).some(v => v > 0);
-      const editLentModeBtn = document.getElementById('edit-tx-lent-mode-custom');
-      const isCustomBtnActiveLent = editLentModeBtn && editLentModeBtn.style.background &&
-        !editLentModeBtn.style.background.includes('var(--bg-secondary)');
-      const useCustomModeLent = isCustomBtnActiveLent || hasCustomValuesLent;
+      const useCustomModeLent = (editLentSplitMode === 'custom') || hasCustomValuesLent;
       
-      console.log('🔍 EDIT LENT MODO DETECTADO:', { hasCustomValuesLent, isCustomBtnActiveLent, useCustomModeLent, editCustomCheckLent });
+      console.log('🔍 EDIT LENT MODO DETECTADO:', { editLentSplitMode, hasCustomValuesLent, useCustomModeLent, editCustomCheckLent });
       
       if (useCustomModeLent) {
         newCustomAmountsByPerson = editCustomCheckLent;
