@@ -7626,9 +7626,19 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
+    // Verificar si los inputs ya existen y coinciden con los nombres
+    const existingInputs = Array.from(listEl.querySelectorAll('input[data-person]'));
+    const existingNames = existingInputs.map(inp => inp.getAttribute('data-person'));
+    
+    // Si los nombres coinciden exactamente, NO re-renderizar (preserva el foco)
+    if (existingNames.length === names.length && 
+        existingNames.every((n, i) => n === names[i])) {
+      return;  // No re-renderizar, los inputs ya están bien
+    }
+    
     // Preservar valores existentes
     const existingValues = {};
-    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+    existingInputs.forEach(inp => {
       const personName = inp.getAttribute('data-person');
       existingValues[personName] = inp.value;
     });
@@ -7661,8 +7671,17 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
+    const existingInputs = Array.from(listEl.querySelectorAll('input[data-person]'));
+    const existingNames = existingInputs.map(inp => inp.getAttribute('data-person'));
+    
+    // Si los nombres coinciden, no re-renderizar
+    if (existingNames.length === names.length && 
+        existingNames.every((n, i) => n === names[i])) {
+      return;
+    }
+    
     const existingValues = {};
-    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+    existingInputs.forEach(inp => {
       const personName = inp.getAttribute('data-person');
       existingValues[personName] = inp.value;
     });
@@ -7696,8 +7715,16 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
+    const existingInputs = Array.from(listEl.querySelectorAll('input[data-person]'));
+    const existingNames = existingInputs.map(inp => inp.getAttribute('data-person'));
+    
+    if (existingNames.length === names.length && 
+        existingNames.every((n, i) => n === names[i])) {
+      return;
+    }
+    
     const existingValues = {};
-    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+    existingInputs.forEach(inp => {
       const personName = inp.getAttribute('data-person');
       existingValues[personName] = inp.value;
     });
@@ -7730,8 +7757,16 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
+    const existingInputs = Array.from(listEl.querySelectorAll('input[data-person]'));
+    const existingNames = existingInputs.map(inp => inp.getAttribute('data-person'));
+    
+    if (existingNames.length === names.length && 
+        existingNames.every((n, i) => n === names[i])) {
+      return;
+    }
+    
     const existingValues = {};
-    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+    existingInputs.forEach(inp => {
       const personName = inp.getAttribute('data-person');
       existingValues[personName] = inp.value;
     });
