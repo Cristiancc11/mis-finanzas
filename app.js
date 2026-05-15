@@ -7485,6 +7485,94 @@ async function buildAnnualPDF(state, year) {
   };
 
   // ============================================================
+  // PERSONAS FRECUENTES con deudas activas
+  // ============================================================
+  
+  // Obtener lista única de personas con deudas no pagadas
+  function getFrequentPeople() {
+    if (!state.debtsToMe || !Array.isArray(state.debtsToMe)) return [];
+    
+    const peopleMap = {};
+    state.debtsToMe.forEach(d => {
+      if (d.paid) return;
+      const key = d.name.trim().toLowerCase();
+      if (!key) return;
+      
+      if (!peopleMap[key]) {
+        peopleMap[key] = {
+          name: d.name.trim(),
+          totalOwed: 0,
+          count: 0
+        };
+      }
+      peopleMap[key].totalOwed += (parseFloat(d.amount) || 0);
+      peopleMap[key].count += 1;
+    });
+    
+    // Ordenar por monto total descendente
+    return Object.values(peopleMap).sort((a, b) => b.totalOwed - a.totalOwed);
+  }
+  
+  // Renderizar chips de personas frecuentes
+  function renderFrequentPeopleChips(targetInputId, chipsContainerId, wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+    const container = document.getElementById(chipsContainerId);
+    if (!wrapper || !container) return;
+    
+    const people = getFrequentPeople();
+    
+    if (people.length === 0) {
+      wrapper.style.display = 'none';
+      return;
+    }
+    
+    wrapper.style.display = 'block';
+    container.innerHTML = people.slice(0, 10).map(person => {
+      const safeName = esc(person.name);
+      const safeNameEscaped = person.name.replace(/'/g, "\\'");
+      return `<button type="button" onclick="window.addPersonToInput('${targetInputId}', '${safeNameEscaped}')" 
+        style="background: var(--bg-secondary); border: 1px solid var(--border); padding: 5px 10px; border-radius: 16px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s;"
+        onmouseover="this.style.borderColor='var(--accent-from, #7F77DD)'; this.style.background='var(--bg-primary)';"
+        onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--bg-secondary)';"
+        title="Te debe ${fmt(person.totalOwed)} en ${person.count} ${person.count === 1 ? 'cuenta' : 'cuentas'}">
+        👤 <strong>${safeName}</strong>
+        <span style="color: var(--success-text); font-weight: 600;">${fmt(person.totalOwed)}</span>
+      </button>`;
+    }).join('');
+  }
+  
+  // Agregar persona al input (sumando si ya existe)
+  window.addPersonToInput = function(inputId, name) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const currentNames = input.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    // Verificar si ya está
+    const alreadyExists = currentNames.some(n => n.toLowerCase() === name.toLowerCase());
+    if (alreadyExists) {
+      // Quitar (toggle)
+      const filtered = currentNames.filter(n => n.toLowerCase() !== name.toLowerCase());
+      input.value = filtered.join(', ');
+    } else {
+      // Agregar
+      currentNames.push(name);
+      input.value = currentNames.join(', ');
+    }
+    
+    // Trigger recálculo
+    if (inputId === 'tx-shared-names') {
+      window.updateSharedCalculation();
+    } else if (inputId === 'tx-lent-names') {
+      window.updateLentCalculation();
+    } else if (inputId === 'edit-tx-shared-names') {
+      window.updateEditSharedCalculation();
+    } else if (inputId === 'edit-tx-lent-names') {
+      window.updateEditLentCalculation();
+    }
+  };
+
+  // ============================================================
   // SELECTOR DE TIPO DE GASTO: Personal / Compartido / Prestado
   // ============================================================
   window.setExpenseType = function(type) {
@@ -7516,11 +7604,15 @@ async function buildAnnualPDF(state, year) {
       if (isSharedCheck) isSharedCheck.checked = true;
       if (sharedRow) sharedRow.style.display = 'block';
       if (lentRow) lentRow.style.display = 'none';
+      // Renderizar chips de personas frecuentes
+      renderFrequentPeopleChips('tx-shared-names', 'tx-shared-frequent-chips', 'tx-shared-frequent');
       window.updateSharedCalculation();
     } else if (type === 'lent') {
       if (isSharedCheck) isSharedCheck.checked = false;
       if (sharedRow) sharedRow.style.display = 'none';
       if (lentRow) lentRow.style.display = 'block';
+      // Renderizar chips de personas frecuentes
+      renderFrequentPeopleChips('tx-lent-names', 'tx-lent-frequent-chips', 'tx-lent-frequent');
       window.updateLentCalculation();
     } else {
       // own
@@ -8859,6 +8951,8 @@ async function buildAnnualPDF(state, year) {
         totalInput.value = document.getElementById('edit-tx-amount')?.value || '';
       }
       
+      // Renderizar chips frecuentes
+      renderFrequentPeopleChips('edit-tx-shared-names', 'edit-tx-shared-frequent-chips', 'edit-tx-shared-frequent');
       window.updateEditSharedCalculation();
     } else if (type === 'lent') {
       if (isSharedCheck) isSharedCheck.checked = false;
@@ -8871,6 +8965,8 @@ async function buildAnnualPDF(state, year) {
         totalInput.value = document.getElementById('edit-tx-amount')?.value || '';
       }
       
+      // Renderizar chips frecuentes
+      renderFrequentPeopleChips('edit-tx-lent-names', 'edit-tx-lent-frequent-chips', 'edit-tx-lent-frequent');
       window.updateEditLentCalculation();
     } else {
       if (isSharedCheck) isSharedCheck.checked = false;
@@ -9656,6 +9752,14 @@ async function buildAnnualPDF(state, year) {
           </div>
           
           ${isExpanded ? `
+            ${person.items.length > 1 ? `
+              <div style="margin-top: 10px; padding: 10px; background: linear-gradient(135deg, rgba(29, 158, 117, 0.10), rgba(127, 119, 221, 0.08)); border-radius: 8px; border: 1px dashed rgba(29, 158, 117, 0.4); text-align: center;">
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">💡 ¿${esc(person.displayName)} te pagó TODO?</div>
+                <button onclick="event.stopPropagation(); markAllDebtsAsPaid('${esc(person.displayName.toLowerCase())}')" style="background: linear-gradient(135deg, var(--success-text), var(--accent-from, #7F77DD)); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 158, 117, 0.3);">
+                  ✓✓ Pagar TODO de una vez (${fmt(person.total)})
+                </button>
+              </div>
+            ` : ''}
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
               ${person.items.map(item => `
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px;">
@@ -9668,7 +9772,7 @@ async function buildAnnualPDF(state, year) {
                   </div>
                   <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                     <span style="font-size: 12px; font-weight: 600; color: var(--success-text);">${fmt(item.amount)}</span>
-                    <button onclick="event.stopPropagation(); markDebtAsPaid(${item.id})" style="background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Marcar como pagado">
+                    <button onclick="event.stopPropagation(); markDebtAsPaid(${item.id})" style="background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Marcar esta como pagada">
                       ✓ Pagado
                     </button>
                   </div>
@@ -9694,6 +9798,118 @@ async function buildAnnualPDF(state, year) {
   };
   
   // Función para marcar una deuda como pagada
+  // Marcar TODAS las deudas de una persona como pagadas
+  window.markAllDebtsAsPaid = async function(personNameLower) {
+    if (!state.debtsToMe) return;
+    
+    // Encontrar todas las deudas no pagadas de esa persona
+    const personDebts = state.debtsToMe.filter(d => 
+      !d.paid && d.name.toLowerCase() === personNameLower.toLowerCase()
+    );
+    
+    if (personDebts.length === 0) return;
+    
+    const total = personDebts.reduce((s, d) => s + d.amount, 0);
+    const personName = personDebts[0].name;
+    
+    // Preparar selector de bolsillos
+    let bolsillosOpts = '<option value="">No agregar a ningún bolsillo</option>';
+    if (state.pockets && state.pockets.length > 0) {
+      bolsillosOpts += state.pockets.map(p => `<option value="${p.id}">${p.icon} ${esc(p.name)}</option>`).join('');
+    }
+    
+    // Modal de confirmación
+    const existing = document.getElementById('mark-paid-modal');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'mark-paid-modal';
+    overlay.className = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 460px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">✓✓</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">Pagar TODO de ${esc(personName)}</h2>
+          <p class="tutorial-subtitle">${personDebts.length} ${personDebts.length === 1 ? 'cuenta' : 'cuentas'} · Total ${fmt(total)}</p>
+        </div>
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; border-left: 3px solid var(--success-text);">
+              <div style="font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; font-weight: 600;">CUENTAS QUE SE MARCARÁN COMO PAGADAS:</div>
+              ${personDebts.map(d => `
+                <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
+                  <span style="color: var(--text-secondary);">${esc(d.desc)}</span>
+                  <strong style="color: var(--success-text);">${fmt(d.amount)}</strong>
+                </div>
+              `).join('')}
+              <div style="display: flex; justify-content: space-between; padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--border);">
+                <strong style="font-size: 13px;">TOTAL</strong>
+                <strong style="font-size: 13px; color: var(--success-text);">${fmt(total)}</strong>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿En qué bolsillo recibiste el dinero?</label>
+              <select id="paid-all-pocket-select" style="width: 100%; padding: 10px 12px;">${bolsillosOpts}</select>
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Si seleccionas un bolsillo, ${fmt(total)} se sumarán automáticamente</p>
+            </div>
+          </div>
+        </div>
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmMarkAllPaid('${personNameLower}')">✓✓ Confirmar pago total</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+  };
+  
+  window.confirmMarkAllPaid = function(personNameLower) {
+    if (!state.debtsToMe) return;
+    
+    const personDebts = state.debtsToMe.filter(d => 
+      !d.paid && d.name.toLowerCase() === personNameLower.toLowerCase()
+    );
+    
+    if (personDebts.length === 0) return;
+    
+    const pocketIdEl = document.getElementById('paid-all-pocket-select');
+    const pocketId = pocketIdEl ? pocketIdEl.value : '';
+    const total = personDebts.reduce((s, d) => s + d.amount, 0);
+    const personName = personDebts[0].name;
+    const paidAt = Date.now();
+    
+    // Marcar TODAS como pagadas
+    personDebts.forEach(debt => {
+      debt.paid = true;
+      debt.paidAt = paidAt;
+      debt.paidToPocket = pocketId ? parseInt(pocketId) : null;
+    });
+    
+    // Si seleccionó bolsillo, agregar el total
+    if (pocketId) {
+      const pocket = state.pockets.find(p => p.id === parseInt(pocketId));
+      if (pocket) {
+        pocket.amount = (pocket.amount || 0) + total;
+      }
+    }
+    
+    saveState();
+    closeMarkPaidModal();
+    renderResumen();
+    renderPockets();
+    
+    if (typeof toastSuccess === 'function') {
+      toastSuccess(
+        `¡${personName} pagó TODO! 🎉`,
+        pocketId 
+          ? `${fmt(total)} agregado a tu bolsillo · ${personDebts.length} cuentas saldadas` 
+          : `${personDebts.length} cuentas marcadas como pagadas`
+      );
+    }
+  };
+
   window.markDebtAsPaid = async function(debtId) {
     if (!state.debtsToMe) return;
     

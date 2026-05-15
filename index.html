@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=42">
+<link rel="stylesheet" href="styles.css?v=43">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -254,8 +254,12 @@
             
             <div>
               <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">PERSONAS QUE TE DEBEN (sin contarte)</label>
-              <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Nombres separados por coma. Ej: <em>Andrés, María, Carlos</em></p>
-              <input type="text" id="edit-tx-shared-names" placeholder="Andrés, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="window.updateEditSharedCalculation()" />
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Nombres separados por coma o toca alguno frecuente abajo</p>
+              <input type="text" id="edit-tx-shared-names" placeholder="Andrés, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="window.updateEditSharedCalculation()" autocomplete="off" />
+              <div id="edit-tx-shared-frequent" style="display: none; margin-top: 8px;">
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas frecuentes:</div>
+                <div id="edit-tx-shared-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+              </div>
             </div>
 
             <div id="edit-tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-from, #7F77DD); display: none;">
@@ -296,8 +300,12 @@
             </div>
             <div>
               <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">¿A QUIÉN(ES) LE PRESTASTE LA TARJETA?</label>
-              <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Nombres separados por coma</p>
-              <input type="text" id="edit-tx-lent-names" placeholder="Daniel, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="window.updateEditLentCalculation()" />
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Nombres separados por coma o toca alguno frecuente abajo</p>
+              <input type="text" id="edit-tx-lent-names" placeholder="Daniel, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="window.updateEditLentCalculation()" autocomplete="off" />
+              <div id="edit-tx-lent-frequent" style="display: none; margin-top: 8px;">
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas con deuda activa:</div>
+                <div id="edit-tx-lent-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+              </div>
             </div>
 
             <div id="edit-tx-lent-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--success-text); display: none;">
@@ -848,8 +856,12 @@
             <div style="display: grid; gap: 10px;">
               <div>
                 <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">PERSONAS QUE TE DEBEN (sin contarte a ti)</label>
-                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Escribe los nombres separados por coma. Ej: <em>Andrés, María, Carlos</em></p>
-                <input type="text" id="tx-shared-names" placeholder="Andrés, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="updateSharedCalculation()" />
+                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Escribe los nombres separados por coma o toca alguno frecuente abajo</p>
+                <input type="text" id="tx-shared-names" placeholder="Andrés, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="updateSharedCalculation()" autocomplete="off" />
+                <div id="tx-shared-frequent" style="display: none; margin-top: 8px;">
+                  <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas frecuentes (toca para agregar):</div>
+                  <div id="tx-shared-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+                </div>
               </div>
 
               <div id="tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-from, #7F77DD); display: none;">
@@ -882,8 +894,12 @@
               </div>
               <div>
                 <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">¿A QUIÉN(ES) LE PRESTASTE LA TARJETA?</label>
-                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Si fueron varias personas que dividen entre ellas, escribe los nombres separados por coma</p>
-                <input type="text" id="tx-lent-names" placeholder="Daniel, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="updateLentCalculation()" />
+                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Nombres separados por coma o toca alguno frecuente abajo</p>
+                <input type="text" id="tx-lent-names" placeholder="Daniel, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="updateLentCalculation()" autocomplete="off" />
+                <div id="tx-lent-frequent" style="display: none; margin-top: 8px;">
+                  <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas con deuda activa (toca para sumar):</div>
+                  <div id="tx-lent-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+                </div>
               </div>
 
               <div id="tx-lent-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--success-text); display: none;">
@@ -1720,6 +1736,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=42"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>
