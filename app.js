@@ -8125,9 +8125,16 @@ async function buildAnnualPDF(state, year) {
         return alert('Si es un gasto compartido, escribe al menos un nombre');
       }
       
-      if (sharedSplitMode === 'custom') {
+      // AUTO-DETECTAR: si hay valores en los inputs custom, usar modo custom
+      const customCheck = getCustomAmounts('tx-shared-custom-list');
+      const hasCustomValues = Object.values(customCheck).some(v => v > 0);
+      const useCustomMode = sharedSplitMode === 'custom' || hasCustomValues;
+      
+      console.log('🔍 MODO DETECTADO:', { sharedSplitMode, hasCustomValues, useCustomMode, customCheck });
+      
+      if (useCustomMode) {
         // Modo personalizado
-        customAmountsByPerson = getCustomAmounts('tx-shared-custom-list');
+        customAmountsByPerson = customCheck;
         owedTotal = sharedWith.reduce((sum, name) => sum + (customAmountsByPerson[name] || 0), 0);
         myAmount = totalAmount - owedTotal;
         
@@ -8140,7 +8147,7 @@ async function buildAnnualPDF(state, year) {
         });
         
         if (myAmount < 0) {
-          return alert('Los montos asignados superan el total. Revisa los valores.');
+          return alert('Los montos asignados (' + fmt(owedTotal) + ') superan el total (' + fmt(totalAmount) + '). Revisa los valores.');
         }
         // Verificar que todas las personas tengan monto
         const missing = sharedWith.filter(n => !customAmountsByPerson[n] || customAmountsByPerson[n] <= 0);
@@ -8171,11 +8178,16 @@ async function buildAnnualPDF(state, year) {
         return alert('Si prestaste tu tarjeta, escribe al menos un nombre');
       }
       
-      if (lentSplitMode === 'custom') {
-        customAmountsByPerson = getCustomAmounts('tx-lent-custom-list');
+      // AUTO-DETECTAR para modo lent
+      const customCheckLent = getCustomAmounts('tx-lent-custom-list');
+      const hasCustomValuesLent = Object.values(customCheckLent).some(v => v > 0);
+      const useCustomModeLent = lentSplitMode === 'custom' || hasCustomValuesLent;
+      
+      if (useCustomModeLent) {
+        customAmountsByPerson = customCheckLent;
         const totalAssigned = sharedWith.reduce((sum, name) => sum + (customAmountsByPerson[name] || 0), 0);
         
-        if (Math.abs(totalAssigned - totalAmount) > 1) {  // tolerar 1 peso por redondeo
+        if (Math.abs(totalAssigned - totalAmount) > 1) {
           return alert(`La suma de los montos asignados (${fmt(totalAssigned)}) no coincide con el total (${fmt(totalAmount)}). Diferencia: ${fmt(totalAmount - totalAssigned)}`);
         }
         
