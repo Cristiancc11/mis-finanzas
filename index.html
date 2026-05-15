@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=43">
+<link rel="stylesheet" href="styles.css?v=44">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -260,6 +260,21 @@
                 <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas frecuentes:</div>
                 <div id="edit-tx-shared-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
               </div>
+              
+              <div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" id="edit-tx-shared-mode-equal" onclick="window.setEditSharedSplitMode('equal')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--accent-from, #7F77DD); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                  ⚖️ División igual
+                </button>
+                <button type="button" id="edit-tx-shared-mode-custom" onclick="window.setEditSharedSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                  ✏️ Montos personalizados
+                </button>
+              </div>
+              
+              <div id="edit-tx-shared-custom-amounts" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">💰 ASIGNA EL MONTO DE CADA PERSONA</div>
+                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 8px;">💡 Tu parte se calcula automáticamente</p>
+                <div id="edit-tx-shared-custom-list"></div>
+              </div>
             </div>
 
             <div id="edit-tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-from, #7F77DD); display: none;">
@@ -305,6 +320,21 @@
               <div id="edit-tx-lent-frequent" style="display: none; margin-top: 8px;">
                 <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas con deuda activa:</div>
                 <div id="edit-tx-lent-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+              </div>
+              
+              <div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" id="edit-tx-lent-mode-equal" onclick="window.setEditLentSplitMode('equal')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--success-text); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                  ⚖️ División igual
+                </button>
+                <button type="button" id="edit-tx-lent-mode-custom" onclick="window.setEditLentSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                  ✏️ Montos personalizados
+                </button>
+              </div>
+              
+              <div id="edit-tx-lent-custom-amounts" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">💰 ASIGNA CUÁNTO DEBE CADA UNO</div>
+                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 8px;">💡 La suma debe coincidir con el total</p>
+                <div id="edit-tx-lent-custom-list"></div>
               </div>
             </div>
 
@@ -862,6 +892,23 @@
                   <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas frecuentes (toca para agregar):</div>
                   <div id="tx-shared-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
                 </div>
+                
+                <!-- Toggle para división personalizada -->
+                <div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button type="button" id="tx-shared-mode-equal" onclick="window.setSharedSplitMode('equal')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--accent-from, #7F77DD); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                    ⚖️ División igual
+                  </button>
+                  <button type="button" id="tx-shared-mode-custom" onclick="window.setSharedSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                    ✏️ Montos personalizados
+                  </button>
+                </div>
+                
+                <!-- Inputs individuales (modo custom) -->
+                <div id="tx-shared-custom-amounts" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border);">
+                  <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">💰 ASIGNA EL MONTO DE CADA PERSONA</div>
+                  <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 8px;">💡 Tu parte se calcula automáticamente: Total − suma de los demás</p>
+                  <div id="tx-shared-custom-list"></div>
+                </div>
               </div>
 
               <div id="tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-from, #7F77DD); display: none;">
@@ -899,6 +946,23 @@
                 <div id="tx-lent-frequent" style="display: none; margin-top: 8px;">
                   <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas con deuda activa (toca para sumar):</div>
                   <div id="tx-lent-frequent-chips" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+                </div>
+                
+                <!-- Toggle para división personalizada -->
+                <div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button type="button" id="tx-lent-mode-equal" onclick="window.setLentSplitMode('equal')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--success-text); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                    ⚖️ División igual
+                  </button>
+                  <button type="button" id="tx-lent-mode-custom" onclick="window.setLentSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                    ✏️ Montos personalizados
+                  </button>
+                </div>
+                
+                <!-- Inputs individuales (modo custom) -->
+                <div id="tx-lent-custom-amounts" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border);">
+                  <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">💰 ASIGNA CUÁNTO DEBE CADA UNO</div>
+                  <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 8px;">💡 La suma de todos debe ser igual al monto total</p>
+                  <div id="tx-lent-custom-list"></div>
                 </div>
               </div>
 
@@ -1736,6 +1800,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=43"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>

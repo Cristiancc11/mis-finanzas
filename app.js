@@ -7485,6 +7485,295 @@ async function buildAnnualPDF(state, year) {
   };
 
   // ============================================================
+  // MODO DE DIVISIÓN: Igual o Personalizado
+  // ============================================================
+  
+  // Estado de la división (igual o custom)
+  let sharedSplitMode = 'equal';  // 'equal' o 'custom'
+  let lentSplitMode = 'equal';
+  let editSharedSplitMode = 'equal';
+  let editLentSplitMode = 'equal';
+  
+  // Cambiar modo en formulario CREAR - compartido
+  window.setSharedSplitMode = function(mode) {
+    sharedSplitMode = mode;
+    const equalBtn = document.getElementById('tx-shared-mode-equal');
+    const customBtn = document.getElementById('tx-shared-mode-custom');
+    const customPanel = document.getElementById('tx-shared-custom-amounts');
+    
+    if (equalBtn && customBtn) {
+      if (mode === 'equal') {
+        equalBtn.style.background = 'var(--accent-from, #7F77DD)';
+        equalBtn.style.color = 'white';
+        equalBtn.style.border = 'none';
+        customBtn.style.background = 'var(--bg-secondary)';
+        customBtn.style.color = 'var(--text-primary)';
+        customBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'none';
+      } else {
+        customBtn.style.background = 'var(--accent-from, #7F77DD)';
+        customBtn.style.color = 'white';
+        customBtn.style.border = 'none';
+        equalBtn.style.background = 'var(--bg-secondary)';
+        equalBtn.style.color = 'var(--text-primary)';
+        equalBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'block';
+        renderSharedCustomInputs();
+      }
+    }
+    window.updateSharedCalculation();
+  };
+  
+  // Cambiar modo - prestado
+  window.setLentSplitMode = function(mode) {
+    lentSplitMode = mode;
+    const equalBtn = document.getElementById('tx-lent-mode-equal');
+    const customBtn = document.getElementById('tx-lent-mode-custom');
+    const customPanel = document.getElementById('tx-lent-custom-amounts');
+    
+    if (equalBtn && customBtn) {
+      if (mode === 'equal') {
+        equalBtn.style.background = 'var(--success-text)';
+        equalBtn.style.color = 'white';
+        equalBtn.style.border = 'none';
+        customBtn.style.background = 'var(--bg-secondary)';
+        customBtn.style.color = 'var(--text-primary)';
+        customBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'none';
+      } else {
+        customBtn.style.background = 'var(--success-text)';
+        customBtn.style.color = 'white';
+        customBtn.style.border = 'none';
+        equalBtn.style.background = 'var(--bg-secondary)';
+        equalBtn.style.color = 'var(--text-primary)';
+        equalBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'block';
+        renderLentCustomInputs();
+      }
+    }
+    window.updateLentCalculation();
+  };
+  
+  // Modo edición
+  window.setEditSharedSplitMode = function(mode) {
+    editSharedSplitMode = mode;
+    const equalBtn = document.getElementById('edit-tx-shared-mode-equal');
+    const customBtn = document.getElementById('edit-tx-shared-mode-custom');
+    const customPanel = document.getElementById('edit-tx-shared-custom-amounts');
+    
+    if (equalBtn && customBtn) {
+      if (mode === 'equal') {
+        equalBtn.style.background = 'var(--accent-from, #7F77DD)';
+        equalBtn.style.color = 'white';
+        equalBtn.style.border = 'none';
+        customBtn.style.background = 'var(--bg-secondary)';
+        customBtn.style.color = 'var(--text-primary)';
+        customBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'none';
+      } else {
+        customBtn.style.background = 'var(--accent-from, #7F77DD)';
+        customBtn.style.color = 'white';
+        customBtn.style.border = 'none';
+        equalBtn.style.background = 'var(--bg-secondary)';
+        equalBtn.style.color = 'var(--text-primary)';
+        equalBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'block';
+        renderEditSharedCustomInputs();
+      }
+    }
+    window.updateEditSharedCalculation();
+  };
+  
+  window.setEditLentSplitMode = function(mode) {
+    editLentSplitMode = mode;
+    const equalBtn = document.getElementById('edit-tx-lent-mode-equal');
+    const customBtn = document.getElementById('edit-tx-lent-mode-custom');
+    const customPanel = document.getElementById('edit-tx-lent-custom-amounts');
+    
+    if (equalBtn && customBtn) {
+      if (mode === 'equal') {
+        equalBtn.style.background = 'var(--success-text)';
+        equalBtn.style.color = 'white';
+        equalBtn.style.border = 'none';
+        customBtn.style.background = 'var(--bg-secondary)';
+        customBtn.style.color = 'var(--text-primary)';
+        customBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'none';
+      } else {
+        customBtn.style.background = 'var(--success-text)';
+        customBtn.style.color = 'white';
+        customBtn.style.border = 'none';
+        equalBtn.style.background = 'var(--bg-secondary)';
+        equalBtn.style.color = 'var(--text-primary)';
+        equalBtn.style.border = '1px solid var(--border)';
+        if (customPanel) customPanel.style.display = 'block';
+        renderEditLentCustomInputs();
+      }
+    }
+    window.updateEditLentCalculation();
+  };
+  
+  // Renderizar inputs personalizados según los nombres
+  function renderSharedCustomInputs() {
+    const namesEl = document.getElementById('tx-shared-names');
+    const listEl = document.getElementById('tx-shared-custom-list');
+    if (!namesEl || !listEl) return;
+    
+    const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    if (names.length === 0) {
+      listEl.innerHTML = '<div style="font-size: 11px; color: var(--text-tertiary); text-align: center; padding: 10px;">Primero escribe los nombres arriba</div>';
+      return;
+    }
+    
+    // Preservar valores existentes
+    const existingValues = {};
+    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+      const personName = inp.getAttribute('data-person');
+      existingValues[personName] = inp.value;
+    });
+    
+    listEl.innerHTML = names.map(name => {
+      const safeName = esc(name);
+      const value = existingValues[name] || '';
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
+            👤 ${safeName}
+          </div>
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+            oninput="window.updateSharedCalculation()" 
+            style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function renderLentCustomInputs() {
+    const namesEl = document.getElementById('tx-lent-names');
+    const listEl = document.getElementById('tx-lent-custom-list');
+    if (!namesEl || !listEl) return;
+    
+    const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    if (names.length === 0) {
+      listEl.innerHTML = '<div style="font-size: 11px; color: var(--text-tertiary); text-align: center; padding: 10px;">Primero escribe los nombres arriba</div>';
+      return;
+    }
+    
+    const existingValues = {};
+    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+      const personName = inp.getAttribute('data-person');
+      existingValues[personName] = inp.value;
+    });
+    
+    listEl.innerHTML = names.map(name => {
+      const safeName = esc(name);
+      const value = existingValues[name] || '';
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
+            👤 ${safeName}
+          </div>
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+            oninput="window.updateLentCalculation()" 
+            style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
+        </div>
+      `;
+    }).join('');
+  }
+  
+  // Versiones para edición
+  function renderEditSharedCustomInputs() {
+    const namesEl = document.getElementById('edit-tx-shared-names');
+    const listEl = document.getElementById('edit-tx-shared-custom-list');
+    if (!namesEl || !listEl) return;
+    
+    const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    if (names.length === 0) {
+      listEl.innerHTML = '<div style="font-size: 11px; color: var(--text-tertiary); text-align: center; padding: 10px;">Primero escribe los nombres arriba</div>';
+      return;
+    }
+    
+    const existingValues = {};
+    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+      const personName = inp.getAttribute('data-person');
+      existingValues[personName] = inp.value;
+    });
+    
+    listEl.innerHTML = names.map(name => {
+      const safeName = esc(name);
+      const value = existingValues[name] || '';
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
+            👤 ${safeName}
+          </div>
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+            oninput="window.updateEditSharedCalculation()" 
+            style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function renderEditLentCustomInputs() {
+    const namesEl = document.getElementById('edit-tx-lent-names');
+    const listEl = document.getElementById('edit-tx-lent-custom-list');
+    if (!namesEl || !listEl) return;
+    
+    const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    if (names.length === 0) {
+      listEl.innerHTML = '<div style="font-size: 11px; color: var(--text-tertiary); text-align: center; padding: 10px;">Primero escribe los nombres arriba</div>';
+      return;
+    }
+    
+    const existingValues = {};
+    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+      const personName = inp.getAttribute('data-person');
+      existingValues[personName] = inp.value;
+    });
+    
+    listEl.innerHTML = names.map(name => {
+      const safeName = esc(name);
+      const value = existingValues[name] || '';
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
+            👤 ${safeName}
+          </div>
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+            oninput="window.updateEditLentCalculation()" 
+            style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
+        </div>
+      `;
+    }).join('');
+  }
+  
+  // Obtener montos personalizados de los inputs
+  function getCustomAmounts(listElId) {
+    const result = {};
+    const listEl = document.getElementById(listElId);
+    if (!listEl) return result;
+    
+    listEl.querySelectorAll('input[data-person]').forEach(inp => {
+      const personName = inp.getAttribute('data-person');
+      const amount = parseFloat(inp.value) || 0;
+      if (personName) result[personName] = amount;
+    });
+    return result;
+  }
+  
+  // Exponer renderers
+  window.renderSharedCustomInputs = renderSharedCustomInputs;
+  window.renderLentCustomInputs = renderLentCustomInputs;
+  window.renderEditSharedCustomInputs = renderEditSharedCustomInputs;
+  window.renderEditLentCustomInputs = renderEditLentCustomInputs;
+  window.getCustomAmounts = getCustomAmounts;
+
+  // ============================================================
   // PERSONAS FRECUENTES con deudas activas
   // ============================================================
   
@@ -7653,21 +7942,49 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
-    const totalPeople = names.length + 1;
-    const myPart = Math.round(totalAmount / totalPeople);
-    const owed = totalAmount - myPart;
-    const perPerson = Math.round(owed / names.length);
+    let myPart, owed, perPersonInfo;
+    
+    if (sharedSplitMode === 'custom') {
+      // Modo personalizado: usar los montos asignados
+      // Re-renderizar inputs si hay nombres nuevos
+      renderSharedCustomInputs();
+      
+      const customAmounts = getCustomAmounts('tx-shared-custom-list');
+      owed = names.reduce((sum, name) => sum + (customAmounts[name] || 0), 0);
+      myPart = totalAmount - owed;
+      
+      // Detalle: monto exacto por persona
+      perPersonInfo = names.map(name => {
+        const amt = customAmounts[name] || 0;
+        return `<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">${esc(name)}: <strong>${fmt(amt)}</strong></span>`;
+      }).join(' ');
+    } else {
+      // Modo igual
+      const totalPeople = names.length + 1;
+      myPart = Math.round(totalAmount / totalPeople);
+      owed = totalAmount - myPart;
+      const perPerson = Math.round(owed / names.length);
+      perPersonInfo = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ')}`;
+    }
     
     summaryEl.style.display = 'block';
+    const totalPeople = names.length + 1;
     if (countEl) countEl.textContent = totalPeople + ' (tú + ' + names.length + ')';
-    if (myPartEl) myPartEl.textContent = fmt(myPart);
+    if (myPartEl) {
+      myPartEl.textContent = fmt(myPart);
+      // Si tu parte queda negativa en modo custom, alertar
+      myPartEl.style.color = (myPart < 0) ? 'var(--danger-text)' : 'var(--danger-text)';
+    }
     if (owedEl) owedEl.textContent = fmt(owed);
     if (detailEl) {
-      detailEl.innerHTML = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ')}`;
+      let validationMsg = '';
+      if (sharedSplitMode === 'custom' && myPart < 0) {
+        validationMsg = `<div style="color: var(--danger-text); font-weight: 600; margin-bottom: 6px;">⚠️ Los montos de los demás superan el total. Reduce alguno.</div>`;
+      }
+      detailEl.innerHTML = validationMsg + perPersonInfo;
     }
   };
   
-  // NUEVO: Cálculo para gastos prestados (presté la tarjeta)
   window.updateLentCalculation = function() {
     const amountEl = document.getElementById('tx-amount');
     const namesEl = document.getElementById('tx-lent-names');
@@ -7685,19 +8002,44 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
-    // En modo "prestado": TODO el monto va como cuenta por cobrar
-    // Tu parte = $0
-    const perPerson = Math.round(totalAmount / names.length);
+    let perPersonInfo;
+    let totalAssigned = totalAmount;  // En "lent" el total que deben siempre es el total
+    
+    if (lentSplitMode === 'custom') {
+      renderLentCustomInputs();
+      
+      const customAmounts = getCustomAmounts('tx-lent-custom-list');
+      totalAssigned = names.reduce((sum, name) => sum + (customAmounts[name] || 0), 0);
+      
+      perPersonInfo = names.map(name => {
+        const amt = customAmounts[name] || 0;
+        return `<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">${esc(name)}: <strong>${fmt(amt)}</strong></span>`;
+      }).join(' ');
+    } else {
+      const perPerson = Math.round(totalAmount / names.length);
+      if (names.length === 1) {
+        perPersonInfo = `${esc(names[0])} te debe <strong style="color: var(--success-text);">${fmt(totalAmount)}</strong>`;
+      } else {
+        const labels = names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ');
+        perPersonInfo = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${labels}`;
+      }
+    }
     
     summaryEl.style.display = 'block';
-    if (owedEl) owedEl.textContent = fmt(totalAmount);
+    if (owedEl) owedEl.textContent = fmt(totalAssigned);
     if (detailEl) {
-      const labels = names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ');
-      if (names.length === 1) {
-        detailEl.innerHTML = `${labels} te debe <strong style="color: var(--success-text);">${fmt(totalAmount)}</strong>`;
-      } else {
-        detailEl.innerHTML = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${labels}`;
+      let validationMsg = '';
+      if (lentSplitMode === 'custom') {
+        if (totalAssigned !== totalAmount) {
+          const diff = totalAmount - totalAssigned;
+          if (diff > 0) {
+            validationMsg = `<div style="color: var(--warning-text); font-weight: 600; margin-bottom: 6px;">⚠️ Faltan ${fmt(diff)} por asignar</div>`;
+          } else {
+            validationMsg = `<div style="color: var(--danger-text); font-weight: 600; margin-bottom: 6px;">⚠️ Sobran ${fmt(Math.abs(diff))} (asignaste más que el total)</div>`;
+          }
+        }
       }
+      detailEl.innerHTML = validationMsg + perPersonInfo;
     }
   };
   
@@ -7734,24 +8076,64 @@ async function buildAnnualPDF(state, year) {
     if (method === 'tarjeta' && !cardId) return alert('Selecciona la tarjeta usada');
 
     // Calcular partes según tipo
-    let myAmount = totalAmount;  // Por defecto, todo lo pago yo
+    let myAmount = totalAmount;
     let sharedWith = [];
     let owedTotal = 0;
+    let customAmountsByPerson = {};  // Para guardar montos individuales
     
     if (isShared) {
       sharedWith = sharedNamesRaw.split(',').map(n => n.trim()).filter(n => n.length > 0);
       if (sharedWith.length === 0) {
         return alert('Si es un gasto compartido, escribe al menos un nombre');
       }
-      const totalPeople = sharedWith.length + 1;
-      myAmount = Math.round(totalAmount / totalPeople);
-      owedTotal = totalAmount - myAmount;
+      
+      if (sharedSplitMode === 'custom') {
+        // Modo personalizado
+        customAmountsByPerson = getCustomAmounts('tx-shared-custom-list');
+        owedTotal = sharedWith.reduce((sum, name) => sum + (customAmountsByPerson[name] || 0), 0);
+        myAmount = totalAmount - owedTotal;
+        
+        if (myAmount < 0) {
+          return alert('Los montos asignados superan el total. Revisa los valores.');
+        }
+        // Verificar que todas las personas tengan monto
+        const missing = sharedWith.filter(n => !customAmountsByPerson[n] || customAmountsByPerson[n] <= 0);
+        if (missing.length > 0) {
+          return alert(`Falta asignar monto a: ${missing.join(', ')}`);
+        }
+      } else {
+        // Modo igual
+        const totalPeople = sharedWith.length + 1;
+        myAmount = Math.round(totalAmount / totalPeople);
+        owedTotal = totalAmount - myAmount;
+        // Distribuir equitativamente
+        const perPerson = Math.round(owedTotal / sharedWith.length);
+        sharedWith.forEach(name => { customAmountsByPerson[name] = perPerson; });
+      }
     } else if (isLent) {
       sharedWith = lentNamesRaw.split(',').map(n => n.trim()).filter(n => n.length > 0);
       if (sharedWith.length === 0) {
         return alert('Si prestaste tu tarjeta, escribe al menos un nombre');
       }
-      // En modo "prestado": NO pones nada de plata propia
+      
+      if (lentSplitMode === 'custom') {
+        customAmountsByPerson = getCustomAmounts('tx-lent-custom-list');
+        const totalAssigned = sharedWith.reduce((sum, name) => sum + (customAmountsByPerson[name] || 0), 0);
+        
+        if (Math.abs(totalAssigned - totalAmount) > 1) {  // tolerar 1 peso por redondeo
+          return alert(`La suma de los montos asignados (${fmt(totalAssigned)}) no coincide con el total (${fmt(totalAmount)}). Diferencia: ${fmt(totalAmount - totalAssigned)}`);
+        }
+        
+        const missing = sharedWith.filter(n => !customAmountsByPerson[n] || customAmountsByPerson[n] <= 0);
+        if (missing.length > 0) {
+          return alert(`Falta asignar monto a: ${missing.join(', ')}`);
+        }
+      } else {
+        // Modo igual
+        const perPerson = Math.round(totalAmount / sharedWith.length);
+        sharedWith.forEach(name => { customAmountsByPerson[name] = perPerson; });
+      }
+      
       myAmount = 0;
       owedTotal = totalAmount;
     }
@@ -7841,25 +8223,28 @@ async function buildAnnualPDF(state, year) {
       newTx.totalAmount = totalAmount;
       newTx.myAmount = myAmount;
       newTx.totalPeople = isShared ? sharedWith.length + 1 : sharedWith.length;
+      newTx.splitMode = (isShared ? sharedSplitMode : lentSplitMode);  // Guardar el modo usado
       
-      // Crear registros de "Me deben"
+      // Crear registros de "Me deben" usando montos individuales
       if (!state.debtsToMe) state.debtsToMe = [];
-      const perPerson = Math.round(owedTotal / sharedWith.length);
       
       newTx.sharedDetails = sharedWith.map((name, idx) => {
+        // Usar el monto personalizado de esa persona
+        const personAmount = customAmountsByPerson[name] || Math.round(owedTotal / sharedWith.length);
+        
         const debtRecord = {
           id: Date.now() + idx + 1,
           txId: txId,
           name: name,
-          amount: perPerson,
+          amount: personAmount,
           desc: d,
           date: dt,
           paid: false,
-          isLent: isLent,  // marcar si es préstamo
+          isLent: isLent,
           createdAt: Date.now()
         };
         state.debtsToMe.push(debtRecord);
-        return { name: name, amount: perPerson, debtId: debtRecord.id };
+        return { name: name, amount: personAmount, debtId: debtRecord.id };
       });
     }
     
@@ -7875,8 +8260,12 @@ async function buildAnnualPDF(state, year) {
     // Reset gasto compartido/prestado
     if (document.getElementById('tx-shared-names')) document.getElementById('tx-shared-names').value = '';
     if (document.getElementById('tx-lent-names')) document.getElementById('tx-lent-names').value = '';
+    if (document.getElementById('tx-shared-custom-list')) document.getElementById('tx-shared-custom-list').innerHTML = '';
+    if (document.getElementById('tx-lent-custom-list')) document.getElementById('tx-lent-custom-list').innerHTML = '';
     
-    // Volver a "Solo mío"
+    // Volver a "Solo mío" y modo igual
+    sharedSplitMode = 'equal';
+    lentSplitMode = 'equal';
     setExpenseType('own');
     
     const payCardRow = document.getElementById('tx-pay-card-row');
@@ -9005,21 +9394,41 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
-    const totalPeople = names.length + 1;
-    const myPart = Math.round(totalAmount / totalPeople);
-    const owed = totalAmount - myPart;
-    const perPerson = Math.round(owed / names.length);
+    let myPart, owed, perPersonInfo;
+    
+    if (editSharedSplitMode === 'custom') {
+      renderEditSharedCustomInputs();
+      
+      const customAmounts = getCustomAmounts('edit-tx-shared-custom-list');
+      owed = names.reduce((sum, name) => sum + (customAmounts[name] || 0), 0);
+      myPart = totalAmount - owed;
+      
+      perPersonInfo = names.map(name => {
+        const amt = customAmounts[name] || 0;
+        return `<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">${esc(name)}: <strong>${fmt(amt)}</strong></span>`;
+      }).join(' ');
+    } else {
+      const totalPeople = names.length + 1;
+      myPart = Math.round(totalAmount / totalPeople);
+      owed = totalAmount - myPart;
+      const perPerson = Math.round(owed / names.length);
+      perPersonInfo = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ')}`;
+    }
     
     summaryEl.style.display = 'block';
+    const totalPeople = names.length + 1;
     if (countEl) countEl.textContent = totalPeople + ' (tú + ' + names.length + ')';
     if (myPartEl) myPartEl.textContent = fmt(myPart);
     if (owedEl) owedEl.textContent = fmt(owed);
     if (detailEl) {
-      detailEl.innerHTML = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ')}`;
+      let validationMsg = '';
+      if (editSharedSplitMode === 'custom' && myPart < 0) {
+        validationMsg = `<div style="color: var(--danger-text); font-weight: 600; margin-bottom: 6px;">⚠️ Los montos de los demás superan el total</div>`;
+      }
+      detailEl.innerHTML = validationMsg + perPersonInfo;
     }
   };
   
-  // NUEVO: cálculo para edición de préstamo
   window.updateEditLentCalculation = function() {
     const totalEl = document.getElementById('edit-tx-lent-total');
     const namesEl = document.getElementById('edit-tx-lent-names');
@@ -9037,17 +9446,44 @@ async function buildAnnualPDF(state, year) {
       return;
     }
     
-    const perPerson = Math.round(totalAmount / names.length);
+    let perPersonInfo;
+    let totalAssigned = totalAmount;
+    
+    if (editLentSplitMode === 'custom') {
+      renderEditLentCustomInputs();
+      
+      const customAmounts = getCustomAmounts('edit-tx-lent-custom-list');
+      totalAssigned = names.reduce((sum, name) => sum + (customAmounts[name] || 0), 0);
+      
+      perPersonInfo = names.map(name => {
+        const amt = customAmounts[name] || 0;
+        return `<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">${esc(name)}: <strong>${fmt(amt)}</strong></span>`;
+      }).join(' ');
+    } else {
+      const perPerson = Math.round(totalAmount / names.length);
+      if (names.length === 1) {
+        perPersonInfo = `${esc(names[0])} te debe <strong style="color: var(--success-text);">${fmt(totalAmount)}</strong>`;
+      } else {
+        const labels = names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ');
+        perPersonInfo = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${labels}`;
+      }
+    }
     
     summaryEl.style.display = 'block';
-    if (owedEl) owedEl.textContent = fmt(totalAmount);
+    if (owedEl) owedEl.textContent = fmt(totalAssigned);
     if (detailEl) {
-      const labels = names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ');
-      if (names.length === 1) {
-        detailEl.innerHTML = `${labels} te debe <strong style="color: var(--success-text);">${fmt(totalAmount)}</strong>`;
-      } else {
-        detailEl.innerHTML = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${labels}`;
+      let validationMsg = '';
+      if (editLentSplitMode === 'custom') {
+        const diff = totalAmount - totalAssigned;
+        if (Math.abs(diff) > 1) {
+          if (diff > 0) {
+            validationMsg = `<div style="color: var(--warning-text); font-weight: 600; margin-bottom: 6px;">⚠️ Faltan ${fmt(diff)} por asignar</div>`;
+          } else {
+            validationMsg = `<div style="color: var(--danger-text); font-weight: 600; margin-bottom: 6px;">⚠️ Sobran ${fmt(Math.abs(diff))}</div>`;
+          }
+        }
       }
+      detailEl.innerHTML = validationMsg + perPersonInfo;
     }
   };
 
