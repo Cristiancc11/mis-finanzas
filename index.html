@@ -38,7 +38,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Estilos personalizados -->
-<link rel="stylesheet" href="styles.css?v=38.2">
+<link rel="stylesheet" href="styles.css?v=40">
 
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -219,6 +219,53 @@
         <select id="edit-tx-pay-card">
           <option value="">Selecciona tarjeta a pagar</option>
         </select>
+      </div>
+
+      <!-- GASTO COMPARTIDO -->
+      <div class="edit-tx-field">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border); transition: all 0.2s;">
+          <input type="checkbox" id="edit-tx-is-shared" onchange="window.toggleEditSharedExpense()" style="width: 16px; height: 16px; cursor: pointer;" />
+          <span style="font-size: 13px; font-weight: 500;">👥 Es un gasto compartido</span>
+        </label>
+
+        <div id="edit-tx-shared-row" style="display: none; margin-top: 10px; padding: 14px; background: linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06)); border: 1px solid rgba(127, 119, 221, 0.3); border-radius: 10px;">
+          
+          <div style="display: grid; gap: 10px;">
+            <div>
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">MONTO TOTAL (lo que pagaste)</label>
+              <input type="number" id="edit-tx-shared-total" min="0" step="0.01" placeholder="Total del gasto" style="width: 100%; padding: 10px 12px; height: 42px;" oninput="window.updateEditSharedCalculation()" />
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 4px 0 0;">💡 Si el monto arriba es solo TU PARTE, escribe aquí el TOTAL real del gasto</p>
+            </div>
+            
+            <div>
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">PERSONAS QUE TE DEBEN (sin contarte)</label>
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Nombres separados por coma. Ej: <em>Andrés, María, Carlos</em></p>
+              <input type="text" id="edit-tx-shared-names" placeholder="Andrés, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="window.updateEditSharedCalculation()" />
+            </div>
+
+            <div id="edit-tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-from, #7F77DD); display: none;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center;">
+                <div>
+                  <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">PERSONAS</div>
+                  <div id="edit-tx-shared-count" style="font-size: 14px; font-weight: 700; color: var(--accent-from, #7F77DD);">0</div>
+                </div>
+                <div>
+                  <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">TU PARTE</div>
+                  <div id="edit-tx-shared-my-part" style="font-size: 13px; font-weight: 700; color: var(--danger-text);">$0</div>
+                </div>
+                <div>
+                  <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">TE DEBEN</div>
+                  <div id="edit-tx-shared-owed" style="font-size: 13px; font-weight: 700; color: var(--success-text);">$0</div>
+                </div>
+              </div>
+              <div id="edit-tx-shared-detail" style="font-size: 11px; color: var(--text-secondary); margin-top: 8px; text-align: center; padding-top: 8px; border-top: 1px solid var(--border);"></div>
+            </div>
+            
+            <div style="font-size: 11px; color: var(--info-text); background: var(--info-bg); padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--info-text);">
+              ℹ️ Al guardar, el campo "Monto" arriba se ajustará automáticamente a TU PARTE
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="edit-tx-changes" class="edit-tx-changes" style="display: none;">
@@ -574,6 +621,16 @@
       </div>
     </div>
 
+    <!-- ME DEBEN: Cuentas por cobrar de gastos compartidos -->
+    <div id="debts-to-me-section" class="raised-card" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <p class="card-title" style="margin: 0;">💰 Me deben</p>
+        <span id="debts-to-me-total" style="font-size: 16px; font-weight: 700; color: var(--success-text);">$0</span>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Dinero pendiente de cobrar por gastos compartidos</p>
+      <div id="debts-to-me-list"></div>
+    </div>
+
     <div class="health-meter-pro">
       <div class="health-circle">
         <svg viewBox="0 0 100 100">
@@ -707,6 +764,44 @@
             <p style="font-size: 11px; color: var(--text-tertiary); margin: 0;">
               💡 El monto se restará automáticamente del saldo de la tarjeta
             </p>
+          </div>
+        </div>
+
+        <!-- GASTO COMPARTIDO -->
+        <div style="margin-top: 10px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border); transition: all 0.2s;" onmouseover="this.style.borderColor='var(--accent-from, #7F77DD)'" onmouseout="this.style.borderColor='var(--border)'">
+            <input type="checkbox" id="tx-is-shared" onchange="toggleSharedExpense()" style="width: 16px; height: 16px; cursor: pointer;" />
+            <span style="font-size: 13px; font-weight: 500;">👥 Gasto compartido (dividido entre varias personas)</span>
+          </label>
+
+          <div id="tx-shared-row" style="display: none; margin-top: 10px; padding: 14px; background: linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06)); border: 1px solid rgba(127, 119, 221, 0.3); border-radius: 10px;">
+            
+            <div style="display: grid; gap: 10px;">
+              <div>
+                <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">PERSONAS QUE DEBEN PAGAR (sin contarte a ti)</label>
+                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Escribe los nombres separados por coma. Ej: <em>Andrés, María, Carlos</em></p>
+                <input type="text" id="tx-shared-names" placeholder="Andrés, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="updateSharedCalculation()" />
+              </div>
+
+              <!-- Cálculo automático en tiempo real -->
+              <div id="tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-from, #7F77DD); display: none;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center;">
+                  <div>
+                    <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">PERSONAS</div>
+                    <div id="tx-shared-count" style="font-size: 16px; font-weight: 700; color: var(--accent-from, #7F77DD);">0</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">TU PARTE</div>
+                    <div id="tx-shared-my-part" style="font-size: 14px; font-weight: 700; color: var(--danger-text);">$0</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">TE DEBEN</div>
+                    <div id="tx-shared-owed" style="font-size: 14px; font-weight: 700; color: var(--success-text);">$0</div>
+                  </div>
+                </div>
+                <div id="tx-shared-detail" style="font-size: 11px; color: var(--text-secondary); margin-top: 8px; text-align: center; padding-top: 8px; border-top: 1px solid var(--border);"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1527,6 +1622,6 @@
   <span style="font-size: 28px; line-height: 1;">+</span>
 </button>
 
-<script src="app.js?v=38.2"></script>
+<script src="app.js?v=40"></script>
 </body>
 </html>

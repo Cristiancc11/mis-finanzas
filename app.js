@@ -521,6 +521,7 @@ document.addEventListener('click', function(e) {
       'reminder-modal': () => window.closeReminderModal && window.closeReminderModal(),
       'privacy-info-modal': () => window.closePrivacyInfo && window.closePrivacyInfo(),
       'edit-card-modal': () => window.closeEditCardModal && window.closeEditCardModal(),
+      'mark-paid-modal': () => window.closeMarkPaidModal && window.closeMarkPaidModal(),
       'welcome-tutorial': () => {
         // No cerrar el tutorial al tocar fondo (debe ir paso a paso)
         return;
@@ -539,6 +540,8 @@ document.addEventListener('keydown', function(e) {
     // Buscar modales abiertos por orden de prioridad
     if (document.getElementById('reminder-modal')) {
       window.closeReminderModal && window.closeReminderModal();
+    } else if (document.getElementById('mark-paid-modal')) {
+      window.closeMarkPaidModal && window.closeMarkPaidModal();
     } else if (document.getElementById('edit-card-modal')) {
       window.closeEditCardModal && window.closeEditCardModal();
     } else if (document.getElementById('privacy-info-modal')) {
@@ -7481,9 +7484,71 @@ async function buildAnnualPDF(state, year) {
     saveState(); renderBudget();
   };
 
+  // ============================================================
+  // GASTO COMPARTIDO - Funciones de UI
+  // ============================================================
+  window.toggleSharedExpense = function() {
+    const checkbox = document.getElementById('tx-is-shared');
+    const row = document.getElementById('tx-shared-row');
+    const summary = document.getElementById('tx-shared-summary');
+    
+    if (!checkbox || !row) return;
+    
+    if (checkbox.checked) {
+      row.style.display = 'block';
+      updateSharedCalculation();
+    } else {
+      row.style.display = 'none';
+      if (summary) summary.style.display = 'none';
+    }
+  };
+  
+  window.updateSharedCalculation = function() {
+    const amountEl = document.getElementById('tx-amount');
+    const namesEl = document.getElementById('tx-shared-names');
+    const summaryEl = document.getElementById('tx-shared-summary');
+    const countEl = document.getElementById('tx-shared-count');
+    const myPartEl = document.getElementById('tx-shared-my-part');
+    const owedEl = document.getElementById('tx-shared-owed');
+    const detailEl = document.getElementById('tx-shared-detail');
+    
+    if (!amountEl || !namesEl || !summaryEl) return;
+    
+    const totalAmount = parseFloat(amountEl.value) || 0;
+    const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    if (names.length === 0 || totalAmount <= 0) {
+      summaryEl.style.display = 'none';
+      return;
+    }
+    
+    const totalPeople = names.length + 1;
+    const myPart = Math.round(totalAmount / totalPeople);
+    const owed = totalAmount - myPart;
+    const perPerson = Math.round(owed / names.length);
+    
+    summaryEl.style.display = 'block';
+    if (countEl) countEl.textContent = totalPeople + ' (tú + ' + names.length + ')';
+    if (myPartEl) myPartEl.textContent = fmt(myPart);
+    if (owedEl) owedEl.textContent = fmt(owed);
+    if (detailEl) {
+      detailEl.innerHTML = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ')}`;
+    }
+  };
+  
+  // Listener: cuando cambie el monto total, recalcular
+  document.addEventListener('input', function(e) {
+    if (e.target.id === 'tx-amount') {
+      const isShared = document.getElementById('tx-is-shared');
+      if (isShared && isShared.checked) {
+        updateSharedCalculation();
+      }
+    }
+  });
+
   window.addTransaction = function() {
     const d = document.getElementById('tx-desc').value.trim();
-    const a = parseFloat(document.getElementById('tx-amount').value);
+    const totalAmount = parseFloat(document.getElementById('tx-amount').value);
     const c = document.getElementById('tx-category').value;
     const dt = document.getElementById('tx-date').value || getTodayLocal();
     const method = document.getElementById('tx-payment-method').value;
@@ -7491,15 +7556,43 @@ async function buildAnnualPDF(state, year) {
     const pocketId = document.getElementById('tx-pocket') ? document.getElementById('tx-pocket').value : '';
     const payCardId = document.getElementById('tx-pay-card') ? document.getElementById('tx-pay-card').value : '';
     
-    if (!d || !a || a <= 0) return alert('Completa descripción y monto');
+    // GASTO COMPARTIDO
+    const isSharedEl = document.getElementById('tx-is-shared');
+    const isShared = isSharedEl && isSharedEl.checked;
+    const sharedNamesRaw = document.getElementById('tx-shared-names') ? document.getElementById('tx-shared-names').value.trim() : '';
+    
+    if (!d || !totalAmount || totalAmount <= 0) return alert('Completa descripción y monto');
     if (method === 'tarjeta' && !cardId) return alert('Selecciona la tarjeta usada');
+
+    // Calcular partes si es gasto compartido
+    let myAmount = totalAmount;  // Por defecto, todo lo pago yo
+    let sharedWith = [];
+    let owedTotal = 0;
+    
+    if (isShared) {
+      // Procesar nombres
+      sharedWith = sharedNamesRaw
+        .split(',')
+        .map(n => n.trim())
+        .filter(n => n.length > 0);
+      
+      if (sharedWith.length === 0) {
+        return alert('Si es un gasto compartido, escribe al menos un nombre de quien te debe (separados por coma)');
+      }
+      
+      const totalPeople = sharedWith.length + 1; // +1 por mí
+      myAmount = Math.round(totalAmount / totalPeople);
+      owedTotal = totalAmount - myAmount;
+    }
+    
+    // El monto que afecta MIS finanzas es solo "myAmount"
+    const a = myAmount;
 
     // Detectar si es pago de tarjeta
     const cats = getAllCategories();
     const selectedCat = cats.find(x => x.id === c);
     const isPagoTarjeta = selectedCat && (selectedCat.isPagoTarjeta || selectedCat.id === 'pago_tarjeta');
 
-    // Validar que se haya seleccionado tarjeta a pagar si es categoría pago_tarjeta
     if (isPagoTarjeta && !payCardId) {
       return alert('Selecciona qué tarjeta estás pagando');
     }
@@ -7513,27 +7606,31 @@ async function buildAnnualPDF(state, year) {
     let payCardIdNum = null;
 
     if (method === 'tarjeta' && cardId) {
-      cashback = a * 0.01;
+      // IMPORTANTE: En tarjeta, el cargo TOTAL va a la tarjeta (no solo tu parte)
+      // porque tú pagaste todo, los demás te van a devolver
+      cashback = totalAmount * 0.01;  // Cashback sobre el total cargado
       cardIdNum = parseInt(cardId);
       const card = state.debts.find(x => x.id === cardIdNum);
       if (card) {
-        card.balance += a;
+        card.balance += totalAmount;  // Toda la tarjeta se carga con el total
       }
     } else if (pocketId) {
-      // Si NO es tarjeta y se seleccionó bolsillo, descontar del bolsillo
+      // En bolsillo/efectivo: solo descontar TU parte
       pocketIdNum = parseInt(pocketId);
       const pocket = state.pockets.find(x => x.id === pocketIdNum);
       if (pocket) {
-        if (pocket.amount < a) {
-          if (!confirm(`El bolsillo "${pocket.name}" tiene ${fmt(pocket.amount)} pero quieres gastar ${fmt(a)}. ¿Continuar de todas formas? (quedará en negativo)`)) {
+        // Si es compartido, descontamos el total porque tú lo pagaste
+        // (luego cuando te devuelvan, lo agregas al bolsillo)
+        const amountToDeduct = isShared ? totalAmount : a;
+        if (pocket.amount < amountToDeduct) {
+          if (!confirm(`El bolsillo "${pocket.name}" tiene ${fmt(pocket.amount)} pero quieres gastar ${fmt(amountToDeduct)}. ¿Continuar?`)) {
             return;
           }
         }
-        pocket.amount = pocket.amount - a;
+        pocket.amount = pocket.amount - amountToDeduct;
       }
     }
 
-    // PAGO DE TARJETA: reducir saldo de la tarjeta seleccionada
     if (isPagoTarjeta && payCardId) {
       payCardIdNum = parseInt(payCardId);
       const payCard = state.debts.find(x => x.id === payCardIdNum);
@@ -7541,64 +7638,107 @@ async function buildAnnualPDF(state, year) {
         const previousBalance = payCard.balance || 0;
         payCard.balance = Math.max(0, previousBalance - a);
         const realPaid = previousBalance - payCard.balance;
-        
-        // Notificar con toast
         if (typeof toastSuccess === 'function') {
           if (a > previousBalance) {
-            toastSuccess(
-              'Pago aplicado',
-              `${payCard.name}: $${realPaid.toLocaleString('es-CO')} aplicado. ¡Tarjeta saldada! 🎉`
-            );
+            toastSuccess('Pago aplicado', `${payCard.name}: $${realPaid.toLocaleString('es-CO')} aplicado. ¡Tarjeta saldada! 🎉`);
           } else {
-            toastSuccess(
-              'Pago aplicado',
-              `${payCard.name}: nuevo saldo $${payCard.balance.toLocaleString('es-CO')}`
-            );
+            toastSuccess('Pago aplicado', `${payCard.name}: nuevo saldo $${payCard.balance.toLocaleString('es-CO')}`);
           }
         }
       }
     }
 
-    state.transactions[m].push({
-      id: Date.now(),
-      date: dt, desc: d, amount: a, category: c,
+    // Crear el registro de la transacción
+    const txId = Date.now();
+    const newTx = {
+      id: txId,
+      date: dt, 
+      desc: d, 
+      amount: a,  // SOLO TU PARTE (afecta tu balance)
+      category: c,
       paymentMethod: method,
       cardId: cardIdNum,
       pocketId: pocketIdNum,
-      payCardId: payCardIdNum,  // NUEVO: tarjeta que se está pagando
+      payCardId: payCardIdNum,
       cashback: cashback,
       createdAt: Date.now()
-    });
+    };
+    
+    // Agregar info de gasto compartido si aplica
+    if (isShared) {
+      newTx.isShared = true;
+      newTx.totalAmount = totalAmount;
+      newTx.myAmount = myAmount;
+      newTx.totalPeople = sharedWith.length + 1;
+      
+      // Crear registros de "Me deben" individuales
+      if (!state.debtsToMe) state.debtsToMe = [];
+      const perPerson = Math.round(owedTotal / sharedWith.length);
+      
+      newTx.sharedDetails = sharedWith.map((name, idx) => {
+        const debtRecord = {
+          id: Date.now() + idx + 1,
+          txId: txId,
+          name: name,
+          amount: perPerson,
+          desc: d,
+          date: dt,
+          paid: false,
+          createdAt: Date.now()
+        };
+        state.debtsToMe.push(debtRecord);
+        return { name: name, amount: perPerson, debtId: debtRecord.id };
+      });
+    }
+    
+    state.transactions[m].push(newTx);
 
+    // Limpiar formulario
     document.getElementById('tx-desc').value = '';
     document.getElementById('tx-amount').value = '';
     if (document.getElementById('tx-pocket')) document.getElementById('tx-pocket').value = '';
     if (document.getElementById('tx-pay-card')) document.getElementById('tx-pay-card').value = '';
     document.getElementById('tx-cashback-info').style.display = 'none';
     
-    // Ocultar fila de pago de tarjeta después de guardar
+    // Reset gasto compartido
+    if (isSharedEl) isSharedEl.checked = false;
+    if (document.getElementById('tx-shared-names')) document.getElementById('tx-shared-names').value = '';
+    if (document.getElementById('tx-shared-row')) document.getElementById('tx-shared-row').style.display = 'none';
+    if (document.getElementById('tx-shared-summary')) document.getElementById('tx-shared-summary').style.display = 'none';
+    
     const payCardRow = document.getElementById('tx-pay-card-row');
     if (payCardRow) payCardRow.style.display = 'none';
     
     saveState(); populateMonths(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
+    
+    // Toast de éxito
+    if (isShared && typeof toastSuccess === 'function') {
+      toastSuccess(
+        'Gasto compartido registrado',
+        `Tu parte: ${fmt(myAmount)} · Te deben: ${fmt(owedTotal)}`
+      );
+    }
   };
 
   window.removeTransaction = function(m, id) {
     if (state.transactions[m]) {
       const tx = state.transactions[m].find(t => t.id === id);
       if (tx) {
-        // Si fue con tarjeta, revertir saldo
+        // Determinar el monto que se cargó realmente (total si compartido, mi parte si no)
+        const totalCharged = tx.isShared ? (tx.totalAmount || tx.amount) : tx.amount;
+        
+        // Si fue con tarjeta, revertir saldo (TOTAL si era compartido)
         if (tx.paymentMethod === 'tarjeta' && tx.cardId) {
           const card = state.debts.find(x => x.id === tx.cardId);
           if (card) {
-            card.balance = Math.max(0, card.balance - tx.amount);
+            card.balance = Math.max(0, card.balance - totalCharged);
           }
         }
-        // Si descontó de un bolsillo, devolverle el dinero
+        // Si descontó de un bolsillo, devolverle el dinero (TOTAL si era compartido)
         if (tx.pocketId) {
           const pocket = state.pockets.find(x => x.id === tx.pocketId);
           if (pocket) {
-            pocket.amount = pocket.amount + tx.amount;
+            pocket.amount = pocket.amount + totalCharged;
           }
         }
         // Si fue un PAGO DE TARJETA, devolver la deuda a la tarjeta
@@ -7609,6 +7749,14 @@ async function buildAnnualPDF(state, year) {
             if (typeof toastInfo === 'function') {
               toastInfo('Pago revertido', `${payCard.name}: saldo actualizado a $${payCard.balance.toLocaleString('es-CO')}`);
             }
+          }
+        }
+        
+        // Si era gasto compartido, eliminar también los registros de "Me deben"
+        if (tx.isShared && state.debtsToMe) {
+          state.debtsToMe = state.debtsToMe.filter(d => d.txId !== tx.id);
+          if (typeof toastInfo === 'function') {
+            toastInfo('Gasto compartido eliminado', 'También se eliminaron las cuentas por cobrar');
           }
         }
       }
@@ -8583,6 +8731,64 @@ async function buildAnnualPDF(state, year) {
 
   let editingTxState = { month: null, id: null, originalTx: null };
 
+  // ============================================================
+  // GASTO COMPARTIDO en modal de EDICIÓN
+  // ============================================================
+  window.toggleEditSharedExpense = function() {
+    const checkbox = document.getElementById('edit-tx-is-shared');
+    const row = document.getElementById('edit-tx-shared-row');
+    const summary = document.getElementById('edit-tx-shared-summary');
+    const totalInput = document.getElementById('edit-tx-shared-total');
+    
+    if (!checkbox || !row) return;
+    
+    if (checkbox.checked) {
+      row.style.display = 'block';
+      // Si no hay valor en total, copiar del monto actual
+      if (totalInput && !totalInput.value) {
+        const currentAmount = document.getElementById('edit-tx-amount')?.value;
+        if (currentAmount) totalInput.value = currentAmount;
+      }
+      window.updateEditSharedCalculation();
+    } else {
+      row.style.display = 'none';
+      if (summary) summary.style.display = 'none';
+    }
+  };
+  
+  window.updateEditSharedCalculation = function() {
+    const totalEl = document.getElementById('edit-tx-shared-total');
+    const namesEl = document.getElementById('edit-tx-shared-names');
+    const summaryEl = document.getElementById('edit-tx-shared-summary');
+    const countEl = document.getElementById('edit-tx-shared-count');
+    const myPartEl = document.getElementById('edit-tx-shared-my-part');
+    const owedEl = document.getElementById('edit-tx-shared-owed');
+    const detailEl = document.getElementById('edit-tx-shared-detail');
+    
+    if (!totalEl || !namesEl || !summaryEl) return;
+    
+    const totalAmount = parseFloat(totalEl.value) || 0;
+    const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    if (names.length === 0 || totalAmount <= 0) {
+      summaryEl.style.display = 'none';
+      return;
+    }
+    
+    const totalPeople = names.length + 1;
+    const myPart = Math.round(totalAmount / totalPeople);
+    const owed = totalAmount - myPart;
+    const perPerson = Math.round(owed / names.length);
+    
+    summaryEl.style.display = 'block';
+    if (countEl) countEl.textContent = totalPeople + ' (tú + ' + names.length + ')';
+    if (myPartEl) myPartEl.textContent = fmt(myPart);
+    if (owedEl) owedEl.textContent = fmt(owed);
+    if (detailEl) {
+      detailEl.innerHTML = `Cada persona te debe <strong style="color: var(--success-text);">${fmt(perPerson)}</strong> · ${names.map(n => '<span style="background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; font-size: 10px;">' + esc(n) + '</span>').join(' ')}`;
+    }
+  };
+
   function openEditTxModal(month, id) {
     const txArr = state.transactions[month] || [];
     const tx = txArr.find(t => t.id === id);
@@ -8637,6 +8843,32 @@ async function buildAnnualPDF(state, year) {
     document.getElementById('edit-tx-date').value = tx.date || '';
     document.getElementById('edit-tx-method').value = tx.paymentMethod || 'efectivo';
     document.getElementById('edit-tx-cashback').value = tx.cashback || 0;
+
+    // GASTO COMPARTIDO: cargar datos si los tiene
+    const isSharedCheck = document.getElementById('edit-tx-is-shared');
+    const sharedRow = document.getElementById('edit-tx-shared-row');
+    const sharedTotalInput = document.getElementById('edit-tx-shared-total');
+    const sharedNamesInput = document.getElementById('edit-tx-shared-names');
+    
+    if (isSharedCheck) {
+      if (tx.isShared) {
+        isSharedCheck.checked = true;
+        if (sharedRow) sharedRow.style.display = 'block';
+        if (sharedTotalInput) sharedTotalInput.value = tx.totalAmount || tx.amount;
+        // Reconstruir nombres desde sharedDetails
+        if (sharedNamesInput && tx.sharedDetails && Array.isArray(tx.sharedDetails)) {
+          const names = tx.sharedDetails.map(s => s.name).join(', ');
+          sharedNamesInput.value = names;
+        }
+        // Trigger cálculo
+        setTimeout(() => window.updateEditSharedCalculation && window.updateEditSharedCalculation(), 100);
+      } else {
+        isSharedCheck.checked = false;
+        if (sharedRow) sharedRow.style.display = 'none';
+        if (sharedTotalInput) sharedTotalInput.value = '';
+        if (sharedNamesInput) sharedNamesInput.value = '';
+      }
+    }
 
     // Mostrar/ocultar campos condicionales según método
     updateEditTxFieldsVisibility();
@@ -8766,7 +8998,7 @@ async function buildAnnualPDF(state, year) {
 
     // Recoger valores nuevos
     const newDesc = (document.getElementById('edit-tx-desc')?.value || '').trim();
-    const newAmount = parseFloat(document.getElementById('edit-tx-amount')?.value) || 0;
+    let newAmount = parseFloat(document.getElementById('edit-tx-amount')?.value) || 0;
     const newDate = document.getElementById('edit-tx-date')?.value || orig.date;
     const newCategory = document.getElementById('edit-tx-category')?.value || orig.category;
     const newMethod = document.getElementById('edit-tx-method')?.value || 'efectivo';
@@ -8774,6 +9006,39 @@ async function buildAnnualPDF(state, year) {
     const newPocketId = parseInt(document.getElementById('edit-tx-pocket')?.value) || null;
     const newCashback = parseFloat(document.getElementById('edit-tx-cashback')?.value) || 0;
     const newPayCardId = parseInt(document.getElementById('edit-tx-pay-card')?.value) || null;
+    
+    // GASTO COMPARTIDO
+    const isSharedCheck = document.getElementById('edit-tx-is-shared');
+    const isShared = isSharedCheck && isSharedCheck.checked;
+    const sharedTotalRaw = document.getElementById('edit-tx-shared-total')?.value;
+    const sharedNamesRaw = (document.getElementById('edit-tx-shared-names')?.value || '').trim();
+    
+    let newTotalAmount = 0;
+    let newSharedWith = [];
+    let newMyAmount = newAmount;
+    let newOwedTotal = 0;
+    
+    if (isShared) {
+      newTotalAmount = parseFloat(sharedTotalRaw) || newAmount;
+      newSharedWith = sharedNamesRaw.split(',').map(n => n.trim()).filter(n => n.length > 0);
+      
+      if (newSharedWith.length === 0) {
+        if (typeof toastError === 'function') toastError('Falta info', 'Escribe los nombres de quien te debe (separados por coma)');
+        return;
+      }
+      
+      if (newTotalAmount <= 0) {
+        if (typeof toastError === 'function') toastError('Monto inválido', 'El monto total debe ser mayor a 0');
+        return;
+      }
+      
+      const totalPeople = newSharedWith.length + 1;
+      newMyAmount = Math.round(newTotalAmount / totalPeople);
+      newOwedTotal = newTotalAmount - newMyAmount;
+      
+      // Ajustar newAmount a mi parte (para que afecte mi balance correctamente)
+      newAmount = newMyAmount;
+    }
 
     // Validaciones
     if (!newDesc) {
@@ -8788,18 +9053,22 @@ async function buildAnnualPDF(state, year) {
     // ===========================================================
     // PASO 1: REVERTIR EFECTOS DEL GASTO ORIGINAL
     // ===========================================================
+    // Para tarjeta y bolsillo, usar el monto que realmente se cargó
+    // (totalAmount si era compartido, amount normal si no)
+    const origCharged = orig.isShared ? (orig.totalAmount || orig.amount) : orig.amount;
+    
     // Si era con tarjeta, devolver el saldo a la tarjeta original
     if (orig.paymentMethod === 'tarjeta' && orig.cardId) {
       const oldCard = state.debts.find(d => d.id === orig.cardId);
       if (oldCard) {
-        oldCard.balance = Math.max(0, (oldCard.balance || 0) - (orig.amount || 0));
+        oldCard.balance = Math.max(0, (oldCard.balance || 0) - origCharged);
       }
     }
     // Si descontó de un bolsillo, devolver el dinero
     if (orig.pocketId) {
       const oldPocket = state.pockets.find(p => p.id === orig.pocketId);
       if (oldPocket) {
-        oldPocket.amount = (oldPocket.amount || 0) + (orig.amount || 0);
+        oldPocket.amount = (oldPocket.amount || 0) + origCharged;
       }
     }
     // Si era pago de tarjeta, devolver la deuda a la tarjeta pagada
@@ -8809,22 +9078,31 @@ async function buildAnnualPDF(state, year) {
         oldPayCard.balance = (oldPayCard.balance || 0) + (orig.amount || 0);
       }
     }
+    
+    // Si era compartido, eliminar registros antiguos de "Me deben" no pagados
+    // (los pagados se respetan, no se borran)
+    if (orig.isShared && state.debtsToMe) {
+      state.debtsToMe = state.debtsToMe.filter(d => !(d.txId === orig.id && !d.paid));
+    }
 
     // ===========================================================
     // PASO 2: APLICAR EFECTOS DEL GASTO NUEVO
     // ===========================================================
+    // Para tarjeta y bolsillo: si es compartido, se carga el TOTAL
+    const newCharged = isShared ? newTotalAmount : newAmount;
+    
     // Si nuevo es con tarjeta, sumar al saldo de la tarjeta nueva
     if (newMethod === 'tarjeta' && newCardId) {
       const newCard = state.debts.find(d => d.id === newCardId);
       if (newCard) {
-        newCard.balance = (newCard.balance || 0) + newAmount;
+        newCard.balance = (newCard.balance || 0) + newCharged;
       }
     }
     // Si nuevo es con bolsillo, descontar del bolsillo nuevo
     if (newMethod !== 'tarjeta' && newPocketId) {
       const newPocket = state.pockets.find(p => p.id === newPocketId);
       if (newPocket) {
-        newPocket.amount = (newPocket.amount || 0) - newAmount;
+        newPocket.amount = (newPocket.amount || 0) - newCharged;
       }
     }
     // Si nuevo es pago de tarjeta, descontar saldo de la tarjeta pagada
@@ -8850,8 +9128,42 @@ async function buildAnnualPDF(state, year) {
       pocketId: (newMethod !== 'tarjeta') ? newPocketId : null,
       payCardId: isPagoTarjeta ? newPayCardId : null,
       cashback: (newMethod === 'tarjeta') ? newCashback : 0,
-      updatedAt: Date.now()  // Marca de última edición
+      updatedAt: Date.now()
     };
+    
+    // Actualizar campos de gasto compartido
+    if (isShared) {
+      updatedTx.isShared = true;
+      updatedTx.totalAmount = newTotalAmount;
+      updatedTx.myAmount = newMyAmount;
+      updatedTx.totalPeople = newSharedWith.length + 1;
+      
+      // Crear nuevos registros de "Me deben"
+      if (!state.debtsToMe) state.debtsToMe = [];
+      const perPerson = Math.round(newOwedTotal / newSharedWith.length);
+      
+      updatedTx.sharedDetails = newSharedWith.map((name, idx) => {
+        const debtRecord = {
+          id: Date.now() + idx + 1,
+          txId: orig.id,  // Usar el ID original de la tx
+          name: name,
+          amount: perPerson,
+          desc: newDesc,
+          date: newDate,
+          paid: false,
+          createdAt: Date.now()
+        };
+        state.debtsToMe.push(debtRecord);
+        return { name: name, amount: perPerson, debtId: debtRecord.id };
+      });
+    } else {
+      // Ya no es compartido: limpiar campos
+      delete updatedTx.isShared;
+      delete updatedTx.totalAmount;
+      delete updatedTx.myAmount;
+      delete updatedTx.totalPeople;
+      delete updatedTx.sharedDetails;
+    }
 
     // Si la fecha cambió a otro mes, mover la transacción al mes correcto
     const newMonth = newDate.substring(0, 7);
@@ -8994,10 +9306,19 @@ async function buildAnnualPDF(state, year) {
       } else {
         methodStr = `${method.icon} ${method.label}`;
       }
+      
+      // Badge de gasto compartido
+      let sharedBadge = '';
+      let sharedDetail = '';
+      if (t.isShared && t.totalAmount && t.totalPeople) {
+        sharedBadge = `<span style="background: linear-gradient(135deg, rgba(127, 119, 221, 0.15), rgba(29, 158, 117, 0.12)); color: var(--accent-from, #7F77DD); padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; margin-left: 6px; border: 1px solid rgba(127, 119, 221, 0.3);">👥 Compartido</span>`;
+        const owed = t.totalAmount - t.myAmount;
+        sharedDetail = `<br><span style="font-size: 10px; color: var(--accent-from, #7F77DD); font-weight: 500;">Total: ${fmt(t.totalAmount)} · Dividido entre ${t.totalPeople} · Te deben ${fmt(owed)}</span>`;
+      }
 
       return `<div class="tx-row" data-tx-id="${t.id}" data-tx-desc="${esc(t.desc).toLowerCase()}" data-tx-category="${t.category}" data-tx-method="${t.paymentMethod || ''}" data-tx-date="${t.date}">
         <div class="tx-date">${ds}</div>
-        <div>${esc(t.desc)}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span></div>
+        <div>${esc(t.desc)}${sharedBadge}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span>${sharedDetail}</div>
         <div style="color: var(--danger-text); font-weight: 500;">${fmt(t.amount)}</div>
         <button class="edit-tx-btn" title="Editar" aria-label="Editar movimiento" onclick="window.openEditTxModal('${currentMonth}', ${t.id})">✏️</button>
         <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>
@@ -9060,7 +9381,193 @@ async function buildAnnualPDF(state, year) {
     renderReturns();
     renderCashbackStrategy();
     renderCreditScore();
+    renderDebtsToMe();  // NUEVO: Cuentas por cobrar de gastos compartidos
   }
+  
+  // ============================================================
+  // RENDER "ME DEBEN" (cuentas por cobrar)
+  // ============================================================
+  function renderDebtsToMe() {
+    const section = document.getElementById('debts-to-me-section');
+    const list = document.getElementById('debts-to-me-list');
+    const totalEl = document.getElementById('debts-to-me-total');
+    
+    if (!section || !list) return;
+    
+    // Filtrar solo las no pagadas
+    const unpaid = (state.debtsToMe || []).filter(d => !d.paid);
+    
+    if (unpaid.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    section.style.display = 'block';
+    
+    // Agrupar por nombre de persona
+    const byPerson = {};
+    unpaid.forEach(d => {
+      const key = d.name.toLowerCase();
+      if (!byPerson[key]) {
+        byPerson[key] = {
+          displayName: d.name,
+          total: 0,
+          items: []
+        };
+      }
+      byPerson[key].total += d.amount;
+      byPerson[key].items.push(d);
+    });
+    
+    const grandTotal = unpaid.reduce((s, d) => s + d.amount, 0);
+    if (totalEl) totalEl.textContent = fmt(grandTotal);
+    
+    // Renderizar
+    let html = '';
+    Object.values(byPerson).forEach(person => {
+      const isExpanded = state._expandedPerson === person.displayName.toLowerCase();
+      
+      html += `
+        <div style="background: var(--bg-secondary); border-radius: 10px; padding: 12px; margin-bottom: 8px; border-left: 3px solid var(--success-text);">
+          <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleDebtPersonExpand('${esc(person.displayName.toLowerCase())}')">
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">👤</span>
+                <strong style="font-size: 14px; color: var(--text-primary);">${esc(person.displayName)}</strong>
+              </div>
+              <div style="font-size: 11px; color: var(--text-tertiary); margin-left: 24px; margin-top: 2px;">
+                ${person.items.length} ${person.items.length === 1 ? 'cuenta' : 'cuentas'} pendiente${person.items.length === 1 ? '' : 's'}
+              </div>
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+              <div style="font-size: 15px; font-weight: 700; color: var(--success-text);">${fmt(person.total)}</div>
+              <div style="font-size: 10px; color: var(--text-tertiary);">${isExpanded ? '▲ Cerrar' : '▼ Ver detalles'}</div>
+            </div>
+          </div>
+          
+          ${isExpanded ? `
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+              ${person.items.map(item => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px;">
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 12px; font-weight: 500; color: var(--text-primary);">${esc(item.desc)}</div>
+                    <div style="font-size: 10px; color: var(--text-tertiary);">${item.date}</div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--success-text);">${fmt(item.amount)}</span>
+                    <button onclick="event.stopPropagation(); markDebtAsPaid(${item.id})" style="background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Marcar como pagado">
+                      ✓ Pagado
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+    
+    list.innerHTML = html;
+  }
+  
+  // Función para expandir/contraer un grupo de persona
+  window.toggleDebtPersonExpand = function(personName) {
+    if (state._expandedPerson === personName) {
+      state._expandedPerson = null;
+    } else {
+      state._expandedPerson = personName;
+    }
+    renderDebtsToMe();
+  };
+  
+  // Función para marcar una deuda como pagada
+  window.markDebtAsPaid = async function(debtId) {
+    if (!state.debtsToMe) return;
+    
+    const debt = state.debtsToMe.find(d => d.id === debtId);
+    if (!debt) return;
+    
+    // Preguntar a qué bolsillo agregar el dinero
+    let bolsillosOpts = '<option value="">No agregar a ningún bolsillo</option>';
+    if (state.pockets && state.pockets.length > 0) {
+      bolsillosOpts += state.pockets.map(p => `<option value="${p.id}">${p.icon} ${esc(p.name)}</option>`).join('');
+    }
+    
+    // Modal de confirmación
+    const existing = document.getElementById('mark-paid-modal');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'mark-paid-modal';
+    overlay.className = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 420px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">✓</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">Confirmar pago</h2>
+          <p class="tutorial-subtitle">${esc(debt.name)} te pagó ${fmt(debt.amount)}</p>
+        </div>
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿En qué bolsillo recibiste el dinero?</label>
+              <select id="paid-pocket-select" style="width: 100%; padding: 10px 12px;">${bolsillosOpts}</select>
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Si seleccionas un bolsillo, ${fmt(debt.amount)} se sumarán automáticamente</p>
+            </div>
+          </div>
+        </div>
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmMarkPaid(${debtId})">✓ Confirmar pago</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+  };
+  
+  window.closeMarkPaidModal = function() {
+    const modal = document.getElementById('mark-paid-modal');
+    if (modal) {
+      modal.remove();
+      if (typeof unlockBody === 'function') unlockBody();
+    }
+  };
+  
+  window.confirmMarkPaid = function(debtId) {
+    if (!state.debtsToMe) return;
+    const debt = state.debtsToMe.find(d => d.id === debtId);
+    if (!debt) return;
+    
+    const pocketIdEl = document.getElementById('paid-pocket-select');
+    const pocketId = pocketIdEl ? pocketIdEl.value : '';
+    
+    // Marcar como pagada
+    debt.paid = true;
+    debt.paidAt = Date.now();
+    debt.paidToPocket = pocketId ? parseInt(pocketId) : null;
+    
+    // Si seleccionó bolsillo, agregar el dinero
+    if (pocketId) {
+      const pocket = state.pockets.find(p => p.id === parseInt(pocketId));
+      if (pocket) {
+        pocket.amount = (pocket.amount || 0) + debt.amount;
+      }
+    }
+    
+    saveState();
+    closeMarkPaidModal();
+    renderResumen();
+    renderPockets();
+    
+    if (typeof toastSuccess === 'function') {
+      toastSuccess(
+        '¡Pago recibido!',
+        pocketId ? `${fmt(debt.amount)} agregado a tu bolsillo` : `${esc(debt.name)} ya pagó`
+      );
+    }
+  };
 
   function renderHealthScore(sav, inc, exp, debt, bal) {
     const sEl = document.getElementById('health-score');
