@@ -2299,10 +2299,42 @@ const TUTORIAL_STEPS = [
     subtitle: 'Organiza dónde tienes tu dinero',
     content: `
       <h3>¿Qué es un Bolsillo?</h3>
-      <p>Un Bolsillo representa un lugar donde tienes dinero: tu cuenta de Nequi, Bancolombia, Lulo, efectivo en la billetera, etc.</p>
-      <p>También puedes crear bolsillos para metas: <strong>Fondo de Emergencias</strong>, <strong>Vacaciones</strong>, <strong>Gastos del mes</strong>.</p>
+      <p>Un Bolsillo es un "lugar" donde tienes dinero: tu cuenta de Nequi, Lulo, Bancolombia, efectivo en la billetera, etc. La suma de todos tus bolsillos = tu <strong>patrimonio total</strong>.</p>
+      
+      <h3 style="margin-top: 14px;">¿Para qué sirven?</h3>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin: 10px 0;">
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
+          <span style="font-size: 18px;">💰</span>
+          <div>
+            <strong style="font-size: 13px;">Saber cuánto tienes en cada lugar</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Ves de un vistazo cuánto hay en Nequi, en efectivo, en Lulo, etc.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
+          <span style="font-size: 18px;">📥</span>
+          <div>
+            <strong style="font-size: 13px;">Recibir dinero</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Cuando registras un ingreso o alguien te paga, eliges en qué bolsillo entró: el saldo sube automáticamente.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--danger-text);">
+          <span style="font-size: 18px;">📤</span>
+          <div>
+            <strong style="font-size: 13px;">Pagar gastos</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Si pagas en efectivo o débito, el saldo del bolsillo baja solo. Si pagas con tarjeta de crédito, no toca tus bolsillos hasta que pagues el extracto.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--warning-text);">
+          <span style="font-size: 18px;">🎯</span>
+          <div>
+            <strong style="font-size: 13px;">Cumplir metas</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Crea bolsillos separados para "Fondo Emergencias", "Vacaciones", "Ahorro carro", etc.</p>
+          </div>
+        </div>
+      </div>
+      
       <div class="tutorial-tip-box">
-        <p>💡 <strong>Tip:</strong> Empieza creando uno para cada cuenta bancaria que tengas y uno para "Efectivo".</p>
+        <p>💡 <strong>Empieza así:</strong> un bolsillo <strong>"Flujo Operativo"</strong> para tu día a día, uno por cada cuenta bancaria que uses, y uno por cada meta de ahorro.</p>
       </div>
     `
   },
@@ -2334,6 +2366,49 @@ const TUTORIAL_STEPS = [
       </ul>
       <div class="tutorial-tip-box">
         <p>💡 <strong>Tip:</strong> Hazlo al momento, no al final del día. Toma 10 segundos y la información será más precisa.</p>
+      </div>
+    `
+  },
+  {
+    icon: '🤝',
+    title: 'Gastos compartidos',
+    subtitle: 'No todos los gastos son solo tuyos',
+    content: `
+      <h3>3 tipos de gasto</h3>
+      <p>Cuando registras un gasto, eliges <strong>de quién es</strong>:</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
+          <span style="font-size: 18px;">💼</span>
+          <div>
+            <strong style="font-size: 13px;">Solo mío</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Gasto normal del día a día. Todo es tuyo.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--info-text);">
+          <span style="font-size: 18px;">👥</span>
+          <div>
+            <strong style="font-size: 13px;">Compartido</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Tú pagaste, pero otros te deben su parte. Ej: cena con amigos, plan familiar.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--warning-text);">
+          <span style="font-size: 18px;">🤝</span>
+          <div>
+            <strong style="font-size: 13px;">Para otros</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Prestaste tu tarjeta, NO es tu gasto. Todo te lo deben.</p>
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 12px;">¿Cómo dividir?</h3>
+      <ul style="margin: 6px 0 12px 20px; padding: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+        <li><strong>División igual:</strong> $300.000 entre 3 = $100.000 cada uno.</li>
+        <li><strong>Montos personalizados:</strong> tú decides cuánto le toca a cada quien. Ej: $360.000 → mamá $100k, hermana $130k, tú $130k.</li>
+      </ul>
+      
+      <div class="tutorial-tip-box">
+        <p>💡 En el <strong>Resumen</strong> verás la sección <strong>"Me deben"</strong> agrupada por persona. Puedes marcar pagos uno por uno o usar <strong>"Pagar TODO de una vez"</strong> cuando te liquidan completo.</p>
       </div>
     `
   },
