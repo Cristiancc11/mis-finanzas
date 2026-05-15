@@ -7651,7 +7651,7 @@ async function buildAnnualPDF(state, year) {
           <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
             👤 ${safeName}
           </div>
-          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" data-person-real="${name.replace(/"/g, '&quot;')}" value="${value}" 
             oninput="window.updateSharedCalculation()" 
             style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
         </div>
@@ -7694,7 +7694,7 @@ async function buildAnnualPDF(state, year) {
           <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
             👤 ${safeName}
           </div>
-          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" data-person-real="${name.replace(/"/g, '&quot;')}" value="${value}" 
             oninput="window.updateLentCalculation()" 
             style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
         </div>
@@ -7737,7 +7737,7 @@ async function buildAnnualPDF(state, year) {
           <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
             👤 ${safeName}
           </div>
-          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" data-person-real="${name.replace(/"/g, '&quot;')}" value="${value}" 
             oninput="window.updateEditSharedCalculation()" 
             style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
         </div>
@@ -7779,7 +7779,7 @@ async function buildAnnualPDF(state, year) {
           <div style="flex: 1; min-width: 0; font-size: 12px; color: var(--text-primary); padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px;">
             👤 ${safeName}
           </div>
-          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" value="${value}" 
+          <input type="number" min="0" step="100" placeholder="$" data-person="${safeName}" data-person-real="${name.replace(/"/g, '&quot;')}" value="${value}" 
             oninput="window.updateEditLentCalculation()" 
             style="width: 120px; padding: 8px 10px; height: 36px; font-size: 12px; text-align: right;" />
         </div>
@@ -7794,10 +7794,13 @@ async function buildAnnualPDF(state, year) {
     if (!listEl) return result;
     
     listEl.querySelectorAll('input[data-person]').forEach(inp => {
-      const personName = inp.getAttribute('data-person');
+      // Usar el atributo data-person-real que guarda el nombre sin escapar
+      const personName = inp.getAttribute('data-person-real') || inp.getAttribute('data-person');
       const amount = parseFloat(inp.value) || 0;
       if (personName) result[personName] = amount;
     });
+    
+    console.log('💰 getCustomAmounts(' + listElId + '):', result);
     return result;
   }
   
@@ -8128,6 +8131,14 @@ async function buildAnnualPDF(state, year) {
         owedTotal = sharedWith.reduce((sum, name) => sum + (customAmountsByPerson[name] || 0), 0);
         myAmount = totalAmount - owedTotal;
         
+        console.log('🔍 SHARED CUSTOM:', {
+          totalAmount,
+          sharedWith,
+          customAmountsByPerson,
+          owedTotal,
+          myAmount
+        });
+        
         if (myAmount < 0) {
           return alert('Los montos asignados superan el total. Revisa los valores.');
         }
@@ -8144,6 +8155,15 @@ async function buildAnnualPDF(state, year) {
         // Distribuir equitativamente
         const perPerson = Math.round(owedTotal / sharedWith.length);
         sharedWith.forEach(name => { customAmountsByPerson[name] = perPerson; });
+        
+        console.log('🔍 SHARED EQUAL:', {
+          totalAmount,
+          sharedWith,
+          customAmountsByPerson,
+          myAmount,
+          owedTotal,
+          sharedSplitMode
+        });
       }
     } else if (isLent) {
       sharedWith = lentNamesRaw.split(',').map(n => n.trim()).filter(n => n.length > 0);
