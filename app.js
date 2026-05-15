@@ -9793,6 +9793,9 @@ async function buildAnnualPDF(state, year) {
     let newMyAmount = newAmount;
     let newOwedTotal = 0;
     
+    let newCustomAmountsByPerson = {};  // v48: guardar montos individuales en edición
+    let newEditSplitMode = 'equal';      // v48: modo usado al editar
+    
     if (isShared) {
       const sharedTotalRaw = document.getElementById('edit-tx-shared-total')?.value;
       const sharedNamesRaw = (document.getElementById('edit-tx-shared-names')?.value || '').trim();
@@ -9810,9 +9813,46 @@ async function buildAnnualPDF(state, year) {
         return;
       }
       
-      const totalPeople = newSharedWith.length + 1;
-      newMyAmount = Math.round(newTotalAmount / totalPeople);
-      newOwedTotal = newTotalAmount - newMyAmount;
+      // v48 FIX: AUTO-DETECTAR montos personalizados en EDICIÓN
+      const editCustomCheck = (typeof getCustomAmounts === 'function')
+        ? getCustomAmounts('edit-tx-shared-custom-list')
+        : {};
+      const hasCustomValues = Object.values(editCustomCheck).some(v => v > 0);
+      // Leer el modo del botón si existe (puede no estar seteado)
+      const editSharedModeBtn = document.getElementById('edit-tx-shared-mode-custom');
+      const isCustomBtnActive = editSharedModeBtn && editSharedModeBtn.style.background &&
+        !editSharedModeBtn.style.background.includes('var(--bg-secondary)');
+      const useCustomMode = isCustomBtnActive || hasCustomValues;
+      
+      console.log('🔍 EDIT MODO DETECTADO:', { hasCustomValues, isCustomBtnActive, useCustomMode, editCustomCheck });
+      
+      if (useCustomMode) {
+        // Modo personalizado: usar los valores asignados a cada persona
+        newCustomAmountsByPerson = editCustomCheck;
+        newOwedTotal = newSharedWith.reduce((sum, name) => sum + (newCustomAmountsByPerson[name] || 0), 0);
+        newMyAmount = newTotalAmount - newOwedTotal;
+        newEditSplitMode = 'custom';
+        
+        console.log('🔍 EDIT SHARED CUSTOM:', { newTotalAmount, newSharedWith, newCustomAmountsByPerson, newOwedTotal, newMyAmount });
+        
+        if (newMyAmount < 0) {
+          if (typeof toastError === 'function') toastError('Montos inválidos', 'La suma asignada (' + fmt(newOwedTotal) + ') supera el total (' + fmt(newTotalAmount) + ')');
+          return;
+        }
+        const missing = newSharedWith.filter(n => !newCustomAmountsByPerson[n] || newCustomAmountsByPerson[n] <= 0);
+        if (missing.length > 0) {
+          if (typeof toastError === 'function') toastError('Falta monto', 'Asigna monto a: ' + missing.join(', '));
+          return;
+        }
+      } else {
+        // Modo igual: dividir entre todos (yo + sharedWith)
+        const totalPeople = newSharedWith.length + 1;
+        newMyAmount = Math.round(newTotalAmount / totalPeople);
+        newOwedTotal = newTotalAmount - newMyAmount;
+        const perPerson = Math.round(newOwedTotal / newSharedWith.length);
+        newSharedWith.forEach(name => { newCustomAmountsByPerson[name] = perPerson; });
+        newEditSplitMode = 'equal';
+      }
       newAmount = newMyAmount;
     } else if (isLent) {
       const lentTotalRaw = document.getElementById('edit-tx-lent-total')?.value;
@@ -9829,6 +9869,38 @@ async function buildAnnualPDF(state, year) {
       if (newTotalAmount <= 0) {
         if (typeof toastError === 'function') toastError('Monto inválido', 'El monto total debe ser mayor a 0');
         return;
+      }
+      
+      // v48 FIX: AUTO-DETECTAR montos personalizados en EDICIÓN (prestado)
+      const editCustomCheckLent = (typeof getCustomAmounts === 'function')
+        ? getCustomAmounts('edit-tx-lent-custom-list')
+        : {};
+      const hasCustomValuesLent = Object.values(editCustomCheckLent).some(v => v > 0);
+      const editLentModeBtn = document.getElementById('edit-tx-lent-mode-custom');
+      const isCustomBtnActiveLent = editLentModeBtn && editLentModeBtn.style.background &&
+        !editLentModeBtn.style.background.includes('var(--bg-secondary)');
+      const useCustomModeLent = isCustomBtnActiveLent || hasCustomValuesLent;
+      
+      console.log('🔍 EDIT LENT MODO DETECTADO:', { hasCustomValuesLent, isCustomBtnActiveLent, useCustomModeLent, editCustomCheckLent });
+      
+      if (useCustomModeLent) {
+        newCustomAmountsByPerson = editCustomCheckLent;
+        const totalAssigned = newSharedWith.reduce((sum, name) => sum + (newCustomAmountsByPerson[name] || 0), 0);
+        if (Math.abs(totalAssigned - newTotalAmount) > 1) {
+          if (typeof toastError === 'function') toastError('Montos no coinciden', 'La suma asignada (' + fmt(totalAssigned) + ') no coincide con el total (' + fmt(newTotalAmount) + ')');
+          return;
+        }
+        const missing = newSharedWith.filter(n => !newCustomAmountsByPerson[n] || newCustomAmountsByPerson[n] <= 0);
+        if (missing.length > 0) {
+          if (typeof toastError === 'function') toastError('Falta monto', 'Asigna monto a: ' + missing.join(', '));
+          return;
+        }
+        newEditSplitMode = 'custom';
+      } else {
+        // Modo igual: dividir entre todos los prestatarios
+        const perPerson = Math.round(newTotalAmount / newSharedWith.length);
+        newSharedWith.forEach(name => { newCustomAmountsByPerson[name] = perPerson; });
+        newEditSplitMode = 'equal';
       }
       
       // En modo prestado: no pones nada
@@ -9938,17 +10010,20 @@ async function buildAnnualPDF(state, year) {
       updatedTx.totalAmount = newTotalAmount;
       updatedTx.myAmount = newMyAmount;
       updatedTx.totalPeople = isShared ? newSharedWith.length + 1 : newSharedWith.length;
+      updatedTx.splitMode = newEditSplitMode;  // v48: guardar modo usado
       
-      // Crear nuevos registros de "Me deben"
+      // Crear nuevos registros de "Me deben" usando montos individuales (v48)
       if (!state.debtsToMe) state.debtsToMe = [];
-      const perPerson = Math.round(newOwedTotal / newSharedWith.length);
       
       updatedTx.sharedDetails = newSharedWith.map((name, idx) => {
+        // v48: usar el monto personalizado de esa persona (custom o equal ya distribuido)
+        const personAmount = newCustomAmountsByPerson[name] || Math.round(newOwedTotal / newSharedWith.length);
+        
         const debtRecord = {
           id: Date.now() + idx + 1,
           txId: orig.id,
           name: name,
-          amount: perPerson,
+          amount: personAmount,
           desc: newDesc,
           date: newDate,
           paid: false,
@@ -9956,7 +10031,7 @@ async function buildAnnualPDF(state, year) {
           createdAt: Date.now()
         };
         state.debtsToMe.push(debtRecord);
-        return { name: name, amount: perPerson, debtId: debtRecord.id };
+        return { name: name, amount: personAmount, debtId: debtRecord.id };
       });
     } else {
       // Ya no es compartido ni prestado: limpiar campos
@@ -9966,6 +10041,7 @@ async function buildAnnualPDF(state, year) {
       delete updatedTx.myAmount;
       delete updatedTx.totalPeople;
       delete updatedTx.sharedDetails;
+      delete updatedTx.splitMode;  // v48: limpiar modo también
     }
 
     // Si la fecha cambió a otro mes, mover la transacción al mes correcto
