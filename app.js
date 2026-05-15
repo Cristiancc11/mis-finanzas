@@ -10424,7 +10424,7 @@ async function buildAnnualPDF(state, year) {
             </div>
             <div>
               <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿En qué bolsillo recibiste el dinero?</label>
-              <select id="paid-all-pocket-select" style="width: 100%; padding: 10px 12px;">${bolsillosOpts}</select>
+              <select id="paid-all-pocket-select" style="width: 100%; padding: 10px 12px; height: 44px; line-height: 1.4; box-sizing: border-box;">${bolsillosOpts}</select>
               <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Si seleccionas un bolsillo, ${fmt(total)} se sumarán automáticamente</p>
             </div>
           </div>
@@ -10515,7 +10515,7 @@ async function buildAnnualPDF(state, year) {
           <div style="display: grid; gap: 12px;">
             <div>
               <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿En qué bolsillo recibiste el dinero?</label>
-              <select id="paid-pocket-select" style="width: 100%; padding: 10px 12px;">${bolsillosOpts}</select>
+              <select id="paid-pocket-select" style="width: 100%; padding: 10px 12px; height: 44px; line-height: 1.4; box-sizing: border-box;">${bolsillosOpts}</select>
               <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Si seleccionas un bolsillo, ${fmt(debt.amount)} se sumarán automáticamente</p>
             </div>
           </div>
