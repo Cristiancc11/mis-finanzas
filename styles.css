@@ -5594,3 +5594,100 @@ button[onclick*="deleteReminder"]:active,
     min-height: 48px;
   }
 }
+
+/* ============================================================
+   v51: PAGINACIÓN DEL LISTADO DE MOVIMIENTOS
+   ============================================================ */
+.tx-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+  margin-top: 12px;
+  border-top: 0.5px solid var(--border);
+}
+
+.tx-pagination-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.tx-pagination-info strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tx-pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.tx-page-btn,
+.tx-page-num {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 12px;
+  min-width: 36px;
+  height: 36px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tx-page-btn:hover:not(:disabled),
+.tx-page-num:hover:not(.active) {
+  background: var(--bg-tertiary, var(--bg-primary));
+  border-color: var(--accent-from, #7F77DD);
+}
+
+.tx-page-btn:active:not(:disabled),
+.tx-page-num:active {
+  transform: scale(0.96);
+}
+
+.tx-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tx-page-num.active {
+  background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75));
+  color: white;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.tx-page-ellipsis {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  padding: 0 4px;
+  user-select: none;
+}
+
+/* En móvil compactar */
+@media (max-width: 768px) {
+  .tx-pagination {
+    padding: 14px 8px;
+  }
+  .tx-page-btn,
+  .tx-page-num {
+    font-size: 12px;
+    padding: 6px 10px;
+    min-width: 34px;
+    height: 38px;
+  }
+  .tx-page-btn {
+    padding: 6px 12px;  /* "Anterior" / "Siguiente" un poco más anchos */
+  }
+}

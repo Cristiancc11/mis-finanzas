@@ -6156,6 +6156,7 @@ async function buildAnnualPDF(state, year) {
         const inp = document.getElementById('tx-search'); if (inp) inp.value = '';
         const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
       }
+      window.txCurrentPage = 1;  // v51: volver a página 1 al cambiar mes
       renderBudget(); renderTransactions();
     };
   }
@@ -9071,6 +9072,7 @@ async function buildAnnualPDF(state, year) {
     cashbackOnly: false,
     paymentMethod: ''
   };
+  window.txCurrentPage = 1;  // v51: paginación del listado de movimientos
 
   let txSearchDebounce = null;
 
@@ -9250,6 +9252,7 @@ async function buildAnnualPDF(state, year) {
       window.txFilters.paymentMethod = '';
     }
     syncTxFilterPanelUI();
+    window.txCurrentPage = 1;  // v51: volver a página 1
     renderTransactions();
   }
 
@@ -9279,6 +9282,7 @@ async function buildAnnualPDF(state, year) {
     if (txSearchDebounce) clearTimeout(txSearchDebounce);
     txSearchDebounce = setTimeout(() => {
       window.txFilters.search = val;
+      window.txCurrentPage = 1;  // v51: volver a página 1 al buscar
       renderTransactions();
     }, 200);
   }
@@ -9287,6 +9291,7 @@ async function buildAnnualPDF(state, year) {
     const inp = document.getElementById('tx-search'); if (inp) inp.value = '';
     const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
     window.txFilters.search = '';
+    window.txCurrentPage = 1;  // v51: volver a página 1
     renderTransactions();
   }
 
@@ -9405,6 +9410,7 @@ async function buildAnnualPDF(state, year) {
     window.txFilters.categories = Array.from(document.querySelectorAll('#tx-filter-categories input[type="checkbox"]:checked')).map(i => i.value);
     // Cerrar panel y renderizar
     closeTxFiltersPanel();
+    window.txCurrentPage = 1;  // v51: volver a página 1 al filtrar
     renderTransactions();
   }
 
@@ -9417,6 +9423,7 @@ async function buildAnnualPDF(state, year) {
     const inp = document.getElementById('tx-search'); if (inp) inp.value = '';
     const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
     syncTxFilterPanelUI();
+    window.txCurrentPage = 1;  // v51: volver a página 1 al limpiar filtros
     renderTransactions();
   }
 
@@ -10239,7 +10246,19 @@ async function buildAnnualPDF(state, year) {
 
     const PAYMENT_METHODS = getPaymentMethodsAsMap();
 
-    list.innerHTML = txs.map(t => {
+    // v51: PAGINACIÓN ─ 10 movimientos por página
+    const PAGE_SIZE = 10;
+    const totalTxs = txs.length;
+    const totalPages = Math.max(1, Math.ceil(totalTxs / PAGE_SIZE));
+    // Asegurar que la página actual esté en rango (por si filtros redujeron resultados)
+    if (typeof window.txCurrentPage !== 'number' || window.txCurrentPage < 1) window.txCurrentPage = 1;
+    if (window.txCurrentPage > totalPages) window.txCurrentPage = totalPages;
+    const currentPage = window.txCurrentPage;
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const endIdx = startIdx + PAGE_SIZE;
+    const txsPage = txs.slice(startIdx, endIdx);
+
+    list.innerHTML = txsPage.map(t => {
       const cat = CATEGORIES.find(c => c.id === t.category) || { icon: '📋', label: 'Otros' };
       const d = new Date(t.date + 'T00:00:00');
       const ds = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
@@ -10279,7 +10298,60 @@ async function buildAnnualPDF(state, year) {
         <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>
       </div>`;
     }).join('');
+
+    // v51: Renderizar controles de paginación si hay más de una página
+    if (totalPages > 1) {
+      const rangeStart = startIdx + 1;
+      const rangeEnd = Math.min(endIdx, totalTxs);
+      const prevDisabled = currentPage === 1;
+      const nextDisabled = currentPage === totalPages;
+
+      // Generar números de página inteligentes: primera, última, actual, vecinas
+      const pageNumbers = [];
+      const addPage = (n) => { if (!pageNumbers.includes(n) && n >= 1 && n <= totalPages) pageNumbers.push(n); };
+      addPage(1);
+      addPage(currentPage - 1);
+      addPage(currentPage);
+      addPage(currentPage + 1);
+      addPage(totalPages);
+      pageNumbers.sort((a, b) => a - b);
+
+      let pageBtnsHtml = '';
+      let lastNum = 0;
+      pageNumbers.forEach(n => {
+        if (n - lastNum > 1) {
+          pageBtnsHtml += `<span class="tx-page-ellipsis">…</span>`;
+        }
+        const activeClass = n === currentPage ? ' active' : '';
+        pageBtnsHtml += `<button class="tx-page-num${activeClass}" onclick="window.gotoTxPage(${n})" aria-label="Página ${n}">${n}</button>`;
+        lastNum = n;
+      });
+
+      list.insertAdjacentHTML('beforeend', `
+        <div class="tx-pagination">
+          <div class="tx-pagination-info">
+            Mostrando <strong>${rangeStart}–${rangeEnd}</strong> de <strong>${totalTxs}</strong> movimientos
+          </div>
+          <div class="tx-pagination-controls">
+            <button class="tx-page-btn" ${prevDisabled ? 'disabled' : ''} onclick="window.gotoTxPage(${currentPage - 1})" aria-label="Página anterior">‹ Anterior</button>
+            ${pageBtnsHtml}
+            <button class="tx-page-btn" ${nextDisabled ? 'disabled' : ''} onclick="window.gotoTxPage(${currentPage + 1})" aria-label="Página siguiente">Siguiente ›</button>
+          </div>
+        </div>
+      `);
+    }
   }
+
+  // v51: helper global para cambiar de página
+  window.gotoTxPage = function(page) {
+    window.txCurrentPage = page;
+    renderTransactions();
+    // Scroll suave al inicio de la lista para que se vea la nueva página
+    const list = document.getElementById('tx-list');
+    if (list && typeof list.scrollIntoView === 'function') {
+      list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   function renderResumen() {
     // Actualizar checklist de onboarding
