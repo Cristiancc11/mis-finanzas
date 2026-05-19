@@ -32,6 +32,92 @@ let authMode = 'login'; // 'login' o 'signup'
 let saveTimeout = null;
 let isLoadingFromCloud = false;
 
+// ============================================================
+// v53: FRESH RELOAD AL VOLVER A LA APP
+// Si la pestaña fue cerrada/oculta por un rato, al volver se hace
+// un reload limpio para garantizar la última versión sin pedir login.
+// Umbral: 2 minutos. Cambios rápidos de pestaña NO disparan reload.
+// ============================================================
+const FRESH_RELOAD_KEY = 'finanzaspro_last_hidden_at';
+const FRESH_RELOAD_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutos
+
+(function setupFreshReload() {
+  // 1. Al cargar: si hay timestamp de "fui ocultada" y pasó suficiente tiempo,
+  //    limpiar caches y recargar
+  try {
+    const lastHidden = parseInt(localStorage.getItem(FRESH_RELOAD_KEY), 10);
+    if (lastHidden && !isNaN(lastHidden)) {
+      const elapsed = Date.now() - lastHidden;
+      if (elapsed >= FRESH_RELOAD_THRESHOLD_MS) {
+        // Limpiar la marca ANTES de recargar para no caer en loop infinito
+        localStorage.removeItem(FRESH_RELOAD_KEY);
+        console.log(`🔄 App estuvo oculta ${Math.round(elapsed/1000)}s — recargando para asegurar última versión...`);
+        
+        // Bloquear el resto del script mientras se prepara el reload
+        window._isFreshReloading = true;
+        
+        // Limpiar Cache API si existe, luego recargar
+        const reloadNow = () => window.location.reload();
+        if ('caches' in window) {
+          caches.keys()
+            .then(names => Promise.all(names.map(n => caches.delete(n))))
+            .finally(reloadNow);
+        } else {
+          reloadNow();
+        }
+        return;
+      } else {
+        // Tiempo muy corto: limpiar la marca y seguir normal
+        localStorage.removeItem(FRESH_RELOAD_KEY);
+      }
+    }
+  } catch(e) {
+    console.warn('Error al chequear fresh reload:', e);
+  }
+  
+  // 2. Registrar listeners para marcar cuando el usuario oculte/cierre la pestaña
+  function markHidden() {
+    try {
+      localStorage.setItem(FRESH_RELOAD_KEY, String(Date.now()));
+    } catch(e) {
+      // Ignorar errores de localStorage (modo privado, etc.)
+    }
+  }
+  
+  // visibilitychange: dispara cuando minimizan, cambian de pestaña, cierran navegador,
+  // o cuando vuelven a la app. Marcamos solo cuando queda OCULTA.
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden') {
+      markHidden();
+    } else if (document.visibilityState === 'visible') {
+      // Al volver visible: chequear si pasó suficiente tiempo para recargar
+      try {
+        const lastHidden = parseInt(localStorage.getItem(FRESH_RELOAD_KEY), 10);
+        if (lastHidden && !isNaN(lastHidden)) {
+          const elapsed = Date.now() - lastHidden;
+          if (elapsed >= FRESH_RELOAD_THRESHOLD_MS) {
+            console.log(`🔄 Volviste después de ${Math.round(elapsed/60000)} min — recargando para última versión...`);
+            localStorage.removeItem(FRESH_RELOAD_KEY);
+            const reloadNow = () => window.location.reload();
+            if ('caches' in window) {
+              caches.keys()
+                .then(names => Promise.all(names.map(n => caches.delete(n))))
+                .finally(reloadNow);
+            } else {
+              reloadNow();
+            }
+          }
+        }
+      } catch(e) { console.warn(e); }
+    }
+  });
+  
+  // pagehide: dispara al cerrar pestaña/navegador. Marca la hora.
+  window.addEventListener('pagehide', markHidden);
+  
+  console.log('✓ Fresh reload listeners registrados (umbral: ' + (FRESH_RELOAD_THRESHOLD_MS/60000) + ' min)');
+})();
+
 // Inicializar Supabase
 function initSupabase() {
   try {
