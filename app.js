@@ -10414,6 +10414,20 @@ async function buildAnnualPDF(state, year) {
   // ============================================================
   // RENDER "ME DEBEN" (cuentas por cobrar)
   // ============================================================
+  
+  // v52: Helper para calcular monto pendiente de una deuda
+  // Si tiene payments parciales, resta del monto original
+  function getDebtPending(debt) {
+    if (!debt) return 0;
+    const original = debt.amount || 0;
+    const paid = Array.isArray(debt.payments)
+      ? debt.payments.reduce((s, p) => s + (p.amount || 0), 0)
+      : 0;
+    return Math.max(0, original - paid);
+  }
+  // Exponer por si se necesita externamente
+  window.getDebtPending = getDebtPending;
+  
   function renderDebtsToMe() {
     const section = document.getElementById('debts-to-me-section');
     const list = document.getElementById('debts-to-me-list');
@@ -10442,11 +10456,13 @@ async function buildAnnualPDF(state, year) {
           items: []
         };
       }
-      byPerson[key].total += d.amount;
+      // v52: usar monto pendiente (resta abonos parciales)
+      const pending = getDebtPending(d);
+      byPerson[key].total += pending;
       byPerson[key].items.push(d);
     });
     
-    const grandTotal = unpaid.reduce((s, d) => s + d.amount, 0);
+    const grandTotal = unpaid.reduce((s, d) => s + getDebtPending(d), 0);
     if (totalEl) totalEl.textContent = fmt(grandTotal);
     
     // Renderizar
@@ -10482,23 +10498,36 @@ async function buildAnnualPDF(state, year) {
               </div>
             ` : ''}
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
-              ${person.items.map(item => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px;">
+              ${person.items.map(item => {
+                // v52: calcular monto pendiente y total abonado
+                const pending = getDebtPending(item);
+                const totalPaid = (item.amount || 0) - pending;
+                const hasPartial = totalPaid > 0;
+                return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
                   <div style="flex: 1; min-width: 0;">
                     <div style="font-size: 12px; font-weight: 500; color: var(--text-primary);">
                       ${esc(item.desc)}
                       ${item.isLent ? '<span style="background: rgba(29, 158, 117, 0.15); color: var(--success-text); padding: 1px 6px; border-radius: 6px; font-size: 9px; font-weight: 600; margin-left: 4px; border: 1px solid rgba(29, 158, 117, 0.3);">🤝 Préstamo</span>' : ''}
                     </div>
                     <div style="font-size: 10px; color: var(--text-tertiary);">${item.date}</div>
+                    ${hasPartial ? `
+                      <div style="font-size: 10px; color: var(--accent-from, #7F77DD); font-weight: 600; margin-top: 3px;">
+                        💰 Abonó ${fmt(totalPaid)} de ${fmt(item.amount)}
+                      </div>
+                    ` : ''}
                   </div>
-                  <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                    <span style="font-size: 12px; font-weight: 600; color: var(--success-text);">${fmt(item.amount)}</span>
-                    <button onclick="event.stopPropagation(); markDebtAsPaid(${item.id})" style="background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Marcar esta como pagada">
+                  <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: wrap;">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--success-text);">${fmt(pending)}</span>
+                    <button onclick="event.stopPropagation(); openPartialPaymentModal(${item.id})" style="background: var(--bg-secondary); color: var(--accent-from, #7F77DD); border: 1px solid var(--accent-from, #7F77DD); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Registrar abono parcial">
+                      💰 Abono
+                    </button>
+                    <button onclick="event.stopPropagation(); markDebtAsPaid(${item.id})" style="background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Marcar esta como pagada completa">
                       ✓ Pagado
                     </button>
                   </div>
                 </div>
-              `).join('')}
+              `;}).join('')}
             </div>
           ` : ''}
         </div>
@@ -10518,6 +10547,151 @@ async function buildAnnualPDF(state, year) {
     renderDebtsToMe();
   };
   
+  // ============================================================
+  // v52: ABONO PARCIAL — registrar pagos parciales
+  // ============================================================
+  window.openPartialPaymentModal = function(debtId) {
+    if (!state.debtsToMe) return;
+    const debt = state.debtsToMe.find(d => d.id === debtId);
+    if (!debt) return;
+    
+    const pending = getDebtPending(debt);
+    const totalPaid = (debt.amount || 0) - pending;
+    
+    if (pending <= 0) {
+      if (typeof toastInfo === 'function') toastInfo('Ya está saldada', 'Esta deuda ya está completamente pagada');
+      return;
+    }
+    
+    // Preparar selector de bolsillos
+    let bolsillosOpts = '<option value="">No agregar a ningún bolsillo</option>';
+    if (state.pockets && state.pockets.length > 0) {
+      bolsillosOpts += state.pockets.map(p => `<option value="${p.id}">${p.icon} ${esc(p.name)}</option>`).join('');
+    }
+    
+    // Modal
+    const existing = document.getElementById('mark-paid-modal');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'mark-paid-modal';
+    overlay.className = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 440px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">💰</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">Registrar abono parcial</h2>
+          <p class="tutorial-subtitle">${esc(debt.name)} · ${esc(debt.desc)}</p>
+        </div>
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <span style="color: var(--text-secondary);">Deuda original:</span>
+                <strong style="color: var(--text-primary);">${fmt(debt.amount)}</strong>
+              </div>
+              ${totalPaid > 0 ? `
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-top: 4px;">
+                  <span style="color: var(--text-secondary);">Ya abonó:</span>
+                  <strong style="color: var(--accent-from, #7F77DD);">${fmt(totalPaid)}</strong>
+                </div>
+              ` : ''}
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);">
+                <span style="color: var(--text-secondary); font-weight: 600;">Pendiente:</span>
+                <strong style="color: var(--success-text); font-size: 15px;">${fmt(pending)}</strong>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Cuánto te abonó?</label>
+              <input type="number" id="partial-amount-input" placeholder="Ej: ${Math.round(pending / 2)}" min="1" max="${pending}" style="width: 100%; font-size: 16px;" autocomplete="off">
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Máximo permitido: ${fmt(pending)}</p>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿En qué bolsillo recibiste el dinero?</label>
+              <select id="partial-pocket-select" style="width: 100%;">${bolsillosOpts}</select>
+            </div>
+          </div>
+        </div>
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmPartialPayment(${debtId})">💰 Registrar abono</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+    
+    // Auto-focus en el input
+    setTimeout(() => {
+      const inp = document.getElementById('partial-amount-input');
+      if (inp) inp.focus();
+    }, 100);
+  };
+  
+  window.confirmPartialPayment = function(debtId) {
+    if (!state.debtsToMe) return;
+    const debt = state.debtsToMe.find(d => d.id === debtId);
+    if (!debt) return;
+    
+    const amountInput = document.getElementById('partial-amount-input');
+    const pocketIdEl = document.getElementById('partial-pocket-select');
+    
+    const amount = parseFloat(amountInput?.value);
+    const pocketId = pocketIdEl ? pocketIdEl.value : '';
+    const pending = getDebtPending(debt);
+    
+    // Validaciones
+    if (!amount || amount <= 0) {
+      if (typeof toastError === 'function') toastError('Monto inválido', 'Escribe cuánto te abonó (mayor a 0)');
+      if (amountInput) amountInput.focus();
+      return;
+    }
+    if (amount > pending) {
+      if (typeof toastError === 'function') toastError('Monto muy alto', `El abono no puede ser mayor al pendiente (${fmt(pending)})`);
+      if (amountInput) amountInput.focus();
+      return;
+    }
+    
+    // Registrar el pago parcial
+    if (!Array.isArray(debt.payments)) debt.payments = [];
+    debt.payments.push({
+      amount: amount,
+      date: Date.now(),
+      pocketId: pocketId ? parseInt(pocketId) : null
+    });
+    
+    // Si seleccionó bolsillo, sumar al bolsillo
+    if (pocketId) {
+      const pocket = state.pockets.find(p => p.id === parseInt(pocketId));
+      if (pocket) {
+        pocket.amount = (pocket.amount || 0) + amount;
+      }
+    }
+    
+    // Si con este abono se completó el total, marcar como pagada
+    const newPending = getDebtPending(debt);
+    const fullyPaid = newPending === 0;
+    if (fullyPaid) {
+      debt.paid = true;
+      debt.paidAt = Date.now();
+      debt.paidToPocket = pocketId ? parseInt(pocketId) : null;
+    }
+    
+    saveState();
+    closeMarkPaidModal();
+    renderResumen();
+    renderPockets();
+    
+    if (typeof toastSuccess === 'function') {
+      if (fullyPaid) {
+        toastSuccess('¡Deuda saldada! 🎉', `${esc(debt.name)} terminó de pagar ${fmt(debt.amount)}`);
+      } else {
+        toastSuccess('Abono registrado', `${esc(debt.name)} abonó ${fmt(amount)} · Quedan ${fmt(newPending)}`);
+      }
+    }
+  };
+  
   // Función para marcar una deuda como pagada
   // Marcar TODAS las deudas de una persona como pagadas
   window.markAllDebtsAsPaid = async function(personNameLower) {
@@ -10530,7 +10704,8 @@ async function buildAnnualPDF(state, year) {
     
     if (personDebts.length === 0) return;
     
-    const total = personDebts.reduce((s, d) => s + d.amount, 0);
+    // v52: usar monto pendiente (resta abonos parciales)
+    const total = personDebts.reduce((s, d) => s + getDebtPending(d), 0);
     const personName = personDebts[0].name;
     
     // Preparar selector de bolsillos
@@ -10558,12 +10733,15 @@ async function buildAnnualPDF(state, year) {
           <div style="display: grid; gap: 12px;">
             <div style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; border-left: 3px solid var(--success-text);">
               <div style="font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; font-weight: 600;">CUENTAS QUE SE MARCARÁN COMO PAGADAS:</div>
-              ${personDebts.map(d => `
+              ${personDebts.map(d => {
+                const dPending = getDebtPending(d);
+                const dPartial = (d.amount || 0) - dPending;
+                return `
                 <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
-                  <span style="color: var(--text-secondary);">${esc(d.desc)}</span>
-                  <strong style="color: var(--success-text);">${fmt(d.amount)}</strong>
+                  <span style="color: var(--text-secondary);">${esc(d.desc)}${dPartial > 0 ? ` <span style="color: var(--accent-from, #7F77DD); font-size: 10px;">(abonó ${fmt(dPartial)})</span>` : ''}</span>
+                  <strong style="color: var(--success-text);">${fmt(dPending)}</strong>
                 </div>
-              `).join('')}
+              `;}).join('')}
               <div style="display: flex; justify-content: space-between; padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--border);">
                 <strong style="font-size: 13px;">TOTAL</strong>
                 <strong style="font-size: 13px; color: var(--success-text);">${fmt(total)}</strong>
@@ -10597,12 +10775,23 @@ async function buildAnnualPDF(state, year) {
     
     const pocketIdEl = document.getElementById('paid-all-pocket-select');
     const pocketId = pocketIdEl ? pocketIdEl.value : '';
-    const total = personDebts.reduce((s, d) => s + d.amount, 0);
+    // v52: total a cobrar es la suma de PENDIENTES (resta abonos previos)
+    const total = personDebts.reduce((s, d) => s + getDebtPending(d), 0);
     const personName = personDebts[0].name;
     const paidAt = Date.now();
     
-    // Marcar TODAS como pagadas
+    // Marcar TODAS como pagadas y registrar el pago final en cada una
     personDebts.forEach(debt => {
+      const debtPending = getDebtPending(debt);
+      // v52: registrar pago en historial de payments
+      if (!Array.isArray(debt.payments)) debt.payments = [];
+      if (debtPending > 0) {
+        debt.payments.push({
+          amount: debtPending,
+          date: paidAt,
+          pocketId: pocketId ? parseInt(pocketId) : null
+        });
+      }
       debt.paid = true;
       debt.paidAt = paidAt;
       debt.paidToPocket = pocketId ? parseInt(pocketId) : null;
@@ -10637,6 +10826,13 @@ async function buildAnnualPDF(state, year) {
     const debt = state.debtsToMe.find(d => d.id === debtId);
     if (!debt) return;
     
+    // v52: usar monto pendiente (en caso de tener abonos parciales previos)
+    const pending = getDebtPending(debt);
+    if (pending <= 0) {
+      if (typeof toastInfo === 'function') toastInfo('Ya está pagada', 'Esta deuda no tiene saldo pendiente');
+      return;
+    }
+    
     // Preguntar a qué bolsillo agregar el dinero
     let bolsillosOpts = '<option value="">No agregar a ningún bolsillo</option>';
     if (state.pockets && state.pockets.length > 0) {
@@ -10656,14 +10852,14 @@ async function buildAnnualPDF(state, year) {
           <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
           <span class="tutorial-icon-big" style="font-size: 36px;">✓</span>
           <h2 class="tutorial-title" style="font-size: 18px;">Confirmar pago</h2>
-          <p class="tutorial-subtitle">${esc(debt.name)} te pagó ${fmt(debt.amount)}</p>
+          <p class="tutorial-subtitle">${esc(debt.name)} te pagó ${fmt(pending)}</p>
         </div>
         <div class="tutorial-body" style="padding: 16px 20px;">
           <div style="display: grid; gap: 12px;">
             <div>
               <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿En qué bolsillo recibiste el dinero?</label>
               <select id="paid-pocket-select" style="width: 100%;">${bolsillosOpts}</select>
-              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Si seleccionas un bolsillo, ${fmt(debt.amount)} se sumarán automáticamente</p>
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Si seleccionas un bolsillo, ${fmt(pending)} se sumarán automáticamente</p>
             </div>
           </div>
         </div>
@@ -10690,10 +10886,21 @@ async function buildAnnualPDF(state, year) {
     const debt = state.debtsToMe.find(d => d.id === debtId);
     if (!debt) return;
     
+    // v52: el monto que se cobra es el pendiente (respeta abonos parciales previos)
+    const pending = getDebtPending(debt);
+    
     const pocketIdEl = document.getElementById('paid-pocket-select');
     const pocketId = pocketIdEl ? pocketIdEl.value : '';
     
-    // Marcar como pagada
+    // v52: registrar este pago final en el historial de payments
+    if (!Array.isArray(debt.payments)) debt.payments = [];
+    debt.payments.push({
+      amount: pending,
+      date: Date.now(),
+      pocketId: pocketId ? parseInt(pocketId) : null
+    });
+    
+    // Marcar como pagada completa
     debt.paid = true;
     debt.paidAt = Date.now();
     debt.paidToPocket = pocketId ? parseInt(pocketId) : null;
@@ -10702,7 +10909,7 @@ async function buildAnnualPDF(state, year) {
     if (pocketId) {
       const pocket = state.pockets.find(p => p.id === parseInt(pocketId));
       if (pocket) {
-        pocket.amount = (pocket.amount || 0) + debt.amount;
+        pocket.amount = (pocket.amount || 0) + pending;
       }
     }
     
@@ -10714,7 +10921,7 @@ async function buildAnnualPDF(state, year) {
     if (typeof toastSuccess === 'function') {
       toastSuccess(
         '¡Pago recibido!',
-        pocketId ? `${fmt(debt.amount)} agregado a tu bolsillo` : `${esc(debt.name)} ya pagó`
+        pocketId ? `${fmt(pending)} agregado a tu bolsillo` : `${esc(debt.name)} ya pagó`
       );
     }
   };
@@ -11489,6 +11696,7 @@ async function buildAnnualPDF(state, year) {
     try { renderIncomeTypesSelect(); } catch(e) { console.error('❌ Error en renderIncomeTypesSelect:', e); }
     try { renderCategoriesSelect(); } catch(e) { console.error('❌ Error en renderCategoriesSelect:', e); }
     try { renderPaymentMethodsSelect(); } catch(e) { console.error('❌ Error en renderPaymentMethodsSelect:', e); }
+    try { renderMyDebts(); } catch(e) { console.error('❌ Error en renderMyDebts:', e); }
     
     console.log('🎨 Render completado. Estado actual:', {
       bolsillos: state.pockets ? state.pockets.length : 'N/A',
@@ -11497,6 +11705,537 @@ async function buildAnnualPDF(state, year) {
       metas: state.goals ? state.goals.length : 'N/A'
     });
   }
+
+  // ============================================================
+  // v53: MÓDULO MIS DEUDAS — préstamos, tarjetas a cuotas, personas
+  // ============================================================
+  
+  // Helper: monto pendiente de una deuda (resta payments)
+  function getMyDebtPending(d) {
+    if (!d) return 0;
+    const orig = d.totalAmount || 0;
+    const paid = Array.isArray(d.payments)
+      ? d.payments.reduce((s, p) => s + (p.amount || 0), 0)
+      : 0;
+    return Math.max(0, orig - paid);
+  }
+  window.getMyDebtPending = getMyDebtPending;
+  
+  // Helper: total pagado de una deuda
+  function getMyDebtPaid(d) {
+    if (!d || !Array.isArray(d.payments)) return 0;
+    return d.payments.reduce((s, p) => s + (p.amount || 0), 0);
+  }
+  
+  // Helper: tipo legible con icono
+  function getMyDebtTypeLabel(type) {
+    const map = {
+      prestamo: { icon: '💼', label: 'Préstamo' },
+      tarjeta_cuotas: { icon: '💳', label: 'Tarjeta a cuotas' },
+      persona: { icon: '👤', label: 'Persona' },
+      otro: { icon: '📋', label: 'Otro' }
+    };
+    return map[type] || map.otro;
+  }
+  
+  // Helper: calcular próximo vencimiento (día del mes)
+  function getNextDueDate(dueDay) {
+    if (!dueDay || dueDay < 1 || dueDay > 31) return null;
+    const now = new Date();
+    let due = new Date(now.getFullYear(), now.getMonth(), dueDay);
+    // Si ya pasó este mes, el próximo es el mes siguiente
+    if (due < now) {
+      due = new Date(now.getFullYear(), now.getMonth() + 1, dueDay);
+    }
+    return due;
+  }
+  
+  // Días faltantes hasta el próximo vencimiento
+  function daysUntilDue(dueDay) {
+    const due = getNextDueDate(dueDay);
+    if (!due) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffMs = due - today;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  }
+  
+  // Agregar nueva deuda
+  window.addMyDebt = function() {
+    const name = (document.getElementById('mydebt-name')?.value || '').trim();
+    const type = document.getElementById('mydebt-type')?.value || 'otro';
+    const total = parseFloat(document.getElementById('mydebt-total')?.value);
+    const monthly = parseFloat(document.getElementById('mydebt-monthly')?.value) || 0;
+    const startDate = document.getElementById('mydebt-start-date')?.value || '';
+    const dueDayRaw = document.getElementById('mydebt-due-day')?.value;
+    const dueDay = dueDayRaw ? parseInt(dueDayRaw, 10) : null;
+    const notes = (document.getElementById('mydebt-notes')?.value || '').trim();
+    
+    // Validaciones
+    if (!name) {
+      if (typeof toastError === 'function') toastError('Falta nombre', 'Escribe a quién le debes o el nombre del préstamo');
+      return;
+    }
+    if (!total || total <= 0) {
+      if (typeof toastError === 'function') toastError('Monto inválido', 'Escribe el monto total adeudado (mayor a 0)');
+      return;
+    }
+    if (dueDay !== null && (isNaN(dueDay) || dueDay < 1 || dueDay > 31)) {
+      if (typeof toastError === 'function') toastError('Día inválido', 'El día de vencimiento debe estar entre 1 y 31');
+      return;
+    }
+    
+    if (!Array.isArray(state.myDebts)) state.myDebts = [];
+    
+    state.myDebts.push({
+      id: Date.now(),
+      name,
+      type,
+      totalAmount: total,
+      monthlyPayment: monthly,
+      startDate: startDate || new Date().toISOString().slice(0, 10),
+      dueDay,
+      notes,
+      payments: [],
+      paid: false,
+      createdAt: Date.now()
+    });
+    
+    // Limpiar form
+    ['mydebt-name', 'mydebt-total', 'mydebt-monthly', 'mydebt-start-date', 'mydebt-due-day', 'mydebt-notes'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const typeEl = document.getElementById('mydebt-type');
+    if (typeEl) typeEl.value = 'prestamo';
+    
+    saveState();
+    renderMyDebts();
+    
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Deuda registrada', `${name} agregada por ${fmt(total)}`);
+    }
+  };
+  
+  // Eliminar deuda
+  window.deleteMyDebt = function(debtId) {
+    if (!confirm('¿Eliminar esta deuda y todo su historial de pagos?\n\nEsta acción no se puede deshacer.')) return;
+    
+    if (!Array.isArray(state.myDebts)) return;
+    state.myDebts = state.myDebts.filter(d => d.id !== debtId);
+    saveState();
+    renderMyDebts();
+    
+    if (typeof toastSuccess === 'function') toastSuccess('Deuda eliminada', 'La deuda y sus pagos fueron eliminados');
+  };
+  
+  // Toggle expand de una deuda (mostrar historial)
+  window.toggleMyDebtExpand = function(debtId) {
+    if (state._expandedMyDebt === debtId) {
+      state._expandedMyDebt = null;
+    } else {
+      state._expandedMyDebt = debtId;
+    }
+    renderMyDebts();
+  };
+  
+  // Toggle de la card de deudas saldadas
+  window.toggleMyDebtsPaid = function() {
+    const list = document.getElementById('mydebts-paid-list');
+    const toggle = document.getElementById('mydebts-paid-toggle');
+    if (!list || !toggle) return;
+    const open = list.style.display !== 'none';
+    list.style.display = open ? 'none' : 'block';
+    toggle.textContent = open ? '▼' : '▲';
+  };
+  
+  // Abrir modal de pago
+  window.openMyDebtPaymentModal = function(debtId, mode) {
+    if (!Array.isArray(state.myDebts)) return;
+    const debt = state.myDebts.find(d => d.id === debtId);
+    if (!debt) return;
+    
+    const pending = getMyDebtPending(debt);
+    if (pending <= 0) {
+      if (typeof toastInfo === 'function') toastInfo('Ya está saldada', 'Esta deuda no tiene saldo pendiente');
+      return;
+    }
+    
+    // mode: 'parcial' o 'total'
+    const isTotal = mode === 'total';
+    const suggestedAmount = isTotal ? pending : (debt.monthlyPayment > 0 ? Math.min(debt.monthlyPayment, pending) : '');
+    const typeInfo = getMyDebtTypeLabel(debt.type);
+    
+    // Selector de bolsillos
+    let bolsillosOpts = '<option value="">No descontar de ningún bolsillo</option>';
+    if (state.pockets && state.pockets.length > 0) {
+      bolsillosOpts += state.pockets.map(p => `<option value="${p.id}">${p.icon} ${esc(p.name)} (${fmt(p.amount || 0)})</option>`).join('');
+    }
+    
+    // Modal
+    const existing = document.getElementById('mark-paid-modal');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'mark-paid-modal';
+    overlay.className = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 460px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">${isTotal ? '✅' : '💰'}</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">${isTotal ? 'Pago total' : 'Pago parcial'}</h2>
+          <p class="tutorial-subtitle">${typeInfo.icon} ${esc(debt.name)}</p>
+        </div>
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; border-left: 3px solid var(--warning-text);">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <span style="color: var(--text-secondary);">Deuda total:</span>
+                <strong style="color: var(--text-primary);">${fmt(debt.totalAmount)}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-top: 4px;">
+                <span style="color: var(--text-secondary);">Ya pagado:</span>
+                <strong style="color: var(--success-text);">${fmt(getMyDebtPaid(debt))}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);">
+                <span style="color: var(--text-secondary); font-weight: 600;">Pendiente:</span>
+                <strong style="color: var(--warning-text); font-size: 15px;">${fmt(pending)}</strong>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Cuánto vas a pagar?</label>
+              <input type="number" id="mydebt-payment-amount" inputmode="decimal" value="${suggestedAmount}" min="1" max="${pending}" style="width: 100%; font-size: 16px;" ${isTotal ? 'readonly' : ''}>
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Máximo permitido: ${fmt(pending)}</p>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿De qué bolsillo sale el dinero?</label>
+              <select id="mydebt-payment-pocket" style="width: 100%;">${bolsillosOpts}</select>
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Si seleccionas uno, el monto se restará automáticamente</p>
+            </div>
+          </div>
+        </div>
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmMyDebtPayment(${debtId})">${isTotal ? '✅ Confirmar pago total' : '💰 Registrar pago'}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+    setTimeout(() => {
+      const inp = document.getElementById('mydebt-payment-amount');
+      if (inp && !isTotal) { inp.focus(); inp.select(); }
+    }, 100);
+  };
+  
+  // Confirmar pago
+  window.confirmMyDebtPayment = function(debtId) {
+    if (!Array.isArray(state.myDebts)) return;
+    const debt = state.myDebts.find(d => d.id === debtId);
+    if (!debt) return;
+    
+    const amount = parseFloat(document.getElementById('mydebt-payment-amount')?.value);
+    const pocketIdEl = document.getElementById('mydebt-payment-pocket');
+    const pocketId = pocketIdEl ? pocketIdEl.value : '';
+    const pending = getMyDebtPending(debt);
+    
+    if (!amount || amount <= 0) {
+      if (typeof toastError === 'function') toastError('Monto inválido', 'Escribe cuánto vas a pagar');
+      return;
+    }
+    if (amount > pending) {
+      if (typeof toastError === 'function') toastError('Monto muy alto', `No puedes pagar más de lo que debes (${fmt(pending)})`);
+      return;
+    }
+    
+    // Validar bolsillo si fue seleccionado
+    if (pocketId) {
+      const pocket = state.pockets.find(p => p.id === parseInt(pocketId));
+      if (pocket && (pocket.amount || 0) < amount) {
+        if (!confirm(`El bolsillo "${pocket.name}" solo tiene ${fmt(pocket.amount || 0)} y vas a sacar ${fmt(amount)}. Quedará en negativo. ¿Continuar?`)) {
+          return;
+        }
+      }
+    }
+    
+    // Registrar el pago
+    if (!Array.isArray(debt.payments)) debt.payments = [];
+    debt.payments.push({
+      id: Date.now(),
+      amount,
+      date: Date.now(),
+      pocketId: pocketId ? parseInt(pocketId) : null
+    });
+    
+    // Restar del bolsillo si aplica
+    if (pocketId) {
+      const pocket = state.pockets.find(p => p.id === parseInt(pocketId));
+      if (pocket) {
+        pocket.amount = (pocket.amount || 0) - amount;
+      }
+    }
+    
+    // Si con este pago se completó la deuda, marcar como saldada
+    const newPending = getMyDebtPending(debt);
+    const fullyPaid = newPending === 0;
+    if (fullyPaid) {
+      debt.paid = true;
+      debt.paidAt = Date.now();
+    }
+    
+    saveState();
+    closeMarkPaidModal();
+    renderMyDebts();
+    if (typeof renderPockets === 'function') renderPockets();
+    if (typeof renderResumen === 'function') renderResumen();
+    
+    if (typeof toastSuccess === 'function') {
+      if (fullyPaid) {
+        toastSuccess('¡Deuda saldada! 🎉', `${esc(debt.name)} pagada completamente`);
+      } else {
+        toastSuccess('Pago registrado', `Pagaste ${fmt(amount)} · Quedan ${fmt(newPending)}`);
+      }
+    }
+  };
+  
+  // Reactivar una deuda saldada (deshacer)
+  window.reactivateMyDebt = function(debtId) {
+    if (!Array.isArray(state.myDebts)) return;
+    const debt = state.myDebts.find(d => d.id === debtId);
+    if (!debt) return;
+    if (!confirm(`¿Reactivar la deuda con "${debt.name}"?\n\nVolverá a aparecer en las deudas activas con el saldo pendiente que tenía.`)) return;
+    
+    debt.paid = false;
+    delete debt.paidAt;
+    saveState();
+    renderMyDebts();
+    if (typeof toastSuccess === 'function') toastSuccess('Deuda reactivada', `${esc(debt.name)} vuelve a deudas activas`);
+  };
+  
+  // Eliminar un pago del historial (deshacer un pago específico)
+  window.deleteMyDebtPayment = function(debtId, paymentId) {
+    if (!Array.isArray(state.myDebts)) return;
+    const debt = state.myDebts.find(d => d.id === debtId);
+    if (!debt || !Array.isArray(debt.payments)) return;
+    const payment = debt.payments.find(p => p.id === paymentId);
+    if (!payment) return;
+    
+    if (!confirm(`¿Eliminar este pago de ${fmt(payment.amount)}?\n\nEl dinero NO se devuelve al bolsillo automáticamente.`)) return;
+    
+    debt.payments = debt.payments.filter(p => p.id !== paymentId);
+    // Si estaba marcada como pagada y ahora queda saldo, reactivarla
+    if (debt.paid && getMyDebtPending(debt) > 0) {
+      debt.paid = false;
+      delete debt.paidAt;
+    }
+    saveState();
+    renderMyDebts();
+    if (typeof toastSuccess === 'function') toastSuccess('Pago eliminado', 'El pago fue removido del historial');
+  };
+  
+  // Render principal
+  function renderMyDebts() {
+    const list = document.getElementById('mydebts-list');
+    if (!list) return;
+    
+    const debts = Array.isArray(state.myDebts) ? state.myDebts : [];
+    const active = debts.filter(d => !d.paid);
+    const paid = debts.filter(d => d.paid);
+    
+    // ─── RESUMEN ───
+    const totalDebt = active.reduce((s, d) => s + getMyDebtPending(d), 0);
+    const monthly = active.reduce((s, d) => s + (d.monthlyPayment || 0), 0);
+    
+    // Próximo vencimiento
+    let nextDueText = '—';
+    let nextDueDebts = active.filter(d => d.dueDay);
+    if (nextDueDebts.length > 0) {
+      nextDueDebts.sort((a, b) => {
+        const da = daysUntilDue(a.dueDay);
+        const db = daysUntilDue(b.dueDay);
+        return da - db;
+      });
+      const next = nextDueDebts[0];
+      const days = daysUntilDue(next.dueDay);
+      const due = getNextDueDate(next.dueDay);
+      const dueStr = due.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+      let urgency = '';
+      if (days === 0) urgency = ' 🚨 HOY';
+      else if (days === 1) urgency = ' ⚠️ mañana';
+      else if (days <= 3) urgency = ` ⚠️ en ${days} días`;
+      else urgency = ` (en ${days} días)`;
+      nextDueText = `${esc(next.name)} · ${dueStr}${urgency}`;
+    }
+    
+    const totalEl = document.getElementById('mydebts-total');
+    const monthlyEl = document.getElementById('mydebts-monthly');
+    const nextEl = document.getElementById('mydebts-next-due');
+    const countEl = document.getElementById('mydebts-count');
+    if (totalEl) totalEl.textContent = fmt(totalDebt);
+    if (monthlyEl) monthlyEl.textContent = monthly > 0 ? fmt(monthly) : '—';
+    if (nextEl) nextEl.textContent = nextDueText;
+    if (countEl) countEl.textContent = active.length;
+    
+    // ─── LISTA DEUDAS ACTIVAS ───
+    if (active.length === 0) {
+      list.innerHTML = `
+        <div style="text-align: center; padding: 24px 12px; color: var(--text-tertiary); font-size: 13px;">
+          <div style="font-size: 36px; margin-bottom: 8px;">🎉</div>
+          <div>No tienes deudas activas</div>
+          <div style="font-size: 11px; margin-top: 4px;">¡Felicidades, estás libre!</div>
+        </div>
+      `;
+    } else {
+      // Ordenar por vencimiento más próximo, luego por monto pendiente desc
+      active.sort((a, b) => {
+        const da = a.dueDay ? daysUntilDue(a.dueDay) : 999;
+        const db = b.dueDay ? daysUntilDue(b.dueDay) : 999;
+        if (da !== db) return da - db;
+        return getMyDebtPending(b) - getMyDebtPending(a);
+      });
+      
+      list.innerHTML = active.map(d => {
+        const pending = getMyDebtPending(d);
+        const totalPaid = getMyDebtPaid(d);
+        const total = d.totalAmount || 1;
+        const progressPct = Math.min(100, Math.round((totalPaid / total) * 100));
+        const typeInfo = getMyDebtTypeLabel(d.type);
+        const isExpanded = state._expandedMyDebt === d.id;
+        
+        // Badge de vencimiento
+        let dueBadge = '';
+        if (d.dueDay) {
+          const days = daysUntilDue(d.dueDay);
+          let badgeColor = 'var(--text-tertiary)';
+          let badgeBg = 'var(--bg-secondary)';
+          let badgeText = `Vence día ${d.dueDay}`;
+          if (days === 0) { badgeColor = 'var(--danger-text)'; badgeBg = 'rgba(220,55,55,0.12)'; badgeText = '🚨 Vence HOY'; }
+          else if (days === 1) { badgeColor = 'var(--warning-text)'; badgeBg = 'rgba(235,170,40,0.12)'; badgeText = '⚠️ Vence mañana'; }
+          else if (days <= 3) { badgeColor = 'var(--warning-text)'; badgeBg = 'rgba(235,170,40,0.12)'; badgeText = `⚠️ En ${days} días`; }
+          else if (days <= 7) { badgeColor = 'var(--info-text)'; badgeBg = 'rgba(55,138,221,0.12)'; badgeText = `📅 En ${days} días`; }
+          dueBadge = `<span style="display: inline-block; padding: 2px 8px; background: ${badgeBg}; color: ${badgeColor}; border-radius: 6px; font-size: 10px; font-weight: 600; margin-left: 6px;">${badgeText}</span>`;
+        }
+        
+        // Historial expandido
+        let historyHtml = '';
+        if (isExpanded) {
+          if (Array.isArray(d.payments) && d.payments.length > 0) {
+            const sorted = [...d.payments].sort((a, b) => b.date - a.date);
+            historyHtml = `
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-tertiary); font-weight: 600; margin-bottom: 8px;">📜 HISTORIAL DE PAGOS (${sorted.length})</div>
+                ${sorted.map(p => {
+                  const dt = new Date(p.date);
+                  const ds = dt.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+                  const pocket = p.pocketId ? state.pockets.find(pk => pk.id === p.pocketId) : null;
+                  const pocketStr = pocket ? `${pocket.icon} ${esc(pocket.name)}` : 'Sin bolsillo';
+                  return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: var(--bg-primary); border-radius: 6px; margin-bottom: 4px;">
+                      <div style="font-size: 11px;">
+                        <strong style="color: var(--success-text);">${fmt(p.amount)}</strong>
+                        <span style="color: var(--text-tertiary);"> · ${ds} · ${pocketStr}</span>
+                      </div>
+                      <button onclick="event.stopPropagation(); deleteMyDebtPayment(${d.id}, ${p.id})" style="background: transparent; color: var(--danger-text); border: none; cursor: pointer; font-size: 14px; padding: 2px 6px;" title="Eliminar este pago">🗑️</button>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `;
+          } else {
+            historyHtml = `<div style="margin-top: 10px; font-size: 11px; color: var(--text-tertiary); text-align: center;">Aún no hay pagos registrados</div>`;
+          }
+        }
+        
+        // Notas (si hay)
+        const notesHtml = d.notes ? `<div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px; font-style: italic;">💬 ${esc(d.notes)}</div>` : '';
+        
+        return `
+          <div style="background: var(--bg-secondary); border-radius: 10px; padding: 12px; margin-bottom: 8px; border-left: 3px solid var(--warning-text);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; cursor: pointer;" onclick="toggleMyDebtExpand(${d.id})">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                  ${typeInfo.icon} ${esc(d.name)}${dueBadge}
+                </div>
+                <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">
+                  ${typeInfo.label}${d.monthlyPayment > 0 ? ` · Cuota: ${fmt(d.monthlyPayment)}` : ''}
+                </div>
+                ${notesHtml}
+                <div style="margin-top: 8px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                    <span style="color: var(--text-secondary);">Pagado: <strong style="color: var(--success-text);">${fmt(totalPaid)}</strong> de ${fmt(d.totalAmount)}</span>
+                    <span style="color: var(--text-secondary);">${progressPct}%</span>
+                  </div>
+                  <div style="height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; width: ${progressPct}%; background: linear-gradient(90deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); transition: width 0.3s;"></div>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align: right; flex-shrink: 0;">
+                <div style="font-size: 10px; color: var(--text-tertiary);">PENDIENTE</div>
+                <div style="font-size: 16px; font-weight: 700; color: var(--warning-text);">${fmt(pending)}</div>
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 2px;">${isExpanded ? '▲ Cerrar' : '▼ Ver historial'}</div>
+              </div>
+            </div>
+            
+            ${historyHtml}
+            
+            <div style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); flex-wrap: wrap;">
+              <button onclick="event.stopPropagation(); openMyDebtPaymentModal(${d.id}, 'parcial')" style="flex: 1; min-width: 110px; background: var(--bg-primary); color: var(--accent-from, #7F77DD); border: 1px solid var(--accent-from, #7F77DD); padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                💰 Pago parcial
+              </button>
+              <button onclick="event.stopPropagation(); openMyDebtPaymentModal(${d.id}, 'total')" style="flex: 1; min-width: 110px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                ✅ Pago total
+              </button>
+              <button onclick="event.stopPropagation(); deleteMyDebt(${d.id})" style="background: var(--bg-primary); color: var(--danger-text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;" title="Eliminar">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // ─── DEUDAS SALDADAS ───
+    const paidCard = document.getElementById('mydebts-paid-card');
+    const paidList = document.getElementById('mydebts-paid-list');
+    if (paidCard && paidList) {
+      if (paid.length === 0) {
+        paidCard.style.display = 'none';
+      } else {
+        paidCard.style.display = 'block';
+        // Mantener oculto/visible según estado actual del toggle
+        paidList.innerHTML = paid.map(d => {
+          const typeInfo = getMyDebtTypeLabel(d.type);
+          const dt = d.paidAt ? new Date(d.paidAt) : null;
+          const ds = dt ? dt.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+          return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 6px; opacity: 0.85;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 12px; font-weight: 600;">${typeInfo.icon} ${esc(d.name)} <span style="color: var(--success-text); font-size: 10px;">✓ Saldada</span></div>
+                <div style="font-size: 10px; color: var(--text-tertiary);">${fmt(d.totalAmount)} · Pagada el ${ds}</div>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button onclick="reactivateMyDebt(${d.id})" style="background: transparent; color: var(--info-text); border: 1px solid var(--info-text); padding: 4px 8px; border-radius: 6px; font-size: 10px; cursor: pointer;" title="Reactivar deuda">↩️ Reactivar</button>
+                <button onclick="deleteMyDebt(${d.id})" style="background: transparent; color: var(--danger-text); border: none; padding: 4px 6px; font-size: 13px; cursor: pointer;" title="Eliminar">🗑️</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+  
+  // Exponer render para que sea llamado desde otros lugares
+  window.renderMyDebts = renderMyDebts;
+  
+  // Hook al click de la pestaña: renderizar cuando se entra
+  document.addEventListener('click', function(e) {
+    const tab = e.target.closest('.fin-tab, .side-menu-item');
+    if (tab && tab.dataset && tab.dataset.tab === 'mis-deudas') {
+      setTimeout(() => renderMyDebts(), 50);
+    }
+  }, true);
 
   if (typeof Chart !== 'undefined') loadState();
   else window.addEventListener('load', loadState);

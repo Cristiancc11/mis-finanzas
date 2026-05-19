@@ -553,6 +553,11 @@
         <span class="side-menu-item-text">Tarjetas</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
+      <button class="side-menu-item" data-tab="mis-deudas" onclick="navigateTab('mis-deudas')">
+        <span class="side-menu-item-icon">📝</span>
+        <span class="side-menu-item-text">Mis Deudas</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
       <button class="side-menu-item" data-tab="metas" onclick="navigateTab('metas')">
         <span class="side-menu-item-icon">🎯</span>
         <span class="side-menu-item-text">Metas</span>
@@ -609,6 +614,7 @@
     <button class="fin-tab" data-tab="bolsillos"><span class="tab-icon">👛</span><span class="tab-label">Bolsillos</span></button>
     <button class="fin-tab" data-tab="ingresos"><span class="tab-icon">💰</span><span class="tab-label">Ingresos</span></button>
     <button class="fin-tab" data-tab="deudas"><span class="tab-icon">💳</span><span class="tab-label">Tarjetas</span></button>
+    <button class="fin-tab" data-tab="mis-deudas"><span class="tab-icon">📝</span><span class="tab-label">Mis Deudas</span></button>
     <button class="fin-tab" data-tab="metas"><span class="tab-icon">🎯</span><span class="tab-label">Metas</span></button>
     <button class="fin-tab" data-tab="analisis"><span class="tab-icon">📊</span><span class="tab-label">Análisis</span></button>
     <button class="fin-tab" data-tab="documentos"><span class="tab-icon">📄</span><span class="tab-label">Docs</span></button>
@@ -1414,6 +1420,66 @@
       <div class="summary-row"><span>Utilización</span><span id="debt-utilization" style="font-weight: 500;">—</span></div>
       <div class="summary-row"><span>💰 Cashback total del mes</span><span id="cashback-total" style="font-weight: 500; color: var(--success-text);">—</span></div>
     </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECCIÓN MIS DEUDAS                            -->
+  <!-- ============================================ -->
+  <div class="fin-section" id="section-mis-deudas">
+
+    <!-- Card de resumen -->
+    <div class="raised-card">
+      <p class="card-title">📝 Resumen de mis deudas</p>
+      <div class="summary-row"><span>Total adeudado</span><span id="mydebts-total" style="font-weight: 500; color: var(--warning-text);">—</span></div>
+      <div class="summary-row"><span>Pago del mes (sugerido)</span><span id="mydebts-monthly" style="font-weight: 500;">—</span></div>
+      <div class="summary-row"><span>Próximo vencimiento</span><span id="mydebts-next-due" style="font-weight: 500; color: var(--info-text);">—</span></div>
+      <div class="summary-row"><span>Deudas activas</span><span id="mydebts-count" style="font-weight: 500;">—</span></div>
+    </div>
+
+    <!-- Card de agregar nueva deuda -->
+    <div class="raised-card">
+      <p class="card-title">➕ Nueva deuda</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Registra préstamos, tarjetas a cuotas o lo que le debes a alguien.</p>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+        <input type="text" id="mydebt-name" placeholder="Ej: Préstamo banco, Nevera Mastercard, A mamá" />
+
+        <select id="mydebt-type">
+          <option value="prestamo">💼 Préstamo (banco o entidad)</option>
+          <option value="tarjeta_cuotas">💳 Tarjeta a cuotas</option>
+          <option value="persona">👤 Persona (informal)</option>
+          <option value="otro">📋 Otro</option>
+        </select>
+
+        <input type="number" inputmode="decimal" id="mydebt-total" placeholder="Monto total adeudado" min="0" step="0.01" />
+
+        <input type="number" inputmode="decimal" id="mydebt-monthly" placeholder="Cuota mensual (opcional)" min="0" step="0.01" />
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <input type="date" id="mydebt-start-date" title="Fecha de inicio" />
+          <input type="number" id="mydebt-due-day" placeholder="Día vence (1-31)" min="1" max="31" />
+        </div>
+
+        <input type="text" id="mydebt-notes" placeholder="Notas (opcional)" />
+
+        <button onclick="addMyDebt()" style="padding: 12px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">📝 Agregar deuda</button>
+      </div>
+    </div>
+
+    <!-- Card de deudas activas -->
+    <div class="raised-card">
+      <p class="card-title">Deudas activas</p>
+      <div id="mydebts-list"></div>
+    </div>
+
+    <!-- Card de deudas saldadas (colapsable) -->
+    <div class="raised-card" id="mydebts-paid-card" style="display: none;">
+      <p class="card-title" style="cursor: pointer; user-select: none;" onclick="toggleMyDebtsPaid()">
+        ✅ Deudas saldadas <span id="mydebts-paid-toggle" style="float: right; font-size: 14px; color: var(--text-tertiary);">▼</span>
+      </p>
+      <div id="mydebts-paid-list" style="display: none; margin-top: 10px;"></div>
+    </div>
+
   </div>
 
   <div class="fin-section" id="section-metas">
