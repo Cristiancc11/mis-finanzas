@@ -523,7 +523,15 @@ async function migrateLocalData() {
     alert('No hay datos locales para migrar');
     return;
   }
-  if (!confirm('Esto subirá tus datos del navegador a la nube. ¿Continuar?')) return;
+  const confirmedUpload = await showConfirm({
+    title: '¿Subir datos a la nube?',
+    message: 'Vas a sincronizar todos tus datos del navegador con la nube. Tendrás acceso desde cualquier dispositivo.',
+    confirmText: '☁️ Subir',
+    cancelText: 'Cancelar',
+    type: 'default',
+    icon: '☁️'
+  });
+  if (!confirmedUpload) return;
 
   try {
     const data = JSON.parse(local);
@@ -1400,7 +1408,14 @@ async function viewDocument(filePath) {
 }
 
 async function deleteDocument(docId, filePath) {
-  if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
+  const confirmed = await showConfirm({
+    title: '¿Eliminar documento?',
+    message: 'Este documento se eliminará permanentemente y no podrá recuperarse.',
+    confirmText: '🗑️ Eliminar',
+    cancelText: 'Cancelar',
+    type: 'danger'
+  });
+  if (!confirmed) return;
   try {
     await supabaseClient.storage.from('user-files').remove([filePath]);
     await supabaseClient.from('user_documents').delete().eq('id', docId);
@@ -4090,13 +4105,21 @@ window.toggleAllImport = function(mode) {
   });
 };
 
-window.confirmImport = function() {
+window.confirmImport = async function() {
   const toImport = pendingImport.filter(m => m.include);
   if (toImport.length === 0) {
     alert('No hay movimientos seleccionados');
     return;
   }
-  if (!confirm(`¿Importar ${toImport.length} movimientos al dashboard?`)) return;
+  const confirmed = await showConfirm({
+    title: '¿Importar movimientos?',
+    message: `Se importarán ${toImport.length} movimientos al dashboard.`,
+    confirmText: '✓ Importar',
+    cancelText: 'Cancelar',
+    type: 'default',
+    icon: '📥'
+  });
+  if (!confirmed) return;
 
   try {
     const stateRaw = localStorage.getItem('finance-dashboard-cristian-v20');
@@ -6295,10 +6318,17 @@ async function buildAnnualPDF(state, year) {
   document.getElementById('import-file').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = ev => {
+    r.onload = async ev => {
       try {
         const i = JSON.parse(ev.target.result);
-        if (confirm('¿Reemplazar tus datos?')) {
+        const confirmed = await showConfirm({
+          title: '¿Reemplazar tus datos?',
+          message: 'Vas a sobrescribir tus datos actuales con los del archivo importado. Esta acción no se puede deshacer.',
+          confirmText: '⚠️ Reemplazar',
+          cancelText: 'Cancelar',
+          type: 'warning'
+        });
+        if (confirmed) {
           state = { ...DEFAULT_STATE, ...i };
           saveState(); populateMonths(); renderAll(); alert('Importado');
         }
@@ -6344,8 +6374,17 @@ async function buildAnnualPDF(state, year) {
       toastSuccess('Bolsillo creado', `"${n}" agregado correctamente`);
     }
   };
-  window.removePocket = function(id) {
-    if (!confirm('¿Eliminar?')) return;
+  window.removePocket = async function(id) {
+    const pocket = state.pockets.find(p => p.id === id);
+    if (!pocket) return;
+    const confirmed = await showConfirm({
+      title: '¿Eliminar bolsillo?',
+      message: `Vas a eliminar "${pocket.name}" con saldo ${fmt(pocket.amount || 0)}. Esta acción no se puede deshacer.`,
+      confirmText: '🗑️ Eliminar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     state.pockets = state.pockets.filter(p => p.id !== id); saveState(); renderAll();
   };
   window.updatePocket = function(id, a) {
@@ -6526,7 +6565,7 @@ async function buildAnnualPDF(state, year) {
     renderExtraIncomes();
   };
 
-  window.deleteCustomIncomeType = function(id) {
+  window.deleteCustomIncomeType = async function(id) {
     if (!state.extraIncomeTypes) return;
     const type = state.extraIncomeTypes.find(t => t.id === id);
     if (!type) return;
@@ -6539,12 +6578,18 @@ async function buildAnnualPDF(state, year) {
       });
     });
 
-    let confirmMsg = `¿Eliminar el tipo "${type.label}"?`;
-    if (inUse > 0) {
-      confirmMsg += `\n\n⚠️ Tienes ${inUse} ingreso(s) registrados con este tipo. Si lo eliminas, se mostrarán como "Otro".`;
-    }
+    let confirmMsg = inUse > 0
+      ? `Tienes ${inUse} ingreso(s) registrados con este tipo. Si lo eliminas, se mostrarán como "Otro".`
+      : 'Esta acción no se puede deshacer.';
 
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await showConfirm({
+      title: `¿Eliminar "${type.label}"?`,
+      message: confirmMsg,
+      confirmText: '🗑️ Eliminar',
+      cancelText: 'Cancelar',
+      type: inUse > 0 ? 'warning' : 'danger'
+    });
+    if (!confirmed) return;
 
     state.extraIncomeTypes = state.extraIncomeTypes.filter(t => t.id !== id);
 
@@ -6763,7 +6808,7 @@ async function buildAnnualPDF(state, year) {
     renderAll();
   };
 
-  window.deleteCustomCategory = function(id) {
+  window.deleteCustomCategory = async function(id) {
     if (!state.customCategories) return;
     const cat = state.customCategories.find(c => c.id === id);
     if (!cat) return;
@@ -6773,9 +6818,18 @@ async function buildAnnualPDF(state, year) {
       monthTxs.forEach(t => { if (t.category === id) inUse++; });
     });
 
-    let msg = `¿Eliminar la categoría "${cat.label}"?`;
-    if (inUse > 0) msg += `\n\n⚠️ Tienes ${inUse} transacción(es) en esta categoría. Se moverán a "Otros".`;
-    if (!confirm(msg)) return;
+    const msg = inUse > 0
+      ? `Tienes ${inUse} transacción(es) en esta categoría. Se moverán a "Otros".`
+      : 'Esta acción no se puede deshacer.';
+
+    const confirmed = await showConfirm({
+      title: `¿Eliminar "${cat.label}"?`,
+      message: msg,
+      confirmText: '🗑️ Eliminar',
+      cancelText: 'Cancelar',
+      type: inUse > 0 ? 'warning' : 'danger'
+    });
+    if (!confirmed) return;
 
     state.customCategories = state.customCategories.filter(c => c.id !== id);
 
@@ -6956,7 +7010,7 @@ async function buildAnnualPDF(state, year) {
     renderTransactions();
   };
 
-  window.deleteCustomPaymentMethod = function(id) {
+  window.deleteCustomPaymentMethod = async function(id) {
     if (!state.customPaymentMethods) return;
     const m = state.customPaymentMethods.find(x => x.id === id);
     if (!m) return;
@@ -6966,9 +7020,18 @@ async function buildAnnualPDF(state, year) {
       arr.forEach(t => { if (t.paymentMethod === id) inUse++; });
     });
 
-    let msg = `¿Eliminar el método "${m.label}"?`;
-    if (inUse > 0) msg += `\n\n⚠️ Tienes ${inUse} transacción(es) con este método. Se moverán a "Efectivo".`;
-    if (!confirm(msg)) return;
+    const msg = inUse > 0
+      ? `Tienes ${inUse} transacción(es) con este método. Se moverán a "Efectivo".`
+      : 'Esta acción no se puede deshacer.';
+
+    const confirmed = await showConfirm({
+      title: `¿Eliminar "${m.label}"?`,
+      message: msg,
+      confirmText: '🗑️ Eliminar',
+      cancelText: 'Cancelar',
+      type: inUse > 0 ? 'warning' : 'danger'
+    });
+    if (!confirmed) return;
 
     state.customPaymentMethods = state.customPaymentMethods.filter(x => x.id !== id);
     Object.values(state.transactions || {}).forEach(arr => {
@@ -8255,7 +8318,7 @@ async function buildAnnualPDF(state, year) {
     }
   });
 
-  window.addTransaction = function() {
+  window.addTransaction = async function() {
     const d = document.getElementById('tx-desc').value.trim();
     const totalAmount = parseFloat(document.getElementById('tx-amount').value);
     const c = document.getElementById('tx-category').value;
@@ -8404,7 +8467,14 @@ async function buildAnnualPDF(state, year) {
         // Si es compartido o prestado, se descuenta el total (tú pagaste todo)
         const amountToDeduct = (isShared || isLent) ? totalAmount : a;
         if (pocket.amount < amountToDeduct) {
-          if (!confirm(`El bolsillo "${pocket.name}" tiene ${fmt(pocket.amount)} pero quieres gastar ${fmt(amountToDeduct)}. ¿Continuar?`)) {
+          const confirmed = await showConfirm({
+            title: 'Saldo insuficiente',
+            message: `El bolsillo "${pocket.name}" tiene ${fmt(pocket.amount)} pero vas a gastar ${fmt(amountToDeduct)}. Quedará en negativo.`,
+            confirmText: '⚠️ Continuar',
+            cancelText: 'Cancelar',
+            type: 'warning'
+          });
+          if (!confirmed) {
             return;
           }
         }
@@ -11904,10 +11974,19 @@ async function buildAnnualPDF(state, year) {
   };
   
   // Eliminar deuda
-  window.deleteMyDebt = function(debtId) {
-    if (!confirm('¿Eliminar esta deuda y todo su historial de pagos?\n\nEsta acción no se puede deshacer.')) return;
-    
+  window.deleteMyDebt = async function(debtId) {
     if (!Array.isArray(state.myDebts)) return;
+    const debt = state.myDebts.find(d => d.id === debtId);
+    if (!debt) return;
+    const confirmed = await showConfirm({
+      title: '¿Eliminar deuda?',
+      message: `Se eliminará "${debt.name}" y todo su historial de pagos. Esta acción no se puede deshacer.`,
+      confirmText: '🗑️ Eliminar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+    
     state.myDebts = state.myDebts.filter(d => d.id !== debtId);
     saveState();
     renderMyDebts();
@@ -12016,7 +12095,7 @@ async function buildAnnualPDF(state, year) {
   };
   
   // Confirmar pago
-  window.confirmMyDebtPayment = function(debtId) {
+  window.confirmMyDebtPayment = async function(debtId) {
     if (!Array.isArray(state.myDebts)) return;
     const debt = state.myDebts.find(d => d.id === debtId);
     if (!debt) return;
@@ -12039,7 +12118,14 @@ async function buildAnnualPDF(state, year) {
     if (pocketId) {
       const pocket = state.pockets.find(p => p.id === parseInt(pocketId));
       if (pocket && (pocket.amount || 0) < amount) {
-        if (!confirm(`El bolsillo "${pocket.name}" solo tiene ${fmt(pocket.amount || 0)} y vas a sacar ${fmt(amount)}. Quedará en negativo. ¿Continuar?`)) {
+        const confirmed = await showConfirm({
+          title: 'Saldo insuficiente',
+          message: `El bolsillo "${pocket.name}" tiene ${fmt(pocket.amount || 0)} pero vas a sacar ${fmt(amount)}. Quedará en negativo.`,
+          confirmText: '⚠️ Continuar',
+          cancelText: 'Cancelar',
+          type: 'warning'
+        });
+        if (!confirmed) {
           return;
         }
       }
@@ -12086,11 +12172,19 @@ async function buildAnnualPDF(state, year) {
   };
   
   // Reactivar una deuda saldada (deshacer)
-  window.reactivateMyDebt = function(debtId) {
+  window.reactivateMyDebt = async function(debtId) {
     if (!Array.isArray(state.myDebts)) return;
     const debt = state.myDebts.find(d => d.id === debtId);
     if (!debt) return;
-    if (!confirm(`¿Reactivar la deuda con "${debt.name}"?\n\nVolverá a aparecer en las deudas activas con el saldo pendiente que tenía.`)) return;
+    const confirmed = await showConfirm({
+      title: '¿Reactivar deuda?',
+      message: `"${debt.name}" volverá a aparecer en las deudas activas con el saldo pendiente que tenía.`,
+      confirmText: '↩️ Reactivar',
+      cancelText: 'Cancelar',
+      type: 'default',
+      icon: '↩️'
+    });
+    if (!confirmed) return;
     
     debt.paid = false;
     delete debt.paidAt;
@@ -12100,14 +12194,21 @@ async function buildAnnualPDF(state, year) {
   };
   
   // Eliminar un pago del historial (deshacer un pago específico)
-  window.deleteMyDebtPayment = function(debtId, paymentId) {
+  window.deleteMyDebtPayment = async function(debtId, paymentId) {
     if (!Array.isArray(state.myDebts)) return;
     const debt = state.myDebts.find(d => d.id === debtId);
     if (!debt || !Array.isArray(debt.payments)) return;
     const payment = debt.payments.find(p => p.id === paymentId);
     if (!payment) return;
     
-    if (!confirm(`¿Eliminar este pago de ${fmt(payment.amount)}?\n\nEl dinero NO se devuelve al bolsillo automáticamente.`)) return;
+    const confirmed = await showConfirm({
+      title: '¿Eliminar este pago?',
+      message: `Se quitará el pago de ${fmt(payment.amount)} del historial. El dinero NO se devuelve al bolsillo automáticamente.`,
+      confirmText: '🗑️ Eliminar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     
     debt.payments = debt.payments.filter(p => p.id !== paymentId);
     // Si estaba marcada como pagada y ahora queda saldo, reactivarla
