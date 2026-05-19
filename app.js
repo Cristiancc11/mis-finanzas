@@ -10647,10 +10647,15 @@ async function buildAnnualPDF(state, year) {
           ${isExpanded ? `
             ${person.items.length > 1 ? `
               <div style="margin-top: 10px; padding: 10px; background: linear-gradient(135deg, rgba(29, 158, 117, 0.10), rgba(127, 119, 221, 0.08)); border-radius: 8px; border: 1px dashed rgba(29, 158, 117, 0.4); text-align: center;">
-                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">💡 ¿${esc(person.displayName)} te pagó TODO?</div>
-                <button onclick="event.stopPropagation(); markAllDebtsAsPaid('${esc(person.displayName.toLowerCase())}')" style="background: linear-gradient(135deg, var(--success-text), var(--accent-from, #7F77DD)); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 158, 117, 0.3);">
-                  ✓✓ Pagar TODO de una vez (${fmt(person.total)})
-                </button>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">💡 ¿${esc(person.displayName)} te pagó?</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;">
+                  <button onclick="event.stopPropagation(); openPersonPartialPaymentModal('${esc(person.displayName.toLowerCase())}')" style="background: var(--bg-primary); color: var(--accent-from, #7F77DD); border: 1px solid var(--accent-from, #7F77DD); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; flex: 1; min-width: 140px;">
+                    💰 Abono parcial
+                  </button>
+                  <button onclick="event.stopPropagation(); markAllDebtsAsPaid('${esc(person.displayName.toLowerCase())}')" style="background: linear-gradient(135deg, var(--success-text), var(--accent-from, #7F77DD)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 158, 117, 0.3); flex: 1; min-width: 140px;">
+                    ✓✓ Pagar TODO (${fmt(person.total)})
+                  </button>
+                </div>
               </div>
             ` : ''}
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
@@ -10844,6 +10849,186 @@ async function buildAnnualPDF(state, year) {
         toastSuccess('¡Deuda saldada! 🎉', `${esc(debt.name)} terminó de pagar ${fmt(debt.amount)}`);
       } else {
         toastSuccess('Abono registrado', `${esc(debt.name)} abonó ${fmt(amount)} · Quedan ${fmt(newPending)}`);
+      }
+    }
+  };
+  
+  // ============================================================
+  // v54: ABONO PARCIAL A NIVEL PERSONA
+  // Distribuye un monto entre todas las deudas pendientes de una persona,
+  // empezando por las más antiguas hasta agotar el abono.
+  // ============================================================
+  window.openPersonPartialPaymentModal = function(personNameLower) {
+    if (!state.debtsToMe) return;
+    
+    // Obtener todas las deudas pendientes de esa persona
+    const personDebts = state.debtsToMe.filter(d => 
+      !d.paid && d.name.toLowerCase() === personNameLower.toLowerCase()
+    );
+    if (personDebts.length === 0) return;
+    
+    // Total pendiente de la persona (suma de pendientes individuales)
+    const totalPending = personDebts.reduce((s, d) => s + getDebtPending(d), 0);
+    if (totalPending <= 0) {
+      if (typeof toastInfo === 'function') toastInfo('Ya están saldadas', 'Esta persona no tiene saldo pendiente');
+      return;
+    }
+    
+    const personName = personDebts[0].name;
+    
+    // Selector de bolsillos
+    let bolsillosOpts = '<option value="">No agregar a ningún bolsillo</option>';
+    if (state.pockets && state.pockets.length > 0) {
+      bolsillosOpts += state.pockets.map(p => `<option value="${p.id}">${p.icon} ${esc(p.name)}</option>`).join('');
+    }
+    
+    // Modal
+    const existing = document.getElementById('mark-paid-modal');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'mark-paid-modal';
+    overlay.className = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 460px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">💰</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">Abono parcial</h2>
+          <p class="tutorial-subtitle">${esc(personName)} te abonó parte de la deuda</p>
+        </div>
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <span style="color: var(--text-secondary);">Cuentas pendientes:</span>
+                <strong style="color: var(--text-primary);">${personDebts.length}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);">
+                <span style="color: var(--text-secondary); font-weight: 600;">Total pendiente:</span>
+                <strong style="color: var(--success-text); font-size: 15px;">${fmt(totalPending)}</strong>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Cuánto te abonó?</label>
+              <input type="number" id="person-partial-amount" inputmode="decimal" placeholder="Ej: ${Math.round(totalPending / 2)}" min="1" max="${totalPending}" style="width: 100%; font-size: 16px;" autocomplete="off">
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0;">💡 Máximo permitido: ${fmt(totalPending)} · Se distribuirá automáticamente desde las cuentas más antiguas</p>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿En qué bolsillo recibiste el dinero?</label>
+              <select id="person-partial-pocket" style="width: 100%;">${bolsillosOpts}</select>
+            </div>
+          </div>
+        </div>
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmPersonPartialPayment('${esc(personNameLower)}')">💰 Registrar abono</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+    
+    setTimeout(() => {
+      const inp = document.getElementById('person-partial-amount');
+      if (inp) inp.focus();
+    }, 100);
+  };
+  
+  window.confirmPersonPartialPayment = function(personNameLower) {
+    if (!state.debtsToMe) return;
+    
+    // Obtener deudas pendientes de esa persona, ordenadas por fecha (más antiguas primero)
+    const personDebts = state.debtsToMe
+      .filter(d => !d.paid && d.name.toLowerCase() === personNameLower.toLowerCase())
+      .sort((a, b) => {
+        // Ordenar por createdAt o por id (que también es timestamp en este modelo)
+        const aTime = a.createdAt || a.id || 0;
+        const bTime = b.createdAt || b.id || 0;
+        return aTime - bTime;
+      });
+    
+    if (personDebts.length === 0) return;
+    
+    const amountInput = document.getElementById('person-partial-amount');
+    const pocketIdEl = document.getElementById('person-partial-pocket');
+    const totalAmount = parseFloat(amountInput?.value);
+    const pocketId = pocketIdEl ? pocketIdEl.value : '';
+    const totalPending = personDebts.reduce((s, d) => s + getDebtPending(d), 0);
+    
+    // Validaciones
+    if (!totalAmount || totalAmount <= 0) {
+      if (typeof toastError === 'function') toastError('Monto inválido', 'Escribe cuánto te abonó (mayor a 0)');
+      if (amountInput) amountInput.focus();
+      return;
+    }
+    if (totalAmount > totalPending) {
+      if (typeof toastError === 'function') toastError('Monto muy alto', `El abono no puede ser mayor al pendiente (${fmt(totalPending)})`);
+      if (amountInput) amountInput.focus();
+      return;
+    }
+    
+    const paymentDate = Date.now();
+    const pocketIdNum = pocketId ? parseInt(pocketId) : null;
+    
+    // Distribuir el abono: ir aplicándolo a las deudas más antiguas hasta agotarlo
+    let remaining = totalAmount;
+    let debtsFullyPaid = 0;
+    let debtsPartiallyPaid = 0;
+    
+    for (const debt of personDebts) {
+      if (remaining <= 0) break;
+      
+      const debtPending = getDebtPending(debt);
+      if (debtPending <= 0) continue;
+      
+      // Cuánto aplicar a esta deuda: el mínimo entre lo que falta y lo que queda del abono
+      const applyAmount = Math.min(remaining, debtPending);
+      
+      // Registrar el pago en el historial de la deuda
+      if (!Array.isArray(debt.payments)) debt.payments = [];
+      debt.payments.push({
+        amount: applyAmount,
+        date: paymentDate,
+        pocketId: pocketIdNum
+      });
+      
+      // Si con este aplique la deuda quedó completa, marcarla como pagada
+      if (getDebtPending(debt) === 0) {
+        debt.paid = true;
+        debt.paidAt = paymentDate;
+        debt.paidToPocket = pocketIdNum;
+        debtsFullyPaid++;
+      } else {
+        debtsPartiallyPaid++;
+      }
+      
+      remaining -= applyAmount;
+    }
+    
+    // Sumar el abono al bolsillo si fue elegido
+    if (pocketIdNum) {
+      const pocket = state.pockets.find(p => p.id === pocketIdNum);
+      if (pocket) {
+        pocket.amount = (pocket.amount || 0) + totalAmount;
+      }
+    }
+    
+    saveState();
+    closeMarkPaidModal();
+    renderResumen();
+    if (typeof renderPockets === 'function') renderPockets();
+    
+    if (typeof toastSuccess === 'function') {
+      const newTotalPending = totalPending - totalAmount;
+      const personName = personDebts[0].name;
+      if (newTotalPending === 0) {
+        toastSuccess('¡Deuda saldada! 🎉', `${esc(personName)} terminó de pagar ${fmt(totalAmount)}`);
+      } else {
+        let msg = `${esc(personName)} abonó ${fmt(totalAmount)}`;
+        if (debtsFullyPaid > 0) msg += ` · ${debtsFullyPaid} cuenta(s) saldada(s)`;
+        msg += ` · Quedan ${fmt(newTotalPending)}`;
+        toastSuccess('Abono registrado', msg);
       }
     }
   };
