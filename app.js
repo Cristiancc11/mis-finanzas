@@ -12038,6 +12038,7 @@ async function buildAnnualPDF(state, year) {
     try { renderCategoriesSelect(); } catch(e) { console.error('❌ Error en renderCategoriesSelect:', e); }
     try { renderPaymentMethodsSelect(); } catch(e) { console.error('❌ Error en renderPaymentMethodsSelect:', e); }
     try { renderMyDebts(); } catch(e) { console.error('❌ Error en renderMyDebts:', e); }
+    try { if (typeof renderReminderAlerts === 'function') renderReminderAlerts(); } catch(e) { console.error('❌ Error en renderReminderAlerts:', e); }
     
     console.log('🎨 Render completado. Estado actual:', {
       bolsillos: state.pockets ? state.pockets.length : 'N/A',
@@ -12608,6 +12609,187 @@ async function buildAnnualPDF(state, year) {
       setTimeout(() => renderMyDebts(), 50);
     }
   }, true);
+
+  // ============================================================
+  // v55: ALERTAS DE RECORDATORIOS PRÓXIMOS
+  // Banner en Resumen que muestra recordatorios que vencen pronto
+  // ============================================================
+  
+  // Calcula la fecha del PRÓXIMO ocurrencia de un recordatorio
+  // Devuelve { date: Date, daysUntil: number } o null si nunca aplica
+  function getNextReminderOccurrence(reminder) {
+    if (!reminder || !reminder.date) return null;
+    
+    const [rY, rM, rD] = reminder.date.split('-').map(Number);
+    const origDate = new Date(rY, (rM || 1) - 1, rD || 1);
+    if (isNaN(origDate.getTime())) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let nextDate;
+    
+    if (reminder.recurring === 'monthly') {
+      // Próximo día N en el mes actual o siguiente
+      const day = origDate.getDate();
+      nextDate = new Date(today.getFullYear(), today.getMonth(), day);
+      if (nextDate < today) {
+        nextDate = new Date(today.getFullYear(), today.getMonth() + 1, day);
+      }
+    } else if (reminder.recurring === 'yearly') {
+      // Próximo aniversario
+      nextDate = new Date(today.getFullYear(), origDate.getMonth(), origDate.getDate());
+      if (nextDate < today) {
+        nextDate = new Date(today.getFullYear() + 1, origDate.getMonth(), origDate.getDate());
+      }
+    } else {
+      // Único: solo cuenta si es hoy o futuro
+      nextDate = origDate;
+      if (nextDate < today) return null;
+    }
+    
+    const diffMs = nextDate - today;
+    const daysUntil = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    return { date: nextDate, daysUntil };
+  }
+  
+  // Render del banner de alertas
+  function renderReminderAlerts() {
+    const container = document.getElementById('reminder-alerts-container');
+    if (!container) return;
+    if (!state.reminders) {
+      container.innerHTML = '';
+      return;
+    }
+    
+    // Configuración: cuántos días antes empezamos a alertar
+    const ALERT_WINDOW_DAYS = 7;
+    
+    // Lista de alertas activas con sus datos
+    const alerts = [];
+    Object.keys(state.reminders).forEach(reminderId => {
+      // Si el usuario descartó esta alerta, no mostrar (hasta que cambie de fecha)
+      const dismissedKey = `dismissed_${reminderId}`;
+      const reminder = state.reminders[reminderId];
+      if (!reminder) return;
+      
+      const next = getNextReminderOccurrence(reminder);
+      if (!next) return;
+      
+      // Solo mostrar si está dentro de la ventana de alerta
+      if (next.daysUntil > ALERT_WINDOW_DAYS) return;
+      if (next.daysUntil < 0) return; // ya pasó (caso edge)
+      
+      // Verificar si el usuario descartó esta ocurrencia específica
+      const occurrenceKey = `${reminderId}_${next.date.toISOString().slice(0,10)}`;
+      if (state._dismissedAlerts && state._dismissedAlerts[occurrenceKey]) return;
+      
+      alerts.push({
+        id: reminderId,
+        occurrenceKey,
+        reminder,
+        daysUntil: next.daysUntil,
+        date: next.date
+      });
+    });
+    
+    if (alerts.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    
+    // Ordenar: HOY primero, luego mañana, luego más lejanos
+    alerts.sort((a, b) => a.daysUntil - b.daysUntil);
+    
+    // Render
+    container.innerHTML = `
+      <div class="reminder-alerts-card">
+        <div class="reminder-alerts-header">
+          <span class="reminder-alerts-title">🔔 Recordatorios próximos</span>
+          <span class="reminder-alerts-count">${alerts.length}</span>
+        </div>
+        <div class="reminder-alerts-list">
+          ${alerts.map(a => {
+            const r = a.reminder;
+            const days = a.daysUntil;
+            let urgencyClass = 'info';
+            let urgencyText = '';
+            let urgencyEmoji = '📅';
+            
+            if (days === 0) {
+              urgencyClass = 'danger';
+              urgencyText = 'HOY';
+              urgencyEmoji = '🚨';
+            } else if (days === 1) {
+              urgencyClass = 'warning';
+              urgencyText = 'mañana';
+              urgencyEmoji = '⚠️';
+            } else if (days <= 3) {
+              urgencyClass = 'warning';
+              urgencyText = `en ${days} días`;
+              urgencyEmoji = '⚠️';
+            } else {
+              urgencyClass = 'info';
+              urgencyText = `en ${days} días`;
+              urgencyEmoji = '📅';
+            }
+            
+            const dateStr = a.date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+            const recurringBadge = r.recurring === 'monthly' ? ' · 🔁 Mensual'
+                                : r.recurring === 'yearly' ? ' · 🗓️ Anual'
+                                : '';
+            const amountStr = r.amount > 0 ? ` · <strong style="color: var(--warning-text);">${fmt(r.amount)}</strong>` : '';
+            
+            return `
+              <div class="reminder-alert-item reminder-alert-${urgencyClass}">
+                <div class="reminder-alert-icon">${urgencyEmoji}</div>
+                <div class="reminder-alert-body">
+                  <div class="reminder-alert-title">
+                    ${esc(r.icon || '📌')} ${esc(r.title)}
+                  </div>
+                  <div class="reminder-alert-meta">
+                    <span class="reminder-alert-when reminder-alert-when-${urgencyClass}">${urgencyText.toUpperCase()}</span>
+                    <span class="reminder-alert-date">${dateStr}${recurringBadge}${amountStr}</span>
+                  </div>
+                </div>
+                <button class="reminder-alert-dismiss" onclick="dismissReminderAlert('${esc(a.occurrenceKey)}')" title="Descartar alerta">×</button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Descartar una alerta específica (no se vuelve a mostrar para esa fecha)
+  window.dismissReminderAlert = function(occurrenceKey) {
+    if (!state._dismissedAlerts) state._dismissedAlerts = {};
+    state._dismissedAlerts[occurrenceKey] = Date.now();
+    
+    // Limpiar entradas viejas (más de 90 días) para no acumular basura
+    const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    Object.keys(state._dismissedAlerts).forEach(k => {
+      if (state._dismissedAlerts[k] < ninetyDaysAgo) delete state._dismissedAlerts[k];
+    });
+    
+    saveState();
+    renderReminderAlerts();
+  };
+  
+  // Exponer render para que otros módulos lo invoquen
+  window.renderReminderAlerts = renderReminderAlerts;
+  
+  // Re-render diario: si el usuario deja la app abierta, al cambiar de día se actualiza
+  setInterval(() => {
+    if (document.visibilityState === 'visible') renderReminderAlerts();
+  }, 60 * 60 * 1000); // cada hora
+  
+  // Re-render cuando vuelve a la pestaña
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      try { renderReminderAlerts(); } catch(e) {}
+    }
+  });
 
   if (typeof Chart !== 'undefined') loadState();
   else window.addEventListener('load', loadState);
