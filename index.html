@@ -608,6 +608,15 @@
     </div>
   </aside>
 
+  <!-- v56: Botón toggle para sidebar (solo desktop) -->
+  <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Mostrar/ocultar menú" title="Mostrar/ocultar menú">
+    <span class="sidebar-toggle-icon">☰</span>
+    <span class="sidebar-toggle-text">Menú</span>
+  </button>
+
+  <!-- v56: Layout principal con sidebar + contenido -->
+  <div class="app-layout" id="app-layout">
+
   <div class="fin-tabs">
     <button class="fin-tab active" data-tab="resumen"><span class="tab-icon">🏠</span><span class="tab-label">Resumen</span></button>
     <button class="fin-tab" data-tab="presupuesto"><span class="tab-icon">💸</span><span class="tab-label">Presupuesto</span></button>
@@ -1853,6 +1862,8 @@
       <button onclick="deleteAccountPrompt()" style="width: 100%; padding: 10px; background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); border-radius: 8px; cursor: pointer;">🗑️ Eliminar cuenta</button>
     </div>
   </div>
+
+  </div> <!-- /app-layout v56 -->
 
   <div class="footer-note">
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;">
