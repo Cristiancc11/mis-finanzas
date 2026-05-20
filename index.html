@@ -608,14 +608,11 @@
     </div>
   </aside>
 
-  <!-- v56: Botón toggle para sidebar (solo desktop) -->
-  <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Mostrar/ocultar menú" title="Mostrar/ocultar menú">
-    <span class="sidebar-toggle-icon">☰</span>
-    <span class="sidebar-toggle-text">Menú</span>
-  </button>
-
   <!-- v56: Layout principal con sidebar + contenido -->
   <div class="app-layout" id="app-layout">
+
+  <!-- Columna izquierda: menú + botón toggle -->
+  <div class="sidebar-column">
 
   <div class="fin-tabs">
     <button class="fin-tab active" data-tab="resumen"><span class="tab-icon">🏠</span><span class="tab-label">Resumen</span></button>
@@ -629,6 +626,14 @@
     <button class="fin-tab" data-tab="documentos"><span class="tab-icon">📄</span><span class="tab-label">Docs</span></button>
     <button class="fin-tab" data-tab="perfil"><span class="tab-icon">👤</span><span class="tab-label">Perfil</span></button>
   </div>
+
+  <!-- v56: Botón toggle para sidebar (solo desktop), debajo del menú -->
+  <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Mostrar/ocultar menú" title="Mostrar/ocultar menú">
+    <span class="sidebar-toggle-icon">☰</span>
+    <span class="sidebar-toggle-text">Menú</span>
+  </button>
+
+  </div> <!-- /sidebar-column -->
 
   <div class="fin-section active" id="section-resumen">
     <div class="net-worth-hero">

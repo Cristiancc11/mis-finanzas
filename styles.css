@@ -5865,25 +5865,23 @@ button[onclick*="deleteReminder"]:active,
    v56: SIDEBAR LATERAL EN DESKTOP + LAYOUT EXPANDIDO
    ============================================================ */
 
-/* Botón toggle (oculto por defecto, solo aparece en desktop) */
+/* Botón toggle: oculto por defecto, solo aparece en desktop debajo del menú */
 .sidebar-toggle-btn {
   display: none;
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  z-index: 100;
   background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75));
   border: none;
   border-radius: 12px;
   padding: 12px 18px;
   cursor: pointer;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   font-size: 14px;
   font-weight: 600;
   color: white;
   box-shadow: 0 6px 20px rgba(127, 119, 221, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
   transition: all 0.18s ease;
+  width: 100%;
 }
 
 .sidebar-toggle-btn:hover {
@@ -5920,7 +5918,7 @@ button[onclick*="deleteReminder"]:active,
     display: inline-flex;
   }
 
-  /* Layout en columnas: sidebar + contenido */
+  /* Layout en columnas: sidebar-column + contenido */
   .app-layout {
     display: grid;
     grid-template-columns: 220px 1fr;
@@ -5928,7 +5926,18 @@ button[onclick*="deleteReminder"]:active,
     align-items: start;
   }
 
-  /* La sidebar (antes era .fin-tabs horizontal) */
+  /* Columna izquierda: agrupa menú + botón toggle */
+  .sidebar-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    transition: all 0.25s ease;
+  }
+
+  /* La sidebar (menú vertical) */
   .fin-tabs {
     display: flex !important;
     flex-direction: column !important;
@@ -5940,10 +5949,9 @@ button[onclick*="deleteReminder"]:active,
     background: var(--bg-secondary);
     border-radius: 14px;
     border: 0.5px solid var(--border);
-    position: sticky;
-    top: 12px;
-    max-height: calc(100vh - 24px);
     overflow-y: auto;
+    flex: 1;
+    min-height: 0;
     transition: transform 0.25s ease, opacity 0.25s ease, max-width 0.25s ease;
   }
 
@@ -5994,15 +6002,6 @@ button[onclick*="deleteReminder"]:active,
     display: inline !important;
     font-size: 13px;
   }
-
-  /* Botón toggle: esquina superior izquierda, siempre visible */
-  .sidebar-toggle-btn {
-    top: 20px;
-    left: 20px;
-    right: auto;
-    bottom: auto;
-    box-shadow: 0 8px 24px rgba(127, 119, 221, 0.5), 0 3px 8px rgba(0, 0, 0, 0.35);
-  }
 }
 
 /* ============================================================
@@ -6010,21 +6009,28 @@ button[onclick*="deleteReminder"]:active,
    ============================================================ */
 @media (min-width: 1025px) {
   html[data-sidebar="hidden"] .app-layout {
-    grid-template-columns: 0 1fr;
-    gap: 0;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
   }
 
+  /* Cuando está oculta: el menú desaparece pero el botón queda */
   html[data-sidebar="hidden"] .fin-tabs {
-    transform: translateX(-110%);
-    opacity: 0;
-    pointer-events: none;
-    max-width: 0;
-    overflow: hidden;
+    display: none !important;
   }
 
-  /* Cuando está oculta, el botón muestra otro texto */
-  html[data-sidebar="hidden"] .sidebar-toggle-text::after {
-    content: "";
+  /* El botón se vuelve compacto (solo ícono) cuando la sidebar está cerrada */
+  html[data-sidebar="hidden"] .sidebar-column {
+    width: 50px;
+  }
+
+  html[data-sidebar="hidden"] .sidebar-toggle-btn {
+    padding: 12px;
+    width: 50px;
+    height: 50px;
+  }
+
+  html[data-sidebar="hidden"] .sidebar-toggle-text {
+    display: none;
   }
 }
 
