@@ -6569,6 +6569,46 @@ async function buildAnnualPDF(state, year) {
     }
     saveState(); renderAll();
   };
+  // v59: eliminar una plantilla recurrente (no toca meses pasados, sí toca futuros)
+  window.deleteRecurringIncome = async function(templateId) {
+    if (!state.incomes) return;
+    const tpl = state.incomes.find(t => t.id === templateId);
+    if (!tpl) return;
+    
+    const confirmed = await showConfirm({
+      title: '¿Quitar de recurrentes?',
+      message: `"${tpl.name}" dejará de agregarse automáticamente cada mes. Los meses pasados conservarán este ingreso, pero los meses futuros NO lo tendrán.`,
+      confirmText: '🗑️ Quitar de recurrentes',
+      cancelText: 'Cancelar',
+      type: 'warning'
+    });
+    if (!confirmed) return;
+    
+    // Eliminar la plantilla
+    state.incomes = state.incomes.filter(t => t.id !== templateId);
+    
+    // Desligar este ingreso de los meses futuros y eliminarlo de ahí
+    const today = new Date();
+    const currentStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (state.monthlyIncomes) {
+      Object.keys(state.monthlyIncomes).forEach(m => {
+        if (m > currentStr) {
+          state.monthlyIncomes[m] = (state.monthlyIncomes[m] || []).filter(i => i.recurringId !== templateId);
+        } else if (m === currentStr || m === currentMonth) {
+          (state.monthlyIncomes[m] || []).forEach(i => {
+            if (i.recurringId === templateId) i.recurringId = null;
+          });
+        }
+      });
+    }
+    
+    saveState(); renderAll();
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Quitado de recurrentes', `"${tpl.name}" ya no se agregará automáticamente`);
+    }
+  };
+
   // v58: eliminar ingreso del mes activo. Si era recurrente, pregunta si eliminar de futuros también
   window.removeIncome = async function(id) {
     if (!state.monthlyIncomes || !state.monthlyIncomes[currentMonth]) return;
@@ -9037,11 +9077,22 @@ async function buildAnnualPDF(state, year) {
         const isRecurring = !!i.recurringId;
         return `<div class="item-row">
           <div><strong>${esc(i.name)}</strong></div>
-          <div>${fmt(i.amount)}</div>
+          <div>
+            <input 
+              type="number" 
+              value="${i.amount}" 
+              min="0" 
+              step="1000" 
+              onfocus="this.select()" 
+              onchange="updateMonthlyIncome(${i.id}, this.value)" 
+              title="${isRecurring ? 'Cambia este monto y se ajustarán los meses futuros automáticamente' : 'Editar monto de este mes'}"
+              style="height: 36px; font-size: 13px; background: var(--bg-secondary); border: 1px solid var(--border-strong); cursor: text; text-align: right; padding: 4px 10px; width: 100%; max-width: 160px;" 
+            />
+          </div>
           <div>
             ${isRecurring 
               ? '<span class="badge badge-income" title="Se repite cada mes">🔁 Recurrente</span>' 
-              : '<span class="badge" style="background: var(--bg-secondary); color: var(--text-secondary);">📌 Único</span>'}
+              : `<button onclick="toggleIncomeRecurring(${i.id})" title="Convertir en recurrente" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">🔁 Hacer recurrente</button>`}
           </div>
           <button class="delete-btn" onclick="removeIncome(${i.id})" title="Eliminar">×</button>
         </div>`;
@@ -9052,16 +9103,25 @@ async function buildAnnualPDF(state, year) {
     if (templates.length > 0) {
       const totalRec = templates.reduce((s, t) => s + (t.amount || 0), 0);
       html += `
-        <div style="margin-top: 16px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+        <div style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
             <span>🔁 <strong style="color: var(--text-primary);">Recurrentes activos</strong> (${templates.length})</span>
-            <span>${fmt(totalRec)}/mes</span>
+            <span><strong>${fmt(totalRec)}</strong>/mes</span>
           </div>
-          <div style="font-size: 11px; color: var(--text-tertiary);">
-            ${templates.map(t => esc(t.name) + ' · ' + fmt(t.amount)).join(' · ')}
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            ${templates.map(t => `
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-primary); border-radius: 8px; font-size: 12px;">
+                <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <strong>${esc(t.name)}</strong> · ${fmt(t.amount)}
+                </span>
+                <button onclick="deleteRecurringIncome(${t.id})" title="Eliminar este recurrente (no afecta meses pasados)" style="background: transparent; color: var(--danger-text); border: 1px solid var(--danger-text); padding: 3px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+                  🗑️ Quitar
+                </button>
+              </div>
+            `).join('')}
           </div>
-          <p style="font-size: 10px; color: var(--text-tertiary); margin: 6px 0 0; line-height: 1.4;">
-            💡 Se agregan automáticamente cada mes. Edita el monto desde la fila del ingreso de este mes y se ajustarán los meses futuros.
+          <p style="font-size: 10px; color: var(--text-tertiary); margin: 8px 0 0; line-height: 1.4;">
+            💡 Edita el monto desde la fila del ingreso de este mes (arriba) y los meses futuros se ajustarán automáticamente. Los meses pasados quedan congelados con su valor real.
           </p>
         </div>
       `;
