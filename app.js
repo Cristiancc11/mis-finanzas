@@ -6073,6 +6073,27 @@ async function buildAnnualPDF(state, year) {
         if (!state.budgets) state.budgets = { [currentMonth]: { ...DEFAULT_BUDGETS } };
         if (!state.transactions) state.transactions = {};
         if (!state.extraIncomes) state.extraIncomes = {};
+        if (!state.monthlyIncomes) state.monthlyIncomes = {};
+        
+        // v58: MIGRACIÓN ─ si tiene ingresos viejos pero NO monthlyIncomes para mes actual,
+        // copiar plantillas como snapshot del mes actual (preservando historia: no toca meses pasados)
+        if (state.incomes && state.incomes.length > 0 && !state.monthlyIncomes[currentMonth]) {
+          const today = new Date();
+          const currentStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+          // Solo migrar si currentMonth == mes real actual (no estamos viendo histórico)
+          if (currentMonth === currentStr) {
+            state.monthlyIncomes[currentMonth] = state.incomes
+              .filter(i => i.frequency === 'monthly' && (i.amount || 0) > 0)
+              .map(i => ({
+                id: Date.now() + Math.random(),
+                name: i.name,
+                amount: i.amount,
+                recurringId: i.id
+              }));
+            console.log('✓ v58 migración: ingresos copiados al mes actual', currentMonth);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+          }
+        }
         // NO agregar bolsillos automáticamente - cada usuario crea los suyos
       }
     } catch(e) { console.error(e); }
@@ -6271,7 +6292,53 @@ async function buildAnnualPDF(state, year) {
   }
 
   const totalPockets = () => state.pockets.reduce((s, p) => s + p.amount, 0);
-  const totalIncome = () => state.incomes.reduce((s, i) => s + i.amount * (FREQ[i.frequency] || 0), 0);
+  
+  // ============================================================
+  // v58: INGRESOS POR MES + RECURRENTES
+  // ============================================================
+  // - state.monthlyIncomes[mes] = [{ id, name, amount, recurringId? }]
+  //   son los ingresos REALES de ese mes (snapshot)
+  // - state.incomes = plantillas recurrentes (compatibilidad con datos viejos)
+  //
+  // Si un mes no tiene entry en monthlyIncomes:
+  //   - Si es el mes actual o futuro: se auto-crea desde state.incomes
+  //   - Si es mes pasado: se trata como vacío (no contaminamos historia)
+  //
+  // Helper: obtiene los ingresos del mes solicitado (auto-crea si necesario)
+  function getMonthlyIncomes(month) {
+    if (!state.monthlyIncomes) state.monthlyIncomes = {};
+    if (state.monthlyIncomes[month]) return state.monthlyIncomes[month];
+    
+    // Auto-inicialización: solo para el mes actual o futuros, copiar recurrentes
+    const today = new Date();
+    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (month >= currentMonthStr && state.incomes && state.incomes.length > 0) {
+      // Copiar plantillas recurrentes activas como snapshot del mes
+      state.monthlyIncomes[month] = state.incomes
+        .filter(i => i.frequency === 'monthly' && (i.amount || 0) > 0)
+        .map(i => ({
+          id: Date.now() + Math.random(),
+          name: i.name,
+          amount: i.amount,
+          recurringId: i.id  // ← referencia a la plantilla para sincronizar cambios
+        }));
+      return state.monthlyIncomes[month];
+    }
+    return [];
+  }
+  window.getMonthlyIncomes = getMonthlyIncomes;
+  
+  // Total de ingresos del mes activo: usa snapshot si existe, sino plantillas (legacy)
+  const totalIncome = () => {
+    if (!state.monthlyIncomes) state.monthlyIncomes = {};
+    const monthIncomes = getMonthlyIncomes(currentMonth);
+    if (monthIncomes && monthIncomes.length > 0) {
+      return monthIncomes.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+    }
+    // Fallback legacy (cuando no hay monthlyIncomes inicializado)
+    return (state.incomes || []).reduce((s, i) => s + i.amount * (FREQ[i.frequency] || 0), 0);
+  };
   const totalMonthCashback = () => {
     const txs = state.transactions[currentMonth] || [];
     return txs.reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
@@ -6392,17 +6459,159 @@ async function buildAnnualPDF(state, year) {
     if (p) { p.amount = parseFloat(a) || 0; saveState(); renderResumen(); renderPockets(); }
   };
 
+  // v58: nueva lógica de ingresos
+  // Por defecto agrega al mes activo. Si se marca "recurrente", también lo agrega como plantilla.
   window.addIncome = function() {
     const n = document.getElementById('income-name').value.trim();
     const a = parseFloat(document.getElementById('income-amount').value);
-    const f = document.getElementById('income-frequency').value;
+    const recurringEl = document.getElementById('income-recurring');
+    const isRecurring = recurringEl ? recurringEl.checked : false;
+    
     if (!n || !a || a <= 0) return alert('Completa todo');
-    state.incomes.push({ id: Date.now(), name: n, amount: a, frequency: f });
+    
+    if (!state.monthlyIncomes) state.monthlyIncomes = {};
+    if (!state.monthlyIncomes[currentMonth]) state.monthlyIncomes[currentMonth] = [];
+    
+    const newId = Date.now();
+    let recurringId = null;
+    
+    // Si es recurrente, también lo guardamos como plantilla en state.incomes
+    if (isRecurring) {
+      if (!state.incomes) state.incomes = [];
+      recurringId = newId + 1;
+      state.incomes.push({ 
+        id: recurringId, 
+        name: n, 
+        amount: a, 
+        frequency: 'monthly',
+        startMonth: currentMonth
+      });
+    }
+    
+    // Agregar al mes activo
+    state.monthlyIncomes[currentMonth].push({
+      id: newId,
+      name: n,
+      amount: a,
+      recurringId  // null si no es recurrente, id de la plantilla si lo es
+    });
+    
+    // Limpiar form
     document.getElementById('income-name').value = '';
     document.getElementById('income-amount').value = '';
+    if (recurringEl) recurringEl.checked = false;
+    
     saveState(); renderAll();
   };
-  window.removeIncome = function(id) { state.incomes = state.incomes.filter(i => i.id !== id); saveState(); renderAll(); };
+  
+  // v58: editar el monto de un ingreso del mes
+  // Si es recurrente, también actualiza la plantilla (afecta meses siguientes)
+  window.updateMonthlyIncome = function(incomeId, newAmount) {
+    if (!state.monthlyIncomes || !state.monthlyIncomes[currentMonth]) return;
+    const income = state.monthlyIncomes[currentMonth].find(i => i.id === incomeId);
+    if (!income) return;
+    
+    const parsed = parseFloat(newAmount) || 0;
+    income.amount = parsed;
+    
+    // Si es recurrente, también actualizar la plantilla y los meses futuros
+    if (income.recurringId) {
+      const tpl = (state.incomes || []).find(t => t.id === income.recurringId);
+      if (tpl) tpl.amount = parsed;
+      
+      // Propagar a meses FUTUROS (no pasados)
+      const today = new Date();
+      const currentStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      
+      Object.keys(state.monthlyIncomes).forEach(m => {
+        if (m > currentMonth && m >= currentStr) {
+          const monthIncome = state.monthlyIncomes[m].find(i => i.recurringId === income.recurringId);
+          if (monthIncome) monthIncome.amount = parsed;
+        }
+      });
+    }
+    saveState(); renderAll();
+  };
+  
+  // v58: convertir un ingreso del mes en recurrente (o quitarlo de recurrentes)
+  window.toggleIncomeRecurring = function(incomeId) {
+    if (!state.monthlyIncomes || !state.monthlyIncomes[currentMonth]) return;
+    const income = state.monthlyIncomes[currentMonth].find(i => i.id === incomeId);
+    if (!income) return;
+    
+    if (income.recurringId) {
+      // Quitar de recurrentes: eliminar la plantilla pero MANTENER el ingreso del mes
+      state.incomes = (state.incomes || []).filter(t => t.id !== income.recurringId);
+      // Y desligar este ingreso (y los de meses futuros) de la plantilla
+      const oldRecId = income.recurringId;
+      income.recurringId = null;
+      const today = new Date();
+      const currentStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      Object.keys(state.monthlyIncomes).forEach(m => {
+        if (m > currentMonth && m >= currentStr) {
+          (state.monthlyIncomes[m] || []).forEach(i => {
+            if (i.recurringId === oldRecId) i.recurringId = null;
+          });
+        }
+      });
+    } else {
+      // Convertir en recurrente: crear plantilla y vincular
+      if (!state.incomes) state.incomes = [];
+      const newRecId = Date.now() + Math.random();
+      state.incomes.push({
+        id: newRecId,
+        name: income.name,
+        amount: income.amount,
+        frequency: 'monthly',
+        startMonth: currentMonth
+      });
+      income.recurringId = newRecId;
+    }
+    saveState(); renderAll();
+  };
+  // v58: eliminar ingreso del mes activo. Si era recurrente, pregunta si eliminar de futuros también
+  window.removeIncome = async function(id) {
+    if (!state.monthlyIncomes || !state.monthlyIncomes[currentMonth]) return;
+    const income = state.monthlyIncomes[currentMonth].find(i => i.id === id);
+    if (!income) {
+      // Fallback legacy: eliminar de state.incomes si existe ahí
+      if (state.incomes && state.incomes.find(i => i.id === id)) {
+        state.incomes = state.incomes.filter(i => i.id !== id);
+        saveState(); renderAll();
+      }
+      return;
+    }
+    
+    // Si es recurrente, preguntar
+    if (income.recurringId) {
+      const confirmed = await showConfirm({
+        title: '¿Eliminar ingreso recurrente?',
+        message: `"${income.name}" es recurrente. ¿También quieres quitarlo de los meses siguientes? Los meses anteriores no se tocarán.`,
+        confirmText: '🗑️ Eliminar también de futuros',
+        cancelText: 'Solo este mes',
+        type: 'warning'
+      });
+      
+      if (confirmed) {
+        // Eliminar la plantilla y de meses futuros
+        const recId = income.recurringId;
+        state.incomes = (state.incomes || []).filter(t => t.id !== recId);
+        const today = new Date();
+        const currentStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        Object.keys(state.monthlyIncomes).forEach(m => {
+          if (m >= currentStr) {
+            state.monthlyIncomes[m] = (state.monthlyIncomes[m] || []).filter(i => i.recurringId !== recId);
+          }
+        });
+      } else {
+        // Solo este mes
+        state.monthlyIncomes[currentMonth] = state.monthlyIncomes[currentMonth].filter(i => i.id !== id);
+      }
+    } else {
+      state.monthlyIncomes[currentMonth] = state.monthlyIncomes[currentMonth].filter(i => i.id !== id);
+    }
+    saveState(); renderAll();
+  };
 
   // ============================================
   // TIPOS DE INGRESOS EXTRAS (PERSONALIZABLES)
@@ -8801,29 +9010,67 @@ async function buildAnnualPDF(state, year) {
 
   function renderIncomes() {
     const list = document.getElementById('income-list');
-    if (state.incomes.length === 0) {
-      list.innerHTML = `
-        <div class="empty-state-fancy">
+    if (!list) return;
+    
+    // v58: ingresos del mes activo + sección de recurrentes
+    const monthIncomes = getMonthlyIncomes(currentMonth);
+    const templates = (state.incomes || []).filter(t => t.frequency === 'monthly');
+    const monthLabel = (typeof getMonthLabel === 'function') ? getMonthLabel(currentMonth) : currentMonth;
+    
+    // Bloque 1: ingresos del mes
+    let html = `<div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
+      📅 Ingresos de <strong style="color: var(--text-primary);">${esc(monthLabel)}</strong>
+    </div>`;
+    
+    if (monthIncomes.length === 0) {
+      html += `
+        <div class="empty-state-fancy" style="padding: 20px 12px;">
           <div class="empty-state-icon">💰</div>
-          <h3 class="empty-state-title">Sin ingresos registrados</h3>
-          <p class="empty-state-message">
-            Registra tus ingresos recurrentes (salario, mesada, freelance) para
-            calcular tu margen mensual.
+          <h3 class="empty-state-title">Sin ingresos este mes</h3>
+          <p class="empty-state-message" style="font-size: 12px;">
+            Agrega lo que recibiste este mes. Marca "Recurrente" si se repite cada mes.
           </p>
-          <button class="empty-state-action" onclick="document.getElementById('income-name')?.focus()">
-            ➕ Agregar mi primer ingreso
-          </button>
         </div>
       `;
     } else {
-      list.innerHTML = state.incomes.map(i => `<div class="item-row">
-        <div><strong>${esc(i.name)}</strong></div>
-        <div>${fmt(i.amount)}</div>
-        <div><span class="badge badge-income">${freqLabel(i.frequency)}</span></div>
-        <button class="delete-btn" onclick="removeIncome(${i.id})">×</button>
-      </div>`).join('');
+      html += monthIncomes.map(i => {
+        const isRecurring = !!i.recurringId;
+        return `<div class="item-row">
+          <div><strong>${esc(i.name)}</strong></div>
+          <div>${fmt(i.amount)}</div>
+          <div>
+            ${isRecurring 
+              ? '<span class="badge badge-income" title="Se repite cada mes">🔁 Recurrente</span>' 
+              : '<span class="badge" style="background: var(--bg-secondary); color: var(--text-secondary);">📌 Único</span>'}
+          </div>
+          <button class="delete-btn" onclick="removeIncome(${i.id})" title="Eliminar">×</button>
+        </div>`;
+      }).join('');
     }
-    document.getElementById('income-total').textContent = fmt(totalIncome());
+    
+    // Bloque 2: plantillas recurrentes activas (resumen)
+    if (templates.length > 0) {
+      const totalRec = templates.reduce((s, t) => s + (t.amount || 0), 0);
+      html += `
+        <div style="margin-top: 16px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+            <span>🔁 <strong style="color: var(--text-primary);">Recurrentes activos</strong> (${templates.length})</span>
+            <span>${fmt(totalRec)}/mes</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-tertiary);">
+            ${templates.map(t => esc(t.name) + ' · ' + fmt(t.amount)).join(' · ')}
+          </div>
+          <p style="font-size: 10px; color: var(--text-tertiary); margin: 6px 0 0; line-height: 1.4;">
+            💡 Se agregan automáticamente cada mes. Edita el monto desde la fila del ingreso de este mes y se ajustarán los meses futuros.
+          </p>
+        </div>
+      `;
+    }
+    
+    list.innerHTML = html;
+    
+    const totalEl = document.getElementById('income-total');
+    if (totalEl) totalEl.textContent = fmt(totalIncome());
   }
 
   // SVGs de logos
