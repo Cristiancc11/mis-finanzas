@@ -6467,10 +6467,14 @@ async function buildAnnualPDF(state, year) {
     const recurringEl = document.getElementById('income-recurring');
     const isRecurring = recurringEl ? recurringEl.checked : false;
     
+    // v60: mes seleccionado por el usuario (puede ser distinto al mes activo del dashboard)
+    const monthEl = document.getElementById('income-month');
+    const targetMonth = (monthEl && monthEl.value) || currentMonth;
+    
     if (!n || !a || a <= 0) return alert('Completa todo');
     
     if (!state.monthlyIncomes) state.monthlyIncomes = {};
-    if (!state.monthlyIncomes[currentMonth]) state.monthlyIncomes[currentMonth] = [];
+    if (!state.monthlyIncomes[targetMonth]) state.monthlyIncomes[targetMonth] = [];
     
     const newId = Date.now();
     let recurringId = null;
@@ -6484,24 +6488,31 @@ async function buildAnnualPDF(state, year) {
         name: n, 
         amount: a, 
         frequency: 'monthly',
-        startMonth: currentMonth
+        startMonth: targetMonth
       });
     }
     
-    // Agregar al mes activo
-    state.monthlyIncomes[currentMonth].push({
+    // Agregar al mes elegido
+    state.monthlyIncomes[targetMonth].push({
       id: newId,
       name: n,
       amount: a,
-      recurringId  // null si no es recurrente, id de la plantilla si lo es
+      recurringId
     });
     
     // Limpiar form
     document.getElementById('income-name').value = '';
     document.getElementById('income-amount').value = '';
     if (recurringEl) recurringEl.checked = false;
+    // El selector de mes lo dejamos en el valor que estaba, por si quieren agregar más al mismo mes
     
     saveState(); renderAll();
+    
+    // v60: feedback al usuario, indicando a qué mes fue
+    if (typeof toastSuccess === 'function') {
+      const monthLabel = (typeof getMonthLabel === 'function') ? getMonthLabel(targetMonth) : targetMonth;
+      toastSuccess('Ingreso agregado', `${n} · ${fmt(a)} → ${monthLabel}${isRecurring ? ' (recurrente)' : ''}`);
+    }
   };
   
   // v58: editar el monto de un ingreso del mes
@@ -9052,6 +9063,47 @@ async function buildAnnualPDF(state, year) {
     const list = document.getElementById('income-list');
     if (!list) return;
     
+    // v60: Poblar selector de mes con los últimos 12 meses + mes actual + próximos 2
+    const monthSelectEl = document.getElementById('income-month');
+    if (monthSelectEl) {
+      const now = new Date();
+      const months = [];
+      // 12 meses atrás
+      for (let i = 12; i >= 1; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
+      // Mes actual y próximos 2
+      for (let i = 0; i <= 2; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
+      // También incluir el mes activo del dashboard si no está
+      if (!months.includes(currentMonth)) months.push(currentMonth);
+      // Y meses que ya tienen ingresos registrados
+      Object.keys(state.monthlyIncomes || {}).forEach(m => {
+        if (!months.includes(m)) months.push(m);
+      });
+      months.sort().reverse(); // más reciente arriba
+      
+      const previousValue = monthSelectEl.value;
+      const currentStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      monthSelectEl.innerHTML = months.map(m => {
+        const label = (typeof getMonthLabel === 'function') ? getMonthLabel(m) : m;
+        let suffix = '';
+        if (m === currentStr) suffix = ' (este mes)';
+        return `<option value="${m}">${label}${suffix}</option>`;
+      }).join('');
+      
+      // Mantener selección previa, sino usar mes activo del dashboard
+      if (previousValue && months.includes(previousValue)) {
+        monthSelectEl.value = previousValue;
+      } else {
+        monthSelectEl.value = currentMonth;
+      }
+    }
+    
     // v58: ingresos del mes activo + sección de recurrentes
     const monthIncomes = getMonthlyIncomes(currentMonth);
     const templates = (state.incomes || []).filter(t => t.frequency === 'monthly');
@@ -9075,26 +9127,26 @@ async function buildAnnualPDF(state, year) {
     } else {
       html += monthIncomes.map(i => {
         const isRecurring = !!i.recurringId;
-        return `<div class="item-row">
-          <div><strong>${esc(i.name)}</strong></div>
-          <div>
-            <input 
-              type="number" 
-              value="${i.amount}" 
-              min="0" 
-              step="1000" 
-              onfocus="this.select()" 
-              onchange="updateMonthlyIncome(${i.id}, this.value)" 
-              title="${isRecurring ? 'Cambia este monto y se ajustarán los meses futuros automáticamente' : 'Editar monto de este mes'}"
-              style="height: 36px; font-size: 13px; background: var(--bg-secondary); border: 1px solid var(--border-strong); cursor: text; text-align: right; padding: 4px 10px; width: 100%; max-width: 160px;" 
-            />
+        return `<div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 10px; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 6px;">
+          <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">
+            <strong style="font-size: 13px;" title="${esc(i.name)}">${esc(i.name)}</strong>
           </div>
-          <div>
+          <input 
+            type="number" 
+            value="${i.amount}" 
+            min="0" 
+            step="1000" 
+            onfocus="this.select()" 
+            onchange="updateMonthlyIncome(${i.id}, this.value)" 
+            title="${isRecurring ? 'Cambia este monto y se ajustarán los meses futuros automáticamente' : 'Editar monto de este mes'}"
+            style="height: 36px; font-size: 13px; background: var(--bg-primary); border: 1px solid var(--border-strong); cursor: text; text-align: right; padding: 4px 10px; width: 140px; border-radius: 8px;" 
+          />
+          <div style="flex-shrink: 0;">
             ${isRecurring 
-              ? '<span class="badge badge-income" title="Se repite cada mes">🔁 Recurrente</span>' 
-              : `<button onclick="toggleIncomeRecurring(${i.id})" title="Convertir en recurrente" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">🔁 Hacer recurrente</button>`}
+              ? '<span class="badge badge-income" title="Se repite cada mes" style="font-size: 11px;">🔁 Recurrente</span>' 
+              : `<button onclick="toggleIncomeRecurring(${i.id})" title="Convertir en recurrente" style="background: var(--bg-primary); color: var(--text-secondary); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; white-space: nowrap;">🔁 Hacer recurrente</button>`}
           </div>
-          <button class="delete-btn" onclick="removeIncome(${i.id})" title="Eliminar">×</button>
+          <button class="delete-btn" onclick="removeIncome(${i.id})" title="Eliminar" style="flex-shrink: 0;">×</button>
         </div>`;
       }).join('');
     }

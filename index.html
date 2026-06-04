@@ -1257,11 +1257,15 @@
 
   <div class="fin-section" id="section-ingresos">
     <div class="raised-card">
-      <p class="card-title">💼 Agregar ingreso del mes</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Salario, freelance, bonos o cualquier dinero que recibiste este mes. Marca "Recurrente" si se repite cada mes.</p>
+      <p class="card-title">💼 Agregar ingreso</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Salario, freelance, bonos o cualquier dinero. Elige el mes y marca "Recurrente" si se repite cada mes.</p>
       <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
         <input type="text" id="income-name" placeholder="Concepto (Ej: Salario, Bono navidad, Proyecto X)" />
         <input type="number" inputmode="decimal" id="income-amount" placeholder="Monto" min="0" step="0.01" />
+        <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
+          <label style="font-size: 12px; color: var(--text-secondary); padding-left: 4px;">📅 Mes:</label>
+          <select id="income-month" title="¿En qué mes recibiste este ingreso?"></select>
+        </div>
         <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; cursor: pointer; font-size: 13px; user-select: none;">
           <input type="checkbox" id="income-recurring" style="width: auto; height: auto; min-height: auto; margin: 0; cursor: pointer;" />
           <span>🔁 <strong>Recurrente</strong> — se repite cada mes automáticamente</span>
