@@ -1523,9 +1523,47 @@
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Sube un CSV/Excel con tus movimientos y los registramos automáticamente.</p>
       <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
         <select id="import-bank">
-          <option value="lulo">🟣 Lulo Bank</option>
-          <option value="davivienda">🔴 Davivienda / RappiCard</option>
           <option value="generic">📋 Genérico (CSV con: fecha, descripción, monto)</option>
+          <optgroup label="🏦 Con parser optimizado">
+            <option value="lulo">🟣 Lulo Bank</option>
+            <option value="davivienda">🔴 Davivienda / RappiCard</option>
+          </optgroup>
+          <optgroup label="🏦 Bancos colombianos (parser genérico)">
+            <option value="bancolombia">Bancolombia</option>
+            <option value="bbva">BBVA Colombia</option>
+            <option value="bogota">Banco de Bogotá</option>
+            <option value="popular">Banco Popular</option>
+            <option value="caja_social">Banco Caja Social</option>
+            <option value="av_villas">AV Villas</option>
+            <option value="colpatria">Colpatria (Scotiabank)</option>
+            <option value="occidente">Banco de Occidente</option>
+            <option value="itau">Itaú</option>
+            <option value="nu">Nu Colombia</option>
+            <option value="pichincha">Pichincha</option>
+            <option value="agrario">Banco Agrario</option>
+            <option value="bancoomeva">Bancoomeva</option>
+            <option value="banco_w">Banco W</option>
+            <option value="finandina">Banco Finandina</option>
+            <option value="falabella">Banco Falabella</option>
+            <option value="serfinanza">Serfinanza</option>
+            <option value="mundo_mujer">Banco Mundo Mujer</option>
+            <option value="coopcentral">Coopcentral</option>
+          </optgroup>
+          <optgroup label="📱 Billeteras digitales">
+            <option value="nequi">Nequi</option>
+            <option value="daviplata">Daviplata</option>
+            <option value="rappipay">RappiPay</option>
+            <option value="movii">Movii</option>
+            <option value="dale">Dale!</option>
+            <option value="tpaga">Tpaga</option>
+            <option value="powwi">Powwi</option>
+            <option value="ualá">Ualá</option>
+          </optgroup>
+          <optgroup label="💳 Otros">
+            <option value="amex">American Express</option>
+            <option value="diners">Diners Club</option>
+            <option value="otro">📌 Otro banco / entidad</option>
+          </optgroup>
         </select>
         <input type="file" id="bank-import-file" accept=".csv,.xlsx,.xls,.txt,.pdf" style="display: none;" />
         <button onclick="document.getElementById('bank-import-file').click()" style="padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 14px;">
@@ -1534,11 +1572,16 @@
         <div id="import-status" style="margin-top: 8px; font-size: 12px;"></div>
         <details style="font-size: 11px; color: var(--text-secondary);">
           <summary style="cursor: pointer;">¿Cómo descargo mi extracto?</summary>
-          <div style="padding: 10px; background: var(--bg-secondary); border-radius: 8px; margin-top: 6px;">
-            <strong>Lulo Bank:</strong> App → Movimientos → "Descargar extracto" (PDF)<br>
-            <strong>Davivienda / RappiCard:</strong> Banca virtual → Cuentas → Estado de cuenta → Descargar PDF<br>
-            <strong>Bancolombia:</strong> App → Cuenta → "Estado de cuenta" → PDF<br>
-            <strong>Nequi:</strong> App → Movimientos → Descargar PDF<br><br>
+          <div style="padding: 10px; background: var(--bg-secondary); border-radius: 8px; margin-top: 6px; line-height: 1.6;">
+            <strong>🟣 Lulo Bank:</strong> App → Movimientos → "Descargar extracto" (PDF)<br>
+            <strong>🔴 Davivienda / RappiCard:</strong> Banca virtual → Cuentas → Estado de cuenta → Descargar PDF<br>
+            <strong>🟡 Bancolombia:</strong> App o Sucursal Virtual → Cuenta → "Estado de cuenta" → PDF<br>
+            <strong>🔵 BBVA:</strong> App → Posición global → Tu cuenta → Movimientos → Exportar<br>
+            <strong>🟢 Banco de Bogotá:</strong> Banca Virtual → Cuentas → Extracto → Descargar<br>
+            <strong>📱 Nequi:</strong> App → Movimientos → Compartir → "Exportar a PDF"<br>
+            <strong>📱 Daviplata:</strong> App → Movimientos → Descargar extracto<br>
+            <strong>Otros bancos:</strong> Busca "Extracto", "Estado de cuenta" o "Movimientos" en tu banca digital. Acepta PDF, CSV o Excel.<br><br>
+            💡 <strong>Tip:</strong> Si tu banco no aparece en la lista, elige "Genérico" o el más parecido. El parser detecta automáticamente fechas y montos en la mayoría de formatos.<br>
             ✅ Soportamos PDF, CSV, Excel y TXT.
           </div>
         </details>
