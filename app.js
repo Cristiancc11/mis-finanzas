@@ -6287,7 +6287,12 @@ async function buildAnnualPDF(state, year) {
         const clr = document.getElementById('tx-search-clear'); if (clr) clr.style.display = 'none';
       }
       window.txCurrentPage = 1;  // v51: volver a página 1 al cambiar mes
-      renderBudget(); renderTransactions();
+      // v61: sincronizar el selector de ingresos extras con el mes activo del dashboard
+      currentExtraMonth = currentMonth;
+      // v61 FIX: llamar renderAll para actualizar TODAS las secciones, no solo Budget+Tx.
+      // Ingresos, Resumen, Análisis y demás también dependen del mes activo.
+      if (typeof renderAll === 'function') renderAll();
+      else { renderBudget(); renderTransactions(); }
     };
   }
 
