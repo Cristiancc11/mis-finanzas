@@ -6319,14 +6319,39 @@ async function buildAnnualPDF(state, year) {
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     
     if (month >= currentMonthStr && state.incomes && state.incomes.length > 0) {
-      // Copiar plantillas recurrentes activas como snapshot del mes
+      // v62: para cada plantilla, calcular si aplica a ESTE mes según la regla
+      const [yearStr, monStr] = month.split('-');
+      const targetYear = parseInt(yearStr, 10);
+      const targetMonth0 = parseInt(monStr, 10) - 1; // 0-indexed
+      
       state.monthlyIncomes[month] = state.incomes
         .filter(i => i.frequency === 'monthly' && (i.amount || 0) > 0)
+        .filter(i => {
+          // v62: si tiene paymentDay y monthAssignment, verificar a qué mes contable corresponde
+          if (i.paymentDay && i.monthAssignment) {
+            // Calcular en qué mes calendario habría que pagar para que el mes contable sea "month"
+            // Si monthAssignment es 'auto' o 'next' y paymentDay cae fin de mes, el pago real es el mes anterior
+            // Lo más simple: ver qué pasa si el pago cae este mes calendario
+            const accountingThisMonth = getAccountingMonth(targetYear, targetMonth0, i.paymentDay, i.monthAssignment);
+            if (accountingThisMonth === month) return true;
+            // También revisar el mes anterior (su pago puede contar para este mes)
+            const prevDate = new Date(targetYear, targetMonth0 - 1, 1);
+            const accountingPrevMonth = getAccountingMonth(
+              prevDate.getFullYear(), 
+              prevDate.getMonth(), 
+              i.paymentDay, 
+              i.monthAssignment
+            );
+            return accountingPrevMonth === month;
+          }
+          // Sin reglas: incluir en todo mes >= startMonth
+          return true;
+        })
         .map(i => ({
           id: Date.now() + Math.random(),
           name: i.name,
           amount: i.amount,
-          recurringId: i.id  // ← referencia a la plantilla para sincronizar cambios
+          recurringId: i.id
         }));
       return state.monthlyIncomes[month];
     }
@@ -6464,6 +6489,127 @@ async function buildAnnualPDF(state, year) {
     if (p) { p.amount = parseFloat(a) || 0; saveState(); renderResumen(); renderPockets(); }
   };
 
+  // ============================================================
+  // v62: REGLA AUTOMÁTICA "FIN DE MES"
+  // Si una nómina cae los últimos 5 días del mes, se cuenta al mes siguiente
+  // ============================================================
+  const END_OF_MONTH_THRESHOLD = 5; // últimos 5 días
+  
+  // Dado un día del mes (1-31), año y mes (0-11), retorna el "mes contable" YYYY-MM
+  // que aplica según la regla automática.
+  function getAccountingMonth(year, month, paymentDay, monthAssignment) {
+    // monthAssignment: 'auto' | 'same' | 'next'
+    // 'same': siempre el mes calendario
+    // 'next': siempre el mes siguiente
+    // 'auto': últimos 5 días → siguiente, sino mismo
+    
+    if (monthAssignment === 'same') {
+      return `${year}-${String(month + 1).padStart(2, '0')}`;
+    }
+    
+    if (monthAssignment === 'next') {
+      const next = new Date(year, month + 1, 1);
+      return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+    }
+    
+    // auto: depende del día
+    // Días en este mes
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysFromEnd = daysInMonth - paymentDay;
+    
+    if (daysFromEnd < END_OF_MONTH_THRESHOLD) {
+      // Cae en los últimos 5 días → al mes siguiente
+      const next = new Date(year, month + 1, 1);
+      return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+    }
+    return `${year}-${String(month + 1).padStart(2, '0')}`;
+  }
+  window.getAccountingMonth = getAccountingMonth;
+
+  // v62: editar plantilla recurrente (paymentDay, monthAssignment)
+  window.editRecurringIncome = function(templateId) {
+    if (!state.incomes) return;
+    const tpl = state.incomes.find(t => t.id === templateId);
+    if (!tpl) return;
+    
+    const existing = document.getElementById('mark-paid-modal');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'mark-paid-modal';
+    overlay.className = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 440px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">⚙️</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">Configurar recurrente</h2>
+          <p class="tutorial-subtitle">${esc(tpl.name)} · ${fmt(tpl.amount)}/mes</p>
+        </div>
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">📅 Día de pago (1-31)</label>
+              <input type="number" id="edit-rec-payment-day" placeholder="Ej: 28" min="1" max="31" value="${tpl.paymentDay || ''}" style="width: 100%;" />
+              <p style="font-size: 11px; color: var(--text-tertiary); margin: 4px 0 0;">El día del mes en que normalmente recibes este ingreso. Déjalo vacío si varía.</p>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">📆 ¿A qué mes pertenece?</label>
+              <select id="edit-rec-month-assignment" style="width: 100%;">
+                <option value="auto" ${(tpl.monthAssignment || 'auto') === 'auto' ? 'selected' : ''}>🤖 Automático (fin de mes → siguiente)</option>
+                <option value="same" ${tpl.monthAssignment === 'same' ? 'selected' : ''}>📍 Mismo mes (siempre)</option>
+                <option value="next" ${tpl.monthAssignment === 'next' ? 'selected' : ''}>➡️ Mes siguiente (siempre)</option>
+              </select>
+            </div>
+            <div style="background: rgba(127, 119, 221, 0.08); border-radius: 8px; padding: 10px; font-size: 11px; color: var(--text-secondary); line-height: 1.5;">
+              💡 <strong>Ejemplo:</strong> Si tu nómina cae el 28 y eliges "Automático", se contará como ingreso del mes SIGUIENTE (porque cae en los últimos 5 días).
+            </div>
+          </div>
+        </div>
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="saveRecurringConfig(${templateId})">💾 Guardar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+  };
+
+  window.saveRecurringConfig = function(templateId) {
+    if (!state.incomes) return;
+    const tpl = state.incomes.find(t => t.id === templateId);
+    if (!tpl) return;
+    
+    const dayEl = document.getElementById('edit-rec-payment-day');
+    const assignEl = document.getElementById('edit-rec-month-assignment');
+    
+    const day = dayEl && dayEl.value ? parseInt(dayEl.value, 10) : null;
+    const assignment = assignEl ? assignEl.value : 'auto';
+    
+    if (day !== null && (day < 1 || day > 31)) {
+      if (typeof toastError === 'function') toastError('Día inválido', 'Debe estar entre 1 y 31');
+      return;
+    }
+    
+    tpl.paymentDay = day;
+    tpl.monthAssignment = assignment;
+    
+    saveState();
+    closeMarkPaidModal();
+    renderAll();
+    
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Configuración guardada', 'Se aplicará desde los próximos meses futuros');
+    }
+  };
+
+  // v62: mostrar/ocultar campos avanzados del recurrente
+  window.toggleRecurringFields = function(checked) {
+    const fields = document.getElementById('income-recurring-fields');
+    if (fields) fields.style.display = checked ? 'flex' : 'none';
+  };
+
   // v58: nueva lógica de ingresos
   // Por defecto agrega al mes activo. Si se marca "recurrente", también lo agrega como plantilla.
   window.addIncome = function() {
@@ -6476,7 +6622,16 @@ async function buildAnnualPDF(state, year) {
     const monthEl = document.getElementById('income-month');
     const targetMonth = (monthEl && monthEl.value) || currentMonth;
     
+    // v62: campos opcionales solo para recurrentes
+    const payDayEl = document.getElementById('income-payment-day');
+    const assignEl = document.getElementById('income-month-assignment');
+    const paymentDay = payDayEl && payDayEl.value ? parseInt(payDayEl.value, 10) : null;
+    const monthAssignment = assignEl ? assignEl.value : 'auto';
+    
     if (!n || !a || a <= 0) return alert('Completa todo');
+    if (paymentDay !== null && (paymentDay < 1 || paymentDay > 31)) {
+      return alert('Día de pago debe estar entre 1 y 31');
+    }
     
     if (!state.monthlyIncomes) state.monthlyIncomes = {};
     if (!state.monthlyIncomes[targetMonth]) state.monthlyIncomes[targetMonth] = [];
@@ -6493,7 +6648,10 @@ async function buildAnnualPDF(state, year) {
         name: n, 
         amount: a, 
         frequency: 'monthly',
-        startMonth: targetMonth
+        startMonth: targetMonth,
+        // v62: nuevos campos
+        paymentDay: paymentDay,
+        monthAssignment: monthAssignment
       });
     }
     
@@ -6509,7 +6667,8 @@ async function buildAnnualPDF(state, year) {
     document.getElementById('income-name').value = '';
     document.getElementById('income-amount').value = '';
     if (recurringEl) recurringEl.checked = false;
-    // El selector de mes lo dejamos en el valor que estaba, por si quieren agregar más al mismo mes
+    if (payDayEl) payDayEl.value = '';
+    if (assignEl) assignEl.value = 'auto';
     
     saveState(); renderAll();
     
@@ -9166,16 +9325,28 @@ async function buildAnnualPDF(state, year) {
             <span><strong>${fmt(totalRec)}</strong>/mes</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            ${templates.map(t => `
+            ${templates.map(t => {
+              // v62: badge de configuración
+              let cfgBadge = '';
+              if (t.paymentDay) {
+                const assignLabel = t.monthAssignment === 'next' ? '→ siguiente'
+                                  : t.monthAssignment === 'same' ? '= mismo mes'
+                                  : '🤖 auto';
+                cfgBadge = `<span style="font-size: 10px; color: var(--text-tertiary); margin-left: 6px;">📅 día ${t.paymentDay} ${assignLabel}</span>`;
+              }
+              return `
               <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-primary); border-radius: 8px; font-size: 12px;">
                 <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                  <strong>${esc(t.name)}</strong> · ${fmt(t.amount)}
+                  <strong>${esc(t.name)}</strong> · ${fmt(t.amount)}${cfgBadge}
                 </span>
+                <button onclick="editRecurringIncome(${t.id})" title="Editar día de pago y reglas" style="background: transparent; color: var(--info-text); border: 1px solid var(--info-text); padding: 3px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+                  ⚙️ Editar
+                </button>
                 <button onclick="deleteRecurringIncome(${t.id})" title="Eliminar este recurrente (no afecta meses pasados)" style="background: transparent; color: var(--danger-text); border: 1px solid var(--danger-text); padding: 3px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;">
                   🗑️ Quitar
                 </button>
               </div>
-            `).join('')}
+            `;}).join('')}
           </div>
           <p style="font-size: 10px; color: var(--text-tertiary); margin: 8px 0 0; line-height: 1.4;">
             💡 Edita el monto desde la fila del ingreso de este mes (arriba) y los meses futuros se ajustarán automáticamente. Los meses pasados quedan congelados con su valor real.
