@@ -6168,6 +6168,8 @@ async function buildAnnualPDF(state, year) {
         }
       }
       updateCashbackPreview();
+      // v63: mostrar/ocultar opción de cuotas según el método
+      if (typeof checkInstallmentVisibility === 'function') checkInstallmentVisibility();
     }
 
     function getRecommendedCard(amount) {
@@ -6265,6 +6267,10 @@ async function buildAnnualPDF(state, year) {
 
     methodSel.addEventListener('change', updateUI);
     amountInput.addEventListener('input', updateCashbackPreview);
+    amountInput.addEventListener('input', () => {
+      // v63: actualizar preview de cuotas si está visible
+      if (typeof updateInstallmentPreview === 'function') updateInstallmentPreview();
+    });
     updateUI();
   }
 
@@ -6608,6 +6614,105 @@ async function buildAnnualPDF(state, year) {
   window.toggleRecurringFields = function(checked) {
     const fields = document.getElementById('income-recurring-fields');
     if (fields) fields.style.display = checked ? 'flex' : 'none';
+  };
+
+  // ============================================================
+  // v63: COMPRA A CUOTAS — toggle, preview, cálculo de amortización
+  // ============================================================
+  
+  // Calcular cuota usando fórmula de amortización francesa (capital + intereses)
+  // Si rate = 0, simplemente divide el monto entre N cuotas
+  function calculateInstallmentAmount(total, n, ratePercent) {
+    const r = (parseFloat(ratePercent) || 0) / 100;
+    if (r === 0 || !ratePercent) return total / n;
+    // PMT = P * r * (1+r)^n / ((1+r)^n - 1)
+    const pow = Math.pow(1 + r, n);
+    return (total * r * pow) / (pow - 1);
+  }
+  window.calculateInstallmentAmount = calculateInstallmentAmount;
+
+  // Mostrar/ocultar el wrapper completo según si es pago con tarjeta de crédito
+  window.checkInstallmentVisibility = function() {
+    const method = document.getElementById('tx-payment-method')?.value;
+    const wrapper = document.getElementById('tx-installments-wrapper');
+    if (!wrapper) return;
+    // Solo se muestra para pagos con tarjeta de crédito
+    wrapper.style.display = (method === 'tarjeta') ? 'block' : 'none';
+    if (method !== 'tarjeta') {
+      // Resetear si no es tarjeta
+      const chk = document.getElementById('tx-is-installment');
+      if (chk) { chk.checked = false; toggleInstallmentFields(false); }
+    }
+  };
+
+  // Toggle campos de cuotas
+  window.toggleInstallmentFields = function(checked) {
+    const fields = document.getElementById('tx-installment-fields');
+    if (fields) fields.style.display = checked ? 'flex' : 'none';
+    if (checked) {
+      // Poblar selector de mes inicial
+      populateInstallmentStartSelect();
+      updateInstallmentPreview();
+    }
+  };
+
+  // Toggle campo de tasa
+  window.toggleInterestField = function() {
+    const chk = document.getElementById('tx-installments-has-interest');
+    const field = document.getElementById('tx-installments-interest-field');
+    if (field && chk) field.style.display = chk.checked ? 'block' : 'none';
+  };
+
+  // Poblar selector de mes inicial (default = mes de la fecha de la compra)
+  function populateInstallmentStartSelect() {
+    const sel = document.getElementById('tx-installments-start');
+    if (!sel) return;
+    const txDate = document.getElementById('tx-date')?.value || getTodayLocal();
+    const txMonth = txDate.substring(0, 7);
+    const today = new Date();
+    const months = [];
+    // 1 mes atrás + actual + 12 adelante (suficiente para la mayoría)
+    for (let i = -1; i <= 12; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    if (!months.includes(txMonth)) months.push(txMonth);
+    months.sort();
+    sel.innerHTML = months.map(m => {
+      const label = (typeof getMonthLabel === 'function') ? getMonthLabel(m) : m;
+      return `<option value="${m}" ${m === txMonth ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+  }
+
+  // Mostrar preview del plan de cuotas
+  window.updateInstallmentPreview = function() {
+    const previewEl = document.getElementById('tx-installments-preview');
+    if (!previewEl) return;
+    
+    const total = parseFloat(document.getElementById('tx-amount')?.value) || 0;
+    const n = parseInt(document.getElementById('tx-installments-count')?.value, 10) || 0;
+    const hasInt = document.getElementById('tx-installments-has-interest')?.checked;
+    const rate = hasInt ? (parseFloat(document.getElementById('tx-installments-rate')?.value) || 0) : 0;
+    
+    if (total <= 0 || n < 2) {
+      previewEl.style.display = 'none';
+      return;
+    }
+    
+    const cuota = calculateInstallmentAmount(total, n, rate);
+    const totalPagado = cuota * n;
+    const intereses = totalPagado - total;
+    
+    let html = `<div><strong>💰 Cuota mensual:</strong> ${fmt(cuota)}</div>`;
+    if (rate > 0) {
+      html += `<div style="margin-top: 4px; color: var(--warning-text);">📊 Total a pagar: ${fmt(totalPagado)} · Intereses: ${fmt(intereses)}</div>`;
+    } else {
+      html += `<div style="margin-top: 4px; color: var(--success-text);">✓ Sin intereses · Total: ${fmt(total)}</div>`;
+    }
+    html += `<div style="margin-top: 4px; color: var(--text-tertiary);">⚠️ Cupo de tarjeta ocupado HOY: ${fmt(total)} (se libera ${fmt(cuota)} por mes)</div>`;
+    
+    previewEl.innerHTML = html;
+    previewEl.style.display = 'block';
   };
 
   // v58: nueva lógica de ingresos
@@ -8971,7 +9076,87 @@ async function buildAnnualPDF(state, year) {
       });
     }
     
-    state.transactions[m].push(newTx);
+    // v63: Detectar si es compra a cuotas
+    const isInstallment = method === 'tarjeta' && document.getElementById('tx-is-installment')?.checked;
+    const installmentCount = isInstallment ? parseInt(document.getElementById('tx-installments-count')?.value, 10) : 0;
+    const hasInterest = isInstallment && document.getElementById('tx-installments-has-interest')?.checked;
+    const interestRate = hasInterest ? (parseFloat(document.getElementById('tx-installments-rate')?.value) || 0) : 0;
+    const installmentStartMonth = isInstallment ? (document.getElementById('tx-installments-start')?.value || m) : null;
+    
+    if (isInstallment && installmentCount >= 2) {
+      // Calcular cuota mensual
+      const cuotaAmount = calculateInstallmentAmount(totalAmount, installmentCount, interestRate);
+      const cuotaRounded = Math.round(cuotaAmount);
+      const groupId = txId; // ID del grupo de cuotas (el de la primera tx)
+      
+      // Ajustar la transacción inicial: su monto debe ser la cuota, no el total
+      // Pero ojo: el cupo ya se ocupó con el TOTAL en card.balance += totalAmount (correcto)
+      newTx.amount = cuotaRounded;
+      newTx.totalAmount = totalAmount;
+      newTx.cashback = cashback / installmentCount; // El cashback proporcional por cuota
+      newTx.installment = {
+        groupId: groupId,
+        current: 1,
+        total: installmentCount,
+        originalTotal: totalAmount,
+        cuotaAmount: cuotaRounded,
+        hasInterest: hasInterest,
+        interestRate: interestRate,
+        startMonth: installmentStartMonth
+      };
+      
+      // La primera cuota va al mes de inicio elegido (puede no ser el mes de la compra)
+      const firstMonth = installmentStartMonth;
+      newTx.date = firstMonth + '-' + String(Math.min(parseInt(dt.split('-')[2], 10) || 1, 28)).padStart(2, '0');
+      
+      if (!state.transactions[firstMonth]) state.transactions[firstMonth] = [];
+      state.transactions[firstMonth].push(newTx);
+      
+      // Crear las cuotas 2 a N
+      const [startY, startMo] = firstMonth.split('-').map(Number);
+      for (let i = 2; i <= installmentCount; i++) {
+        const futureDate = new Date(startY, startMo - 1 + (i - 1), Math.min(parseInt(dt.split('-')[2], 10) || 1, 28));
+        const futureMonth = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
+        const futureDateStr = `${futureMonth}-${String(futureDate.getDate()).padStart(2, '0')}`;
+        
+        const futureTx = {
+          id: Date.now() + i * 1000 + Math.floor(Math.random() * 1000),
+          date: futureDateStr,
+          desc: d + ` (cuota ${i}/${installmentCount})`,
+          amount: cuotaRounded,
+          category: c,
+          paymentMethod: method,
+          cardId: cardIdNum,
+          pocketId: null,
+          payCardId: null,
+          cashback: cashback / installmentCount,
+          createdAt: Date.now(),
+          installment: {
+            groupId: groupId,
+            current: i,
+            total: installmentCount,
+            originalTotal: totalAmount,
+            cuotaAmount: cuotaRounded,
+            hasInterest: hasInterest,
+            interestRate: interestRate,
+            startMonth: installmentStartMonth
+          }
+        };
+        
+        if (!state.transactions[futureMonth]) state.transactions[futureMonth] = [];
+        state.transactions[futureMonth].push(futureTx);
+      }
+      
+      if (typeof toastSuccess === 'function') {
+        toastSuccess(
+          'Compra a cuotas registrada',
+          `${installmentCount} cuotas de ${fmt(cuotaRounded)} · Total: ${fmt(totalAmount)}${hasInterest ? ` + intereses` : ''}`
+        );
+      }
+    } else {
+      // Flujo normal: una sola transacción
+      state.transactions[m].push(newTx);
+    }
 
     // Limpiar formulario
     document.getElementById('tx-desc').value = '';
@@ -8979,6 +9164,14 @@ async function buildAnnualPDF(state, year) {
     if (document.getElementById('tx-pocket')) document.getElementById('tx-pocket').value = '';
     if (document.getElementById('tx-pay-card')) document.getElementById('tx-pay-card').value = '';
     document.getElementById('tx-cashback-info').style.display = 'none';
+    
+    // v63: limpiar campos de cuotas
+    const instChk = document.getElementById('tx-is-installment');
+    if (instChk) { instChk.checked = false; toggleInstallmentFields(false); }
+    const instCount = document.getElementById('tx-installments-count'); if (instCount) instCount.value = '';
+    const instHasInt = document.getElementById('tx-installments-has-interest');
+    if (instHasInt) { instHasInt.checked = false; toggleInterestField(); }
+    const instRate = document.getElementById('tx-installments-rate'); if (instRate) instRate.value = '';
     
     // Reset gasto compartido/prestado
     if (document.getElementById('tx-shared-names')) document.getElementById('tx-shared-names').value = '';
@@ -9012,52 +9205,102 @@ async function buildAnnualPDF(state, year) {
     }
   };
 
-  window.removeTransaction = function(m, id) {
-    if (state.transactions[m]) {
-      const tx = state.transactions[m].find(t => t.id === id);
-      if (tx) {
-        // Determinar el monto que se cargó realmente
-        // Compartido O Prestado: se cargó el TOTAL
-        // Normal: se cargó solo el amount (tu parte)
-        const totalCharged = (tx.isShared || tx.isLent) ? (tx.totalAmount || tx.amount) : tx.amount;
-        
-        // Si fue con tarjeta, revertir saldo
+  window.removeTransaction = async function(m, id) {
+    if (!state.transactions[m]) return;
+    const tx = state.transactions[m].find(t => t.id === id);
+    if (!tx) return;
+    
+    // v63: Si es parte de un grupo de cuotas, preguntar si eliminar todas
+    let deleteWholeGroup = false;
+    if (tx.installment && tx.installment.groupId) {
+      const groupId = tx.installment.groupId;
+      // Contar cuántas cuotas hay del grupo
+      let totalInGroup = 0;
+      Object.keys(state.transactions).forEach(month => {
+        state.transactions[month].forEach(t => {
+          if (t.installment && t.installment.groupId === groupId) totalInGroup++;
+        });
+      });
+      
+      const confirmed = await showConfirm({
+        title: '¿Eliminar cuota?',
+        message: `Esta es la cuota ${tx.installment.current}/${tx.installment.total} de "${tx.desc.replace(/ \(cuota \d+\/\d+\)$/, '')}". Quedan ${totalInGroup} cuotas registradas del grupo. ¿Eliminar solo esta o TODAS las cuotas?`,
+        confirmText: '🗑️ Eliminar TODAS las cuotas',
+        cancelText: 'Solo esta cuota',
+        type: 'warning'
+      });
+      deleteWholeGroup = confirmed;
+    }
+    
+    // Determinar el monto que se cargó realmente
+    const totalCharged = (tx.isShared || tx.isLent) ? (tx.totalAmount || tx.amount) : tx.amount;
+    
+    // v63: Si es cuota y eliminamos el grupo completo, revertir el TOTAL ORIGINAL del cupo (solo una vez)
+    // Si es cuota individual, NO revertir cupo (porque el cupo se ocupa con el total al inicio)
+    if (tx.installment) {
+      if (deleteWholeGroup) {
+        // Revertir el total original del cupo y eliminar todas las cuotas del grupo
+        const groupId = tx.installment.groupId;
+        const originalTotal = tx.installment.originalTotal;
         if (tx.paymentMethod === 'tarjeta' && tx.cardId) {
           const card = state.debts.find(x => x.id === tx.cardId);
           if (card) {
-            card.balance = Math.max(0, card.balance - totalCharged);
+            card.balance = Math.max(0, card.balance - originalTotal);
           }
         }
-        // Si descontó de un bolsillo, devolverle el dinero
-        if (tx.pocketId) {
-          const pocket = state.pockets.find(x => x.id === tx.pocketId);
-          if (pocket) {
-            pocket.amount = pocket.amount + totalCharged;
-          }
-        }
-        // Si fue un PAGO DE TARJETA, devolver la deuda
-        if (tx.payCardId) {
-          const payCard = state.debts.find(x => x.id === tx.payCardId);
-          if (payCard) {
-            payCard.balance = (payCard.balance || 0) + tx.amount;
-            if (typeof toastInfo === 'function') {
-              toastInfo('Pago revertido', `${payCard.name}: saldo actualizado a $${payCard.balance.toLocaleString('es-CO')}`);
-            }
-          }
-        }
-        
-        // Si era gasto compartido o prestado, eliminar también los registros de "Me deben"
-        if ((tx.isShared || tx.isLent) && state.debtsToMe) {
-          state.debtsToMe = state.debtsToMe.filter(d => d.txId !== tx.id);
-          if (typeof toastInfo === 'function') {
-            const typeStr = tx.isLent ? 'préstamo' : 'gasto compartido';
-            toastInfo(`${typeStr.charAt(0).toUpperCase()}${typeStr.slice(1)} eliminado`, 'También se eliminaron las cuentas por cobrar');
-          }
+        // Eliminar todas las cuotas del grupo
+        Object.keys(state.transactions).forEach(month => {
+          state.transactions[month] = state.transactions[month].filter(t => !(t.installment && t.installment.groupId === groupId));
+        });
+        saveState(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
+        if (typeof toastSuccess === 'function') toastSuccess('Compra eliminada', 'Todas las cuotas y el cupo fueron revertidos');
+        return;
+      } else {
+        // Solo eliminar esta cuota, NO revertir cupo (el cupo se ocupó por el total original)
+        state.transactions[m] = state.transactions[m].filter(t => t.id !== id);
+        saveState(); renderBudget(); renderTransactions(); renderResumen();
+        if (typeof toastInfo === 'function') toastInfo('Cuota eliminada', 'Solo esta cuota fue eliminada. El cupo sigue ocupado por el total original.');
+        return;
+      }
+    }
+    
+    // Flujo normal (no cuotas)
+    // Si fue con tarjeta, revertir saldo
+    if (tx.paymentMethod === 'tarjeta' && tx.cardId) {
+      const card = state.debts.find(x => x.id === tx.cardId);
+      if (card) {
+        card.balance = Math.max(0, card.balance - totalCharged);
+      }
+    }
+    // Si descontó de un bolsillo, devolverle el dinero
+    if (tx.pocketId) {
+      const pocket = state.pockets.find(x => x.id === tx.pocketId);
+      if (pocket) {
+        pocket.amount = pocket.amount + totalCharged;
+      }
+    }
+    // Si fue un PAGO DE TARJETA, devolver la deuda
+    if (tx.payCardId) {
+      const payCard = state.debts.find(x => x.id === tx.payCardId);
+      if (payCard) {
+        payCard.balance = (payCard.balance || 0) + tx.amount;
+        if (typeof toastInfo === 'function') {
+          toastInfo('Pago revertido', `${payCard.name}: saldo actualizado a $${payCard.balance.toLocaleString('es-CO')}`);
         }
       }
-      state.transactions[m] = state.transactions[m].filter(t => t.id !== id);
-      saveState(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
     }
+    
+    // Si era gasto compartido o prestado, eliminar también los registros de "Me deben"
+    if ((tx.isShared || tx.isLent) && state.debtsToMe) {
+      state.debtsToMe = state.debtsToMe.filter(d => d.txId !== tx.id);
+      if (typeof toastInfo === 'function') {
+        const typeStr = tx.isLent ? 'préstamo' : 'gasto compartido';
+        toastInfo(`${typeStr.charAt(0).toUpperCase()}${typeStr.slice(1)} eliminado`, 'También se eliminaron las cuentas por cobrar');
+      }
+    }
+    
+    state.transactions[m] = state.transactions[m].filter(t => t.id !== id);
+    saveState(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
   };
 
   window.resetData = function() {
@@ -10980,10 +11223,20 @@ async function buildAnnualPDF(state, year) {
         const owed = t.totalAmount - t.myAmount;
         sharedDetail = `<br><span style="font-size: 10px; color: var(--accent-from, #7F77DD); font-weight: 500;">Total: ${fmt(t.totalAmount)} · Dividido entre ${t.totalPeople} · Te deben ${fmt(owed)}</span>`;
       }
+      
+      // v63: badge de cuotas
+      let installmentBadge = '';
+      let installmentDetail = '';
+      if (t.installment) {
+        const inst = t.installment;
+        const intLabel = inst.hasInterest ? ' c/int' : ' s/int';
+        installmentBadge = `<span style="background: linear-gradient(135deg, rgba(127, 119, 221, 0.18), rgba(186, 117, 23, 0.12)); color: var(--accent-from, #7F77DD); padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; margin-left: 6px; border: 1px solid rgba(127, 119, 221, 0.3);">💳 Cuota ${inst.current}/${inst.total}${intLabel}</span>`;
+        installmentDetail = `<br><span style="font-size: 10px; color: var(--accent-from, #7F77DD); font-weight: 500;">Compra total: ${fmt(inst.originalTotal)}${inst.hasInterest ? ` · Tasa: ${inst.interestRate}% mensual` : ' · Sin intereses'}</span>`;
+      }
 
       return `<div class="tx-row" data-tx-id="${t.id}" data-tx-desc="${esc(t.desc).toLowerCase()}" data-tx-category="${t.category}" data-tx-method="${t.paymentMethod || ''}" data-tx-date="${t.date}">
         <div class="tx-date">${ds}</div>
-        <div>${esc(t.desc)}${sharedBadge}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span>${sharedDetail}</div>
+        <div>${esc(t.desc)}${sharedBadge}${installmentBadge}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span>${sharedDetail}${installmentDetail}</div>
         <div style="color: var(--danger-text); font-weight: 500;">${fmt(t.amount)}</div>
         <button class="edit-tx-btn" title="Editar" aria-label="Editar movimiento" onclick="window.openEditTxModal('${currentMonth}', ${t.id})">✏️</button>
         <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>

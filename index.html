@@ -1007,6 +1007,37 @@
         </div>
 
         <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
+
+        <!-- v63: Compra a CUOTAS -->
+        <div id="tx-installments-wrapper" style="margin-top: 10px; display: none;">
+          <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; cursor: pointer; font-size: 13px; user-select: none;">
+            <input type="checkbox" id="tx-is-installment" onchange="toggleInstallmentFields(this.checked)" style="width: auto; height: auto; min-height: auto; margin: 0; cursor: pointer;" />
+            <span>💳 <strong>Compra a cuotas</strong> — dividir en pagos mensuales</span>
+          </label>
+
+          <div id="tx-installment-fields" style="display: none; margin-top: 8px; padding: 12px; background: rgba(127, 119, 221, 0.06); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD); gap: 10px; flex-direction: column;">
+            <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">⚙️ Configuración de la financiación</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div>
+                <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📅 # Cuotas</label>
+                <input type="number" id="tx-installments-count" placeholder="Ej: 24" min="2" max="60" oninput="updateInstallmentPreview()" />
+              </div>
+              <div>
+                <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📆 Inicia mes</label>
+                <select id="tx-installments-start" onchange="updateInstallmentPreview()"></select>
+              </div>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg-primary); border-radius: 8px; cursor: pointer; font-size: 12px;">
+              <input type="checkbox" id="tx-installments-has-interest" onchange="toggleInterestField(); updateInstallmentPreview()" style="width: auto; height: auto; min-height: auto; margin: 0; cursor: pointer;" />
+              <span>💵 <strong>Con intereses</strong></span>
+            </label>
+            <div id="tx-installments-interest-field" style="display: none;">
+              <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📊 Tasa mensual (%)</label>
+              <input type="number" id="tx-installments-rate" placeholder="Ej: 2.5" min="0" max="20" step="0.01" oninput="updateInstallmentPreview()" />
+            </div>
+            <div id="tx-installments-preview" style="font-size: 11px; color: var(--text-secondary); line-height: 1.5; padding: 8px; background: var(--bg-primary); border-radius: 8px; display: none;"></div>
+          </div>
+        </div>
       </div>
 
       <div class="raised-card">
