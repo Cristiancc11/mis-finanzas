@@ -9710,7 +9710,7 @@ async function buildAnnualPDF(state, year) {
       list.innerHTML += state.debts.map(d => {
         try {
           const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
-          const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay, d.balance, d.payment) : null;
+          const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id) : null;
           const cardStats = getCardMonthStats(d.id);
           const bank = safeBank[d.bank] || { name: 'Banco' };
           const brand = safeBrand[d.brand] || { name: 'Tarjeta' };
@@ -9718,15 +9718,67 @@ async function buildAnnualPDF(state, year) {
 
           // Determinar si necesita pago para mantener utilización ≤3%
           let utilizationAlert = '';
+          let installmentsBlock = '';
+          
+          // v64: bloque visual de desglose de cupo cuando hay cuotas
+          if (cutoffInfo && cutoffInfo.installmentInfo && cutoffInfo.installmentInfo.hasInstallments) {
+            const info = cutoffInfo.installmentInfo;
+            const limit = d.payment || 1;
+            const futurePct = (cutoffInfo.futureInstallments / limit * 100);
+            const optimPct = (cutoffInfo.optimizableBalance / limit * 100);
+            const freePct = Math.max(0, 100 - futurePct - optimPct);
+            
+            installmentsBlock = `<div style="margin-top: 10px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-from, #7F77DD); font-size: 12px;">
+              <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">💳 Cuotas activas en esta tarjeta</div>
+              ${info.groups.map(g => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 11px;">
+                  <span style="color: var(--text-secondary);">${esc(g.desc)} · Cuota ${g.cuotasPaid + 1}/${g.totalCuotas}</span>
+                  <span style="color: var(--text-primary); font-weight: 500;">${fmt(g.pendingAmount)} pendiente</span>
+                </div>
+              `).join('')}
+              <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">📊 Desglose del cupo (${fmt(limit)})</div>
+                <div style="display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bg-primary);">
+                  <div style="background: rgba(220, 55, 55, 0.6); width: ${futurePct.toFixed(2)}%;" title="Bloqueado por cuotas futuras"></div>
+                  <div style="background: rgba(235, 170, 40, 0.7); width: ${optimPct.toFixed(2)}%;" title="Optimizable (puedes pagar para liberar)"></div>
+                  <div style="background: rgba(29, 158, 117, 0.5); flex: 1;" title="Cupo libre"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary); margin-top: 4px;">
+                  <span>🔒 Cuotas futuras: ${fmt(cutoffInfo.futureInstallments)} (${futurePct.toFixed(1)}%)</span>
+                  <span>🟡 Optimizable: ${fmt(cutoffInfo.optimizableBalance)}</span>
+                  <span>🟢 Libre: ${fmt(Math.max(0, limit - d.balance))}</span>
+                </div>
+              </div>
+            </div>`;
+          }
+          
           if (cutoffInfo && cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
             const recommendedPayment = cutoffInfo.paymentNeeded;
             const targetMax = cutoffInfo.targetMaxBalance;
-            utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
-              <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener score óptimo</div>
-              <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
-              <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (3% utilización)</div>
-              <div style="color: var(--success-text); font-weight: 600; margin-top: 4px;">→ Paga <strong>${fmt(recommendedPayment)}</strong> antes del ${cutoffInfo.dateStr}</div>
-            </div>`;
+            const hasInstallments = cutoffInfo.installmentInfo && cutoffInfo.installmentInfo.hasInstallments;
+            
+            if (hasInstallments && !cutoffInfo.canReachTarget) {
+              // No es posible llegar al 3% porque hay cuotas futuras bloqueando
+              utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
+                <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago para minimizar utilización</div>
+                <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
+                <div style="color: var(--text-primary); font-size: 11px; margin-top: 4px;">
+                  ⚠️ Tienes <strong>${fmt(cutoffInfo.futureInstallments)}</strong> en cuotas futuras bloqueando el cupo.<br>
+                  Mínimo posible esta facturación: <strong>${cutoffInfo.minPossibleUtilization.toFixed(1)}%</strong> de utilización.
+                </div>
+                <div style="color: var(--success-text); font-weight: 600; margin-top: 6px;">→ Paga <strong>${fmt(cutoffInfo.optimizableBalance)}</strong> antes del ${cutoffInfo.dateStr} para bajar a ${cutoffInfo.minPossibleUtilization.toFixed(1)}%</div>
+                <div style="color: var(--text-tertiary); font-size: 10px; margin-top: 4px;">💡 Incluye cuota del mes: ${fmt(cutoffInfo.currentMonthInstallmentSum)}</div>
+              </div>`;
+            } else {
+              // Caso normal: sí se puede llegar al 3%
+              utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
+                <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener score óptimo</div>
+                <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
+                <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (3% utilización)</div>
+                <div style="color: var(--success-text); font-weight: 600; margin-top: 4px;">→ Paga <strong>${fmt(recommendedPayment)}</strong> antes del ${cutoffInfo.dateStr}</div>
+                ${hasInstallments ? `<div style="color: var(--text-tertiary); font-size: 10px; margin-top: 4px;">💡 Incluye cuota obligatoria del mes: ${fmt(cutoffInfo.currentMonthInstallmentSum)}</div>` : ''}
+              </div>`;
+            }
           } else if (cutoffInfo && !cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
             utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: var(--success-bg); border-left: 3px solid var(--success-text); border-radius: var(--radius-md); font-size: 12px; color: var(--success-text);">
               <strong>✅ Utilización óptima:</strong> Tu saldo de ${fmt(d.balance)} (${u}%) está debajo del 3% objetivo. No necesitas pago anticipado.
@@ -9757,6 +9809,7 @@ async function buildAnnualPDF(state, year) {
           <div class="progress-bar"><div class="progress-fill ${u > 30 ? 'warning' : (u > 10 ? 'warning' : 'success')}" style="width: ${Math.min(100, u)}%"></div></div>
           ${cutoffInfo ? `<div style="margin-top: 10px; padding: 8px 10px; background: ${cutoffInfo.bg}; color: ${cutoffInfo.color}; border-radius: var(--radius-md); font-size: 12px;">${cutoffInfo.icon} ${cutoffInfo.text}</div>` : ''}
           ${utilizationAlert}
+          ${installmentsBlock}
           ${cardStats.txCount > 0 ? `<div style="margin-top: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 12px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: var(--text-secondary);">📊 Compras este mes:</span><span style="font-weight: 500;">${cardStats.txCount} (${fmt(cardStats.totalSpent)})</span></div>
             <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">💰 Cashback ganado:</span><span style="font-weight: 500; color: var(--success-text);">+${fmt(cardStats.totalCashback)}</span></div>
@@ -9813,7 +9866,64 @@ async function buildAnnualPDF(state, year) {
     return { txCount: cardTxs.length, totalSpent, totalCashback };
   }
 
-  function getCutoffStatus(cutoffDay, cardBalance, cardLimit) {
+  // v64: Información de cuotas activas de una tarjeta
+  // Devuelve:
+  //   - blockedByInstallments: cupo bloqueado por cuotas pendientes (futuras + esta y atrás no canceladas)
+  //   - currentMonthInstallmentSum: cuotas que se cobrarán este mes
+  //   - groups: lista de grupos de cuotas activos con detalle
+  function getCardInstallmentInfo(cardId) {
+    const today = new Date();
+    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const groups = {};
+    
+    // Recorrer TODAS las transacciones para encontrar las del cardId con installment
+    Object.keys(state.transactions || {}).forEach(month => {
+      (state.transactions[month] || []).forEach(t => {
+        if (t.cardId === cardId && t.installment && t.installment.groupId) {
+          const gid = t.installment.groupId;
+          if (!groups[gid]) {
+            groups[gid] = {
+              groupId: gid,
+              desc: t.desc.replace(/ \(cuota \d+\/\d+\)$/, ''),
+              originalTotal: t.installment.originalTotal,
+              totalCuotas: t.installment.total,
+              cuotaAmount: t.installment.cuotaAmount,
+              hasInterest: t.installment.hasInterest,
+              cuotasPaid: 0,
+              cuotasPending: 0,
+              currentMonthCuota: 0,
+              pendingAmount: 0
+            };
+          }
+          // Una cuota se considera "pagada" si su mes ya pasó (estrictamente menor al actual)
+          const txMonth = (t.date || '').substring(0, 7);
+          if (txMonth < currentMonthStr) {
+            groups[gid].cuotasPaid++;
+          } else {
+            groups[gid].cuotasPending++;
+            groups[gid].pendingAmount += t.installment.cuotaAmount;
+            if (txMonth === currentMonthStr) {
+              groups[gid].currentMonthCuota += t.installment.cuotaAmount;
+            }
+          }
+        }
+      });
+    });
+    
+    const groupsList = Object.values(groups);
+    const blockedByInstallments = groupsList.reduce((s, g) => s + g.pendingAmount, 0);
+    const currentMonthInstallmentSum = groupsList.reduce((s, g) => s + g.currentMonthCuota, 0);
+    
+    return {
+      groups: groupsList,
+      blockedByInstallments,
+      currentMonthInstallmentSum,
+      hasInstallments: groupsList.length > 0
+    };
+  }
+  window.getCardInstallmentInfo = getCardInstallmentInfo;
+
+  function getCutoffStatus(cutoffDay, cardBalance, cardLimit, cardId) {
     const today = new Date();
     const currentDay = today.getDate();
     const currentMonth = today.getMonth();
@@ -9834,8 +9944,33 @@ async function buildAnnualPDF(state, year) {
     const TARGET_UTILIZATION = 3; // % objetivo para mantener score óptimo
     const targetMaxBalance = cardLimit ? (cardLimit * TARGET_UTILIZATION / 100) : 0;
     const utilization = (cardLimit && cardLimit > 0) ? (cardBalance / cardLimit) * 100 : 0;
+    
+    // v64: si hay cuotas activas, parte del saldo está "bloqueado" hasta que se vayan facturando.
+    // No puedes pagar más allá de eso para liberar cupo (a menos que adelantes el diferido completo).
+    let installmentInfo = null;
+    let blockedByInstallments = 0;
+    let currentMonthInstallmentSum = 0;
+    if (cardId !== undefined && cardId !== null) {
+      installmentInfo = getCardInstallmentInfo(cardId);
+      blockedByInstallments = installmentInfo.blockedByInstallments;
+      currentMonthInstallmentSum = installmentInfo.currentMonthInstallmentSum;
+    }
+    
+    // El saldo "no-cuotas" es lo que puedes optimizar libremente
+    // (cuotas FUTURAS - cuotas de este mes - cuotas atrasadas, todo eso no se puede liberar pagando)
+    const futureInstallments = Math.max(0, blockedByInstallments - currentMonthInstallmentSum);
+    const optimizableBalance = Math.max(0, cardBalance - futureInstallments);
+    
     const needsPayment = cardBalance > targetMaxBalance;
-    const paymentNeeded = needsPayment ? cardBalance - targetMaxBalance : 0;
+    // El pago real para llegar a 3% (no puede ser menos que la cuota del mes)
+    let paymentNeeded = needsPayment ? cardBalance - targetMaxBalance : 0;
+    // No tiene sentido recomendar menos que la cuota obligatoria del mes
+    if (paymentNeeded < currentMonthInstallmentSum) paymentNeeded = currentMonthInstallmentSum;
+    
+    // ¿Es posible llegar a 3% considerando cuotas futuras inmóviles?
+    const minPossibleBalance = futureInstallments;
+    const minPossibleUtilization = cardLimit > 0 ? (minPossibleBalance / cardLimit) * 100 : 0;
+    const canReachTarget = minPossibleBalance <= targetMaxBalance;
 
     let baseInfo;
     if (daysLeft <= 0) {
@@ -9857,7 +9992,16 @@ async function buildAnnualPDF(state, year) {
       needsPayment,
       paymentNeeded,
       cardBalance,
-      cardLimit
+      cardLimit,
+      // v64: información de cuotas
+      installmentInfo,
+      blockedByInstallments,
+      currentMonthInstallmentSum,
+      futureInstallments,
+      optimizableBalance,
+      minPossibleBalance,
+      minPossibleUtilization,
+      canReachTarget
     };
   }
 
