@@ -5111,8 +5111,9 @@ function renderTrends() {
     const realExpenses = txs.filter(t => {
       if (t.payCardId) return false;
       if (t.category === 'pago_tarjeta') return false;
-      if (state.categories) {
-        const cat = state.categories.find(c => c.id === t.category);
+      // v65 fix: las categorías custom viven en state.customCategories, no en state.categories
+      if (state.customCategories) {
+        const cat = state.customCategories.find(c => c.id === t.category);
         if (cat && cat.isPagoTarjeta) return false;
       }
       return true;
@@ -6205,7 +6206,9 @@ async function buildAnnualPDF(state, year) {
         // Float total = días entre compra y pago (aprox 5 días después del corte)
         const floatDays = Math.max(1, daysUntilCutoff + 5);
         const floatGain = amount * tasaDiaria * floatDays;
-        const cashback = amount * 0.01;
+        // Usar el % de cashback de la tarjeta (default 0). Antes estaba hardcoded a 1%.
+        const cbPercent = (d.cashbackPercent != null) ? (parseFloat(d.cashbackPercent) || 0) : 0;
+        const cashback = amount * (cbPercent / 100);
 
         // Verificar si esta compra excedería el 3% utilización
         const newBalance = d.balance + amount;
@@ -6411,8 +6414,9 @@ async function buildAnnualPDF(state, year) {
     // Caso 2: categoría con flag isPagoTarjeta o id 'pago_tarjeta'
     if (t.category === 'pago_tarjeta') return true;
     // Caso 3: categoría custom marcada como pago de tarjeta
-    if (state.categories) {
-      const cat = state.categories.find(c => c.id === t.category);
+    // v65 fix: las categorías custom viven en state.customCategories, no en state.categories
+    if (state.customCategories) {
+      const cat = state.customCategories.find(c => c.id === t.category);
       if (cat && cat.isPagoTarjeta) return true;
     }
     return false;
@@ -9020,9 +9024,11 @@ async function buildAnnualPDF(state, year) {
     if (method === 'tarjeta' && cardId) {
       // En tarjeta SIEMPRE se carga el TOTAL (porque la tarjeta paga todo)
       // El cashback SIEMPRE es del dueño de la tarjeta, sin importar quién lo gastó
-      cashback = totalAmount * 0.01;
       cardIdNum = parseInt(cardId);
       const card = state.debts.find(x => x.id === cardIdNum);
+      // Usar el % de cashback configurado en la tarjeta (default 0 si no se definió)
+      const cbPercent = card && card.cashbackPercent != null ? (parseFloat(card.cashbackPercent) || 0) : 0;
+      cashback = totalAmount * (cbPercent / 100);
       if (card) {
         card.balance += totalAmount;
       }
@@ -9049,6 +9055,7 @@ async function buildAnnualPDF(state, year) {
       }
     }
 
+    let realPaidApplied = 0;
     if (isPagoTarjeta && payCardId) {
       payCardIdNum = parseInt(payCardId);
       const payCard = state.debts.find(x => x.id === payCardIdNum);
@@ -9056,6 +9063,7 @@ async function buildAnnualPDF(state, year) {
         const previousBalance = payCard.balance || 0;
         payCard.balance = Math.max(0, previousBalance - a);
         const realPaid = previousBalance - payCard.balance;
+        realPaidApplied = realPaid; // Guardar para poder revertir solo lo que se aplicó
         if (typeof toastSuccess === 'function') {
           if (a > previousBalance) {
             toastSuccess('Pago aplicado', `${payCard.name}: $${realPaid.toLocaleString('es-CO')} aplicado. ¡Tarjeta saldada! 🎉`);
@@ -9070,8 +9078,8 @@ async function buildAnnualPDF(state, year) {
     const txId = Date.now();
     const newTx = {
       id: txId,
-      date: dt, 
-      desc: d, 
+      date: dt,
+      desc: d,
       amount: a,  // Tu parte (0 si prestado)
       category: c,
       paymentMethod: method,
@@ -9079,6 +9087,8 @@ async function buildAnnualPDF(state, year) {
       pocketId: pocketIdNum,
       payCardId: payCardIdNum,
       cashback: cashback,
+      // Solo se aplica realmente lo que cabía en el saldo de la tarjeta. Guardamos esto para revertir bien al eliminar.
+      realPaidApplied: payCardIdNum ? realPaidApplied : undefined,
       createdAt: Date.now()
     };
     
@@ -9317,11 +9327,13 @@ async function buildAnnualPDF(state, year) {
         pocket.amount = pocket.amount + totalCharged;
       }
     }
-    // Si fue un PAGO DE TARJETA, devolver la deuda
+    // Si fue un PAGO DE TARJETA, devolver SOLO lo que realmente se aplicó (no lo que se digitó)
     if (tx.payCardId) {
       const payCard = state.debts.find(x => x.id === tx.payCardId);
       if (payCard) {
-        payCard.balance = (payCard.balance || 0) + tx.amount;
+        // Si la tx vieja no guardó realPaidApplied, hacemos fallback al amount (comportamiento legacy)
+        const amountToRefund = (tx.realPaidApplied != null) ? tx.realPaidApplied : tx.amount;
+        payCard.balance = (payCard.balance || 0) + amountToRefund;
         if (typeof toastInfo === 'function') {
           toastInfo('Pago revertido', `${payCard.name}: saldo actualizado a $${payCard.balance.toLocaleString('es-CO')}`);
         }
