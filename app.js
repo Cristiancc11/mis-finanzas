@@ -1,5 +1,4 @@
-
-  if (window.pdfjsLib) {
+if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
@@ -1023,7 +1022,10 @@ function renderProfileStats() {
     }
   } catch(e) {}
 
-  const fmt = (n) => '$ ' + Math.round(n).toLocaleString('es-CO');
+  const fmt = (n) => {
+    if (n === null || n === undefined || isNaN(n)) return '$ 0';
+    return '$ ' + Math.round(n).toLocaleString('es-CO');
+  };
 
   container.innerHTML = `
     <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
@@ -3517,7 +3519,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let pendingImport = []; // Movimientos pendientes de confirmación
 
-const fmtMoney = (n) => '$ ' + Math.round(n).toLocaleString('es-CO');
+const fmtMoney = (n) => {
+  if (n === null || n === undefined || isNaN(n)) return '$ 0';
+  return '$ ' + Math.round(n).toLocaleString('es-CO');
+};
 
 // === 1. IMPORTAR MOVIMIENTOS DESDE BANCO ===
 function setupBankImport() {
@@ -5130,7 +5135,7 @@ function renderTrends() {
   html += `</div>`;
 
   // Resumen
-  const avg = totals.reduce((s, t) => s + t.total, 0) / totals.length;
+  const avg = totals.length > 0 ? totals.reduce((s, t) => s + t.total, 0) / totals.length : 0;
   html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">`;
   html += `<div style="padding: 8px; background: var(--bg-secondary); border-radius: 8px;">`;
   html += `<div style="color: var(--text-secondary); font-size: 11px;">Promedio mensual</div>`;
@@ -5308,9 +5313,9 @@ async function buildMonthlyPDF(state, monthKey) {
     { label: 'Patrimonio total', value: fmt(netWorth), color: primaryColor, sub: `${fmt(totalPockets)} - ${fmt(totalDebts)} deudas` },
     { label: 'Ingresos del mes', value: fmt(totalIncome), color: successColor, sub: `Salario + extras` },
     { label: 'Gastos del mes', value: fmt(totalExpenses), color: dangerColor, sub: `${transactions.length} transacciones` },
-    { label: 'Ahorro/Margen', value: fmt(margin), color: margin > 0 ? successColor : dangerColor, sub: totalIncome > 0 ? `${((margin/totalIncome)*100).toFixed(1)}% tasa ahorro` : '' },
+    { label: 'Ahorro/Margen', value: fmt(margin), color: margin > 0 ? successColor : dangerColor, sub: (totalIncome + totalCashback) > 0 ? `${((margin/(totalIncome + totalCashback))*100).toFixed(1)}% tasa ahorro` : '' },
     { label: 'Cashback ganado', value: fmt(totalCashback), color: successColor, sub: `+${transactions.filter(t => t.cashback > 0).length} compras` },
-    { label: 'Score crediticio', value: state.creditScore?.lastReported || 'N/A', color: primaryColor, sub: state.creditScore?.lastReportedDate || 'Sin reporte' }
+    { label: 'Score crediticio', value: (state.creditScore?.lastReported != null) ? state.creditScore.lastReported : 'N/A', color: primaryColor, sub: state.creditScore?.lastReportedDate || 'Sin reporte' }
   ];
 
   cards.forEach((c, i) => {
@@ -5359,7 +5364,7 @@ async function buildMonthlyPDF(state, monthKey) {
     .map(p => [
       removeEmojis(p.icon + ' ' + p.name),
       fmt(p.amount),
-      ((p.amount / totalPockets) * 100).toFixed(1) + '%'
+      (totalPockets > 0 ? ((p.amount / totalPockets) * 100).toFixed(1) : '0.0') + '%'
     ]);
 
   if (bolsillosBody.length > 0) {
@@ -9958,6 +9963,7 @@ async function buildAnnualPDF(state, year) {
 
   function getCutoffStatus(cutoffDay, cardBalance, cardLimit, cardId) {
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalizar hora para evitar errores de días por timezone/hora
     const currentDay = today.getDate();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
@@ -9970,7 +9976,7 @@ async function buildAnnualPDF(state, year) {
       nextCutoff = new Date(currentYear, currentMonth + 1, cutoffDay);
     }
 
-    const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.round((nextCutoff - today) / (1000 * 60 * 60 * 24));
     const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
 
     // Calcular utilización actual y cuánto debe pagar para mantener <3%
@@ -13067,6 +13073,7 @@ async function buildAnnualPDF(state, year) {
   function getNextDueDate(dueDay) {
     if (!dueDay || dueDay < 1 || dueDay > 31) return null;
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Normalizar a inicio del día para que el día de vencimiento cuente como "hoy"
     let due = new Date(now.getFullYear(), now.getMonth(), dueDay);
     // Si ya pasó este mes, el próximo es el mes siguiente
     if (due < now) {
