@@ -5102,7 +5102,17 @@ function renderTrends() {
 
   const totals = months.map(m => {
     const txs = state.transactions[m] || [];
-    return { month: m, total: txs.reduce((s, t) => s + (t.amount || 0), 0), count: txs.length };
+    // v65: excluir pagos de tarjeta (transferencias internas, no gastos reales)
+    const realExpenses = txs.filter(t => {
+      if (t.payCardId) return false;
+      if (t.category === 'pago_tarjeta') return false;
+      if (state.categories) {
+        const cat = state.categories.find(c => c.id === t.category);
+        if (cat && cat.isPagoTarjeta) return false;
+      }
+      return true;
+    });
+    return { month: m, total: realExpenses.reduce((s, t) => s + (t.amount || 0), 0), count: realExpenses.length };
   });
 
   const max = Math.max(...totals.map(t => t.total));
@@ -6388,8 +6398,31 @@ async function buildAnnualPDF(state, year) {
   const totalDebt = () => state.debts.reduce((s, d) => s + d.balance, 0);
   const totalLimit = () => state.debts.reduce((s, d) => s + d.payment, 0);
   function totalBudget() { const b = state.budgets[currentMonth] || {}; return Object.values(b).reduce((s, v) => s + (parseFloat(v) || 0), 0); }
-  function totalSpent() { const t = state.transactions[currentMonth] || []; return t.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0); }
-  function spentByCategory(id) { const t = state.transactions[currentMonth] || []; return t.filter(x => x.category === id).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0); }
+  // v65: Helper para detectar si una transacción es pago de tarjeta (NO es un gasto real, es transferencia interna)
+  function isCardPayment(t) {
+    if (!t) return false;
+    // Caso 1: tiene payCardId (forma estándar nueva)
+    if (t.payCardId) return true;
+    // Caso 2: categoría con flag isPagoTarjeta o id 'pago_tarjeta'
+    if (t.category === 'pago_tarjeta') return true;
+    // Caso 3: categoría custom marcada como pago de tarjeta
+    if (state.categories) {
+      const cat = state.categories.find(c => c.id === t.category);
+      if (cat && cat.isPagoTarjeta) return true;
+    }
+    return false;
+  }
+  window.isCardPayment = isCardPayment;
+  
+  // v65: totalSpent ahora excluye pagos de tarjeta (transferencias internas, no gastos reales)
+  function totalSpent() { 
+    const t = state.transactions[currentMonth] || []; 
+    return t.filter(x => !isCardPayment(x)).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0); 
+  }
+  function spentByCategory(id) { 
+    const t = state.transactions[currentMonth] || []; 
+    return t.filter(x => x.category === id && !isCardPayment(x)).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0); 
+  }
 
   document.querySelectorAll('.fin-tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -11377,11 +11410,29 @@ async function buildAnnualPDF(state, year) {
         installmentBadge = `<span style="background: linear-gradient(135deg, rgba(127, 119, 221, 0.18), rgba(186, 117, 23, 0.12)); color: var(--accent-from, #7F77DD); padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; margin-left: 6px; border: 1px solid rgba(127, 119, 221, 0.3);">💳 Cuota ${inst.current}/${inst.total}${intLabel}</span>`;
         installmentDetail = `<br><span style="font-size: 10px; color: var(--accent-from, #7F77DD); font-weight: 500;">Compra total: ${fmt(inst.originalTotal)}${inst.hasInterest ? ` · Tasa: ${inst.interestRate}% mensual` : ' · Sin intereses'}</span>`;
       }
+      
+      // v65: badge de pago de tarjeta (transferencia interna, no gasto real)
+      let transferBadge = '';
+      let transferDetail = '';
+      const isCardPay = isCardPayment(t);
+      if (isCardPay) {
+        // Buscar nombre de la tarjeta pagada
+        let cardName = '';
+        if (t.payCardId) {
+          const payCard = state.debts.find(d => d.id === t.payCardId);
+          if (payCard) cardName = payCard.name;
+        }
+        transferBadge = `<span style="background: linear-gradient(135deg, rgba(55, 138, 221, 0.15), rgba(127, 119, 221, 0.10)); color: var(--info-text); padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; margin-left: 6px; border: 1px solid rgba(55, 138, 221, 0.3);">🔄 Transferencia</span>`;
+        transferDetail = `<br><span style="font-size: 10px; color: var(--info-text); font-weight: 500;">No es gasto real · pago${cardName ? ` a ${esc(cardName)}` : ''} (no afecta margen)</span>`;
+      }
+      
+      // v65: si es pago de tarjeta, el color del monto es neutro (no rojo)
+      const amountColor = isCardPay ? 'var(--info-text)' : 'var(--danger-text)';
 
       return `<div class="tx-row" data-tx-id="${t.id}" data-tx-desc="${esc(t.desc).toLowerCase()}" data-tx-category="${t.category}" data-tx-method="${t.paymentMethod || ''}" data-tx-date="${t.date}">
         <div class="tx-date">${ds}</div>
-        <div>${esc(t.desc)}${sharedBadge}${installmentBadge}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span>${sharedDetail}${installmentDetail}</div>
-        <div style="color: var(--danger-text); font-weight: 500;">${fmt(t.amount)}</div>
+        <div>${esc(t.desc)}${sharedBadge}${installmentBadge}${transferBadge}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span>${sharedDetail}${installmentDetail}${transferDetail}</div>
+        <div style="color: ${amountColor}; font-weight: 500;">${fmt(t.amount)}</div>
         <button class="edit-tx-btn" title="Editar" aria-label="Editar movimiento" onclick="window.openEditTxModal('${currentMonth}', ${t.id})">✏️</button>
         <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>
       </div>`;
