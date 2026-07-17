@@ -11230,7 +11230,10 @@ async function buildAnnualPDF(state, year) {
     
     const totalAmount = parseFloat(totalEl.value) || 0;
     const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
-    
+
+    // v83: el total cambió, recalcular también el hint de cashback (que depende de este monto)
+    if (typeof window.updateEditCashbackHint === 'function') window.updateEditCashbackHint();
+
     if (names.length === 0 || totalAmount <= 0) {
       summaryEl.style.display = 'none';
       return;
@@ -11282,7 +11285,10 @@ async function buildAnnualPDF(state, year) {
     
     const totalAmount = parseFloat(totalEl.value) || 0;
     const names = namesEl.value.split(',').map(n => n.trim()).filter(n => n.length > 0);
-    
+
+    // v83: el total cambió, recalcular también el hint de cashback (que depende de este monto)
+    if (typeof window.updateEditCashbackHint === 'function') window.updateEditCashbackHint();
+
     if (names.length === 0 || totalAmount <= 0) {
       summaryEl.style.display = 'none';
       return;
@@ -11482,16 +11488,26 @@ async function buildAnnualPDF(state, year) {
     if (payCardRow) payCardRow.style.display = isPagoTarjeta ? '' : 'none';
   }
 
-  // v82: muestra en vivo cuánto dinero representa el % de cashback ingresado en el modal de edición
+  // v83: muestra en vivo cuánto dinero representa el % de cashback ingresado en el modal de edición.
+  // Usa el monto TOTAL cargado a la tarjeta (respetando compartido/prestado), no solo "mi parte",
+  // porque el cashback es siempre tuyo completo si tú usaste la tarjeta.
   window.updateEditCashbackHint = function() {
     const amountEl = document.getElementById('edit-tx-amount');
     const percentEl = document.getElementById('edit-tx-cashback-percent');
     const hintEl = document.getElementById('edit-tx-cashback-hint');
     if (!amountEl || !percentEl || !hintEl) return;
-    const amount = parseFloat(amountEl.value) || 0;
+
+    const expenseType = document.getElementById('edit-tx-expense-type')?.value || 'own';
+    let baseAmount = parseFloat(amountEl.value) || 0;
+    if (expenseType === 'shared') {
+      baseAmount = parseFloat(document.getElementById('edit-tx-shared-total')?.value) || baseAmount;
+    } else if (expenseType === 'lent') {
+      baseAmount = parseFloat(document.getElementById('edit-tx-lent-total')?.value) || baseAmount;
+    }
+
     const percent = parseFloat(percentEl.value) || 0;
-    const computed = amount * (percent / 100);
-    hintEl.innerHTML = `= <strong style="color: var(--success-text);">${fmt(computed)}</strong> de cashback sobre ${fmt(amount)}`;
+    const computed = baseAmount * (percent / 100);
+    hintEl.innerHTML = `= <strong style="color: var(--success-text);">${fmt(computed)}</strong> de cashback sobre ${fmt(baseAmount)}${expenseType !== 'own' ? ' (monto total, no solo tu parte)' : ''}`;
   };
 
   function updateEditTxChangesPreview() {
@@ -11502,9 +11518,17 @@ async function buildAnnualPDF(state, year) {
     const newMethod = document.getElementById('edit-tx-method')?.value || '';
     const newCardId = parseInt(document.getElementById('edit-tx-card')?.value) || null;
     const newPocketId = parseInt(document.getElementById('edit-tx-pocket')?.value) || null;
-    // v82: el campo ahora guarda un %, calculamos el valor en pesos sobre el monto actual
+    // v83 FIX: el cashback es sobre el monto TOTAL cargado a la tarjeta, no sobre "mi parte"
+    // (si el gasto es compartido o prestado, tú sigues recibiendo el cashback completo)
+    const previewExpenseType = document.getElementById('edit-tx-expense-type')?.value || 'own';
+    let previewCharged = newAmount;
+    if (previewExpenseType === 'shared') {
+      previewCharged = parseFloat(document.getElementById('edit-tx-shared-total')?.value) || newAmount;
+    } else if (previewExpenseType === 'lent') {
+      previewCharged = parseFloat(document.getElementById('edit-tx-lent-total')?.value) || newAmount;
+    }
     const newCashbackPercent = parseFloat(document.getElementById('edit-tx-cashback-percent')?.value) || 0;
-    const newCashback = newAmount * (newCashbackPercent / 100);
+    const newCashback = previewCharged * (newCashbackPercent / 100);
     window.updateEditCashbackHint();
 
     const changes = [];
@@ -11573,9 +11597,10 @@ async function buildAnnualPDF(state, year) {
     const newMethod = document.getElementById('edit-tx-method')?.value || 'efectivo';
     const newCardId = parseInt(document.getElementById('edit-tx-card')?.value) || null;
     const newPocketId = parseInt(document.getElementById('edit-tx-pocket')?.value) || null;
-    // v82: el campo es un %, el valor real a guardar se calcula sobre el monto (nuevo o editado)
+    // v82: leemos el % aquí; el valor real en pesos se calcula más abajo, una vez sepamos
+    // el monto TOTAL cargado a la tarjeta (no "mi parte" — el cashback es siempre sobre el total,
+    // sin importar si el gasto es compartido o prestado a alguien más)
     const newCashbackPercent = parseFloat(document.getElementById('edit-tx-cashback-percent')?.value) || 0;
-    const newCashback = newAmount * (newCashbackPercent / 100);
     const newPayCardId = parseInt(document.getElementById('edit-tx-pay-card')?.value) || null;
     
     // TIPO DE GASTO
@@ -11752,6 +11777,13 @@ async function buildAnnualPDF(state, year) {
     // ===========================================================
     // Para tarjeta y bolsillo: si es compartido/prestado, se carga el TOTAL
     const newCharged = (isShared || isLent) ? newTotalAmount : newAmount;
+
+    // v83 FIX: el cashback se calcula sobre el monto TOTAL cargado a la tarjeta, no sobre
+    // "mi parte". Si compartiste o prestaste la tarjeta, el cashback sigue siendo tuyo por
+    // completo porque tú fuiste quien usó la tarjeta — sin importar que tu parte neta sea
+    // $0 o que te deban todo. Antes esto calculaba el cashback solo sobre tu parte, lo que
+    // daba $0 de cashback en gastos 100% prestados.
+    const newCashback = newCharged * (newCashbackPercent / 100);
     
     // Si nuevo es con tarjeta, sumar al saldo de la tarjeta nueva
     if (newMethod === 'tarjeta' && newCardId) {
