@@ -6734,6 +6734,120 @@ async function buildAnnualPDF(state, year) {
     if (p) { p.amount = parseFloat(a) || 0; saveState(); renderResumen(); renderPockets(); }
   };
 
+  // v78: Editar bolsillo completo (nombre, ícono, banco, tasa) — antes solo se podía editar el monto
+  window.editPocket = function(id) {
+    const p = state.pockets.find(x => x.id === id);
+    if (!p) return;
+
+    const existing = document.getElementById('mark-paid-modal');
+    if (existing) existing.remove();
+
+    const icons = ['💰', '✈️', '🛟', '🎓', '❤️', '⚡', '🍻', '🏠', '📈', '💵', '🐷', '🎯'];
+    const iconLabels = { '💰': 'Operativo', '✈️': 'Viajes', '🛟': 'Emergencia', '🎓': 'Educación', '❤️': 'Personal', '⚡': 'Servicios', '🍻': 'Vida Social', '🏠': 'Vivienda', '📈': 'Inversión', '💵': 'Efectivo', '🐷': 'Ahorro', '🎯': 'Meta' };
+    const iconOptions = icons.map(ic => `<option value="${ic}" ${p.icon === ic ? 'selected' : ''}>${ic} ${iconLabels[ic]}</option>`).join('');
+
+    const bankGroups = [
+      { value: 'generic', label: '🏦 Cuenta bancaria (genérico)' },
+      { value: 'cash', label: '💵 Efectivo (físico)' },
+      { value: 'digital', label: '📱 Billetera digital (Nequi, Daviplata, etc.)' }
+    ];
+    const bankColombia = ['bancolombia:Bancolombia', 'davivienda:Davivienda', 'bbva:BBVA', 'bogota:Banco de Bogotá', 'popular:Banco Popular', 'caja_social:Banco Caja Social', 'av_villas:AV Villas', 'colpatria:Colpatria (Scotiabank)', 'occidente:Banco de Occidente', 'itau:Itaú', 'lulo:Lulo Bank', 'nu:Nu Colombia', 'pichincha:Pichincha', 'agrario:Banco Agrario', 'bancoomeva:Bancoomeva', 'banco_w:Banco W'];
+    const walletsDigital = ['nequi:Nequi', 'daviplata:Daviplata', 'rappipay:RappiPay', 'movii:Movii', 'dale:Dale!', 'tpaga:Tpaga'];
+    const investments = ['cdt:CDT (Certificado a término)', 'fondos:Fondo de inversión', 'acciones:Acciones / Bolsa', 'crypto:Criptomonedas'];
+
+    const buildOpts = (arr) => arr.map(entry => {
+      const [val, label] = entry.split(':');
+      return `<option value="${val}" ${p.bank === val ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+
+    const bankSelectHtml = `
+      <select id="edit-pocket-bank">
+        ${bankGroups.map(g => `<option value="${g.value}" ${p.bank === g.value ? 'selected' : ''}>${g.label}</option>`).join('')}
+        <optgroup label="🇨🇴 Bancos colombianos">${buildOpts(bankColombia)}</optgroup>
+        <optgroup label="📱 Billeteras digitales">${buildOpts(walletsDigital)}</optgroup>
+        <optgroup label="📈 Inversiones">${buildOpts(investments)}</optgroup>
+        <option value="otro" ${p.bank === 'otro' ? 'selected' : ''}>📌 Otro</option>
+      </select>
+    `;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mark-paid-modal';
+    overlay.className = 'tutorial-overlay';
+    overlay.innerHTML = `
+      <div class="tutorial-card" style="max-width: 440px;">
+        <div class="tutorial-header" style="padding: 20px;">
+          <button class="tutorial-skip" onclick="closeMarkPaidModal()">Cerrar ×</button>
+          <span class="tutorial-icon-big" style="font-size: 36px;">✏️</span>
+          <h2 class="tutorial-title" style="font-size: 18px;">Editar bolsillo</h2>
+          <p class="tutorial-subtitle">${esc(p.name)} · ${fmt(p.amount)}</p>
+        </div>
+        <div class="tutorial-body" style="padding: 16px 20px;">
+          <div style="display: grid; gap: 12px;">
+            <div class="field-group">
+              <label class="field-label" for="edit-pocket-name">Nombre</label>
+              <input type="text" id="edit-pocket-name" value="${esc(p.name)}" placeholder="Nombre del bolsillo" />
+            </div>
+            <div class="form-grid-2" style="margin-bottom: 0;">
+              <div class="field-group">
+                <label class="field-label" for="edit-pocket-icon">Ícono</label>
+                <select id="edit-pocket-icon">${iconOptions}</select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="edit-pocket-rate">Tasa (% E.A.)</label>
+                <input type="number" id="edit-pocket-rate" value="${p.rate || 0}" min="0" max="50" step="0.01" placeholder="0 = sin rentabilidad" />
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="edit-pocket-bank">¿Dónde tienes este dinero?</label>
+              ${bankSelectHtml}
+            </div>
+            <p style="font-size: 11px; color: var(--text-tertiary); margin: 0;">
+              💡 Para cambiar el saldo, usa el campo de monto directamente en la card del bolsillo.
+            </p>
+          </div>
+        </div>
+        <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
+          <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="savePocketEdit(${id})">💾 Guardar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    if (typeof lockBody === 'function') lockBody();
+  };
+
+  window.savePocketEdit = function(id) {
+    const p = state.pockets.find(x => x.id === id);
+    if (!p) return;
+
+    const nameEl = document.getElementById('edit-pocket-name');
+    const iconEl = document.getElementById('edit-pocket-icon');
+    const bankEl = document.getElementById('edit-pocket-bank');
+    const rateEl = document.getElementById('edit-pocket-rate');
+
+    const newName = nameEl ? nameEl.value.trim() : p.name;
+    if (!newName) {
+      if (typeof toastError === 'function') toastError('Falta el nombre', 'El bolsillo necesita un nombre');
+      return;
+    }
+
+    p.name = newName;
+    if (iconEl) p.icon = iconEl.value;
+    if (bankEl) {
+      p.bank = bankEl.value;
+      p.isCash = bankEl.value === 'cash';
+    }
+    if (rateEl) p.rate = parseFloat(rateEl.value) || 0;
+
+    saveState();
+    closeMarkPaidModal();
+    renderAll();
+
+    if (typeof toastSuccess === 'function') {
+      toastSuccess('Bolsillo actualizado', `"${p.name}" se guardó correctamente`);
+    }
+  };
+
   // ============================================================
   // v62: REGLA AUTOMÁTICA "FIN DE MES"
   // Si una nómina cae los últimos 5 días del mes, se cuenta al mes siguiente
@@ -9681,6 +9795,7 @@ async function buildAnnualPDF(state, year) {
         
         return `<div class="pocket-card${extraClass}">
           <button class="delete-btn pocket-delete" onclick="removePocket(${p.id})">×</button>
+          <button class="pocket-edit-btn" onclick="editPocket(${p.id})" title="Editar bolsillo">✏️</button>
           <div style="font-size: 22px; margin-bottom: 8px;">${p.icon}</div>
           <div class="pocket-name">${esc(p.name)}${subLabel}</div>
           <div class="pocket-amount">${fmt(p.amount)}</div>
