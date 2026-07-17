@@ -5428,8 +5428,7 @@ async function buildMonthlyPDF(state, monthKey) {
   doc.text('Generado el ' + new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }), 14, 30);
 
   // Logo/diamante en esquina derecha
-  doc.setFontSize(20);
-  doc.text('💎', 195, 22);
+  drawDiamondLogo(doc, 195, 18, 9, [255, 255, 255]);
 
   y = 45;
 
@@ -5810,10 +5809,28 @@ function fmt(n) {
   return '$ ' + Math.round(n).toLocaleString('es-CO');
 }
 
+// v89: dibuja un diamante vectorial simple — reemplaza el emoji 💎 en los PDFs.
+// jsPDF con la fuente por defecto (Helvetica) NO soporta caracteres Unicode fuera del rango
+// básico, así que cualquier emoji se renderiza como texto roto ("Ø=Ü" en vez de 💎). Un dibujo
+// vectorial (triángulos) siempre se ve bien, sin depender de fuentes con soporte de emoji.
+function drawDiamondLogo(doc, cx, cy, size, color) {
+  const h = size / 2;
+  const w = size / 2.6;
+  doc.setFillColor(...color);
+  doc.triangle(cx, cy - h, cx - w, cy, cx + w, cy, 'F');
+  doc.triangle(cx - w, cy, cx + w, cy, cx, cy + h, 'F');
+}
+
 function removeEmojis(str) {
   if (!str) return '';
-  // Eliminar emojis comunes para evitar problemas de encoding en jsPDF
-  return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
+  // v89 FIX: la versión anterior solo cubría 3 rangos y dejaba pasar selectores de variación
+  // (ej. el "️" invisible que acompaña a ✈️ o ❤️) y símbolos regionales — esos caracteres sueltos
+  // jsPDF los renderizaba como "þ" rotos en vez de simplemente desaparecer. Esta versión cubre
+  // todos los rangos relevantes de emoji/símbolos + los modificadores invisibles que los acompañan.
+  return str.replace(
+    /[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{2300}-\u{23FF}]|[\u{2B00}-\u{2BFF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]|[\u{2190}-\u{21FF}]/gu,
+    ''
+  ).replace(/\s+/g, ' ').trim();
 }
 
 // v88: catLabelOf() se quitó — reemplazada por getCategoryMapFor(state), que usa las
@@ -5899,29 +5916,9 @@ function generateRecommendations(state, monthKey, metrics) {
     }
   }
 
-  // Score crediticio
-  if (state.creditScore && state.creditScore.lastReported) {
-    const score = state.creditScore.lastReported;
-    if (score >= 750) {
-      recs.push({
-        icon: '*',
-        title: 'Score crediticio "Muy Bueno"',
-        text: `Score de ${score}. Estás en una excelente categoría. Para llegar a Excelente (850+), considera diversificar con un crédito hipotecario o vehicular cuando sea oportuno.`
-      });
-    } else if (score >= 670) {
-      recs.push({
-        icon: '+',
-        title: 'Score crediticio "Bueno"',
-        text: `Score de ${score}. Para subir a Muy Bueno (751+), considera abrir un CDT pequeño ($1-2M), no abrir nuevas tarjetas en 6-12 meses, y mantener utilización debajo del 10%.`
-      });
-    } else {
-      recs.push({
-        icon: '~',
-        title: 'Score crediticio en construcción',
-        text: `Score de ${score}. Enfócate en pagar a tiempo, mantener utilización baja, y no cerrar cuentas viejas.`
-      });
-    }
-  }
+  // v89: se quitó la recomendación de "Score crediticio" — esa función se simplificó en la
+  // app a un simple tip (v84) y ya no hay forma de registrar un score real desde la UI, así
+  // que mostrar una recomendación basada en datos viejos/inexistentes ya no tiene sentido.
 
   return recs;
 }
@@ -5953,8 +5950,7 @@ async function buildAnnualPDF(state, year) {
   doc.text(String(year), 14, 24);
   doc.setFontSize(9);
   doc.text('Generado el ' + new Date().toLocaleDateString('es-CO'), 14, 30);
-  doc.setFontSize(20);
-  doc.text('💎', 195, 22);
+  drawDiamondLogo(doc, 195, 18, 9, [255, 255, 255]);
 
   let y = 45;
 
