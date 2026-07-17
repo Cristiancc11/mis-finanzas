@@ -1955,8 +1955,8 @@
       <div style="margin-bottom: 20px;">
         <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 500;">🎨 Color principal</label>
         <div class="color-picker-grid">
-          <button class="color-option active" data-theme="default" onclick="setColorTheme('default')" title="Morado-Verde (clásico)">
-            <span class="color-preview" style="background: linear-gradient(135deg, #7F77DD, #1D9E75);"></span>
+          <button class="color-option active" data-theme="default" onclick="setColorTheme('default')" title="Navy-Teal (clásico)">
+            <span class="color-preview" style="background: linear-gradient(135deg, #24435a, #2f7566);"></span>
             <span class="color-name">Clásico</span>
             <span class="color-check">✓</span>
           </button>
@@ -2049,22 +2049,22 @@
     <div class="raised-card">
       <p class="card-title">⚙️ Datos personales</p>
       <div style="display: grid; gap: 12px;">
-        <div>
-          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Nombre completo</label>
+        <div class="field-group">
+          <label class="field-label" for="profile-full-name">Nombre completo</label>
           <input type="text" id="profile-full-name" placeholder="Tu nombre completo" />
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div>
-            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Teléfono</label>
+        <div class="form-grid-2" style="margin-bottom: 0;">
+          <div class="field-group">
+            <label class="field-label" for="profile-phone">Teléfono</label>
             <input type="tel" id="profile-phone" placeholder="+57 300 000 0000" />
           </div>
-          <div>
-            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Ciudad</label>
+          <div class="field-group">
+            <label class="field-label" for="profile-city">Ciudad</label>
             <input type="text" id="profile-city" placeholder="Bogotá" />
           </div>
         </div>
-        <div>
-          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Fecha de nacimiento</label>
+        <div class="field-group">
+          <label class="field-label" for="profile-birth-date">Fecha de nacimiento</label>
           <input type="date" id="profile-birth-date" />
         </div>
         <button onclick="saveProfile()" style="padding: 12px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; margin-top: 4px;">💾 Guardar cambios</button>

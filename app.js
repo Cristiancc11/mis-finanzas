@@ -1026,23 +1026,23 @@ function renderProfileStats() {
   const fmt = (n) => '$ ' + Math.round(n).toLocaleString('es-CO');
 
   container.innerHTML = `
-    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+    <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
       <div style="font-size: 11px; color: var(--text-secondary);">💎 Patrimonio total</div>
       <div style="font-size: 18px; font-weight: 600; color: var(--success-text);">${fmt(stats.patrimonio)}</div>
     </div>
-    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+    <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
       <div style="font-size: 11px; color: var(--text-secondary);">📊 Score crediticio</div>
       <div style="font-size: 18px; font-weight: 600;">${stats.score}</div>
     </div>
-    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+    <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
       <div style="font-size: 11px; color: var(--text-secondary);">👛 Bolsillos activos</div>
       <div style="font-size: 18px; font-weight: 600;">${stats.bolsillos}</div>
     </div>
-    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+    <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
       <div style="font-size: 11px; color: var(--text-secondary);">💰 Cashback total</div>
       <div style="font-size: 18px; font-weight: 600; color: var(--success-text);">${fmt(stats.cashback)}</div>
     </div>
-    <div style="grid-column: span 2; padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
+    <div style="grid-column: span 2; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
       <div style="font-size: 11px; color: var(--text-secondary);">📝 Transacciones registradas</div>
       <div style="font-size: 18px; font-weight: 600;">${stats.transactions}</div>
     </div>
