@@ -728,6 +728,7 @@
 
     <div id="alerts-container"></div>
 
+    <div class="section-group-title" style="margin-top: 4px;">📊 Tu mes en números</div>
     <div class="hero-metrics">
       <div class="metric-hero">
         <div class="metric-hero-icon green">🏦</div>
@@ -764,6 +765,7 @@
       <div id="debts-to-me-list"></div>
     </div>
 
+    <div class="section-group-title">🩺 Tu salud financiera</div>
     <div class="health-meter-pro">
       <div class="health-circle">
         <svg viewBox="0 0 100 100">
@@ -779,6 +781,7 @@
       </div>
     </div>
 
+    <div class="section-group-title">⚡ Acciones rápidas</div>
     <div class="quick-actions">
       <div class="quick-action" onclick="document.querySelector('[data-tab=presupuesto]').click()">
         <span class="quick-action-icon">💸</span>
@@ -802,6 +805,7 @@
       </div>
     </div>
 
+    <div class="section-group-title">📈 Análisis visual</div>
     <div class="fin-grid-2">
       <div class="raised-card"><p class="card-title">📊 Distribución de ahorros</p><div class="chart-container"><canvas id="chart-pockets"></canvas></div></div>
       <div class="raised-card"><p class="card-title">📉 Flujo mensual</p><div class="chart-container"><canvas id="chart-comparison"></canvas></div></div>
@@ -809,6 +813,7 @@
 
     <div class="raised-card"><p class="card-title">📋 Resumen ejecutivo</p><div id="summary-content"></div></div>
 
+    <div class="section-group-title">💡 Optimiza tus finanzas</div>
     <div class="raised-card" style="border: 0.5px solid var(--success-text);">
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
         <p class="card-title" style="margin: 0;">💎 Rendimientos de tus ahorros</p>
@@ -826,9 +831,16 @@
       <div id="cashback-strategy"></div>
     </div>
 
-    <div class="raised-card" style="border: 0.5px solid #7F77DD;">
-      <p class="card-title">📊 Mi puntaje crediticio</p>
-      <div id="credit-score-content"></div>
+    <div class="raised-card" style="border: 0.5px solid var(--border-strong); padding: 12px 16px;">
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+        <span style="font-size: 18px;">💡</span>
+        <span>
+          <strong style="color: var(--text-primary);">¿Quieres revisar tu puntaje crediticio?</strong>
+          Consulta gratis en la app de Nequi o Bancolombia (sección "Mi perfil financiero"), o compra tu reporte completo en
+          <a href="https://usuario.midatacredito.com/login?product=os" target="_blank" rel="noopener" style="color: var(--info-text); font-weight: 500;">midatacredito.com</a>.
+          Consultarlo tú mismo <strong>no afecta tu score</strong>.
+        </span>
+      </div>
     </div>
   </div>
 

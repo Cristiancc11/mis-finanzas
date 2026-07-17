@@ -13122,18 +13122,50 @@ async function buildAnnualPDF(state, year) {
   function renderCashbackStrategy() {
     const c = document.getElementById('cashback-strategy');
     if (!c) return;
-    const monthSpent = totalSpent() || totalBudget();
-    const gastoTarjetasTotal = monthSpent * 0.85;
-    const cashbackCalculado = gastoTarjetasTotal * 0.01;
-    const tasaDiaria = (state.interestRate / 100) / 365;
-    const floatMensual = gastoTarjetasTotal * tasaDiaria * 25;
+
+    // v84 FIX: antes esto asumía que el 85% de tu gasto es con tarjeta (número inventado) y
+    // calculaba cashback al 1% fijo para todas tus tarjetas (mismo bug que ya corregimos en
+    // otros lados). Ahora usa el gasto REAL con cada tarjeta este mes y el % de cashback REAL
+    // configurado para cada una.
+    const txs = state.transactions[currentMonth] || [];
+    let gastoTarjetasTotal = 0;
+    let cashbackCalculado = 0;
+    let floatMensual = 0;
+    const tasaDiaria = ((state.interestRate || 0) / 100) / 365;
+
+    (state.debts || []).forEach(d => {
+      const cardTxs = txs.filter(t => t.cardId === d.id);
+      const cardSpent = cardTxs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+      gastoTarjetasTotal += cardSpent;
+
+      const cbPercent = (d.cashbackPercent === undefined || d.cashbackPercent === null) ? 1 : d.cashbackPercent;
+      cashbackCalculado += cardSpent * (cbPercent / 100);
+
+      // Float real: días entre la compra promedio y el pago (aprox. corte + 5 días), no 25 fijo
+      let floatDays = 25;
+      if (d.cutoffDay) {
+        const today = new Date();
+        const currentDay = today.getDate();
+        const daysUntilCutoff = currentDay <= d.cutoffDay
+          ? d.cutoffDay - currentDay
+          : (new Date(today.getFullYear(), today.getMonth() + 1, d.cutoffDay) - today) / (1000 * 60 * 60 * 24);
+        floatDays = Math.max(1, Math.round(daysUntilCutoff + 5));
+      }
+      floatMensual += cardSpent * tasaDiaria * floatDays;
+    });
+
     const beneficioTotal = cashbackCalculado + floatMensual;
 
+    if (gastoTarjetasTotal === 0) {
+      c.innerHTML = `<div class="empty-state">Registra gastos con tarjeta este mes para ver tu estrategia de cashback + float.</div>`;
+      return;
+    }
+
     let h = '';
-    h += `<p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px;">Tu plata se queda generando rendimientos en Lulo mientras compras con tarjeta. Pagas la tarjeta el día del corte. Ganas cashback Y rendimientos al mismo tiempo.</p>`;
+    h += `<p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px;">Tu plata se queda generando rendimientos mientras compras con tarjeta. Pagas la tarjeta el día del corte. Ganas cashback Y rendimientos al mismo tiempo.</p>`;
     h += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">`;
-    h += `<div class="metric-card"><div class="metric-label">Cashback estimado/mes</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(cashbackCalculado)}</div><div class="metric-sub">1% de ${fmt(gastoTarjetasTotal)}</div></div>`;
-    h += `<div class="metric-card"><div class="metric-label">Float (intereses extras)</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(floatMensual)}</div><div class="metric-sub">25 días al ${state.interestRate}% E.A.</div></div>`;
+    h += `<div class="metric-card"><div class="metric-label">Cashback real/mes</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(cashbackCalculado)}</div><div class="metric-sub">Sobre ${fmt(gastoTarjetasTotal)} en tarjetas</div></div>`;
+    h += `<div class="metric-card"><div class="metric-label">Float (intereses extras)</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(floatMensual)}</div><div class="metric-sub">Según días reales a tu corte</div></div>`;
     h += `<div class="metric-card"><div class="metric-label">Beneficio total/mes</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(beneficioTotal)}</div><div class="metric-sub">${fmt(beneficioTotal*12)}/año</div></div>`;
     h += `</div>`;
     h += `<div style="margin-top: 14px; padding: 12px 14px; background: var(--success-bg); border-radius: var(--radius-md); font-size: 12px; color: var(--success-text);">`;
