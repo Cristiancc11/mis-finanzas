@@ -5455,18 +5455,41 @@ async function buildMonthlyPDF(state, monthKey) {
   const totalPockets = pockets.reduce((s, p) => s + (p.amount || 0), 0);
   const totalDebts = debts.reduce((s, d) => s + (d.balance || 0), 0);
   const netWorth = totalPockets - totalDebts;
-  const totalExpenses = transactions.reduce((s, t) => s + (t.amount || 0), 0);
+  // FIX: excluir pagos de tarjeta (son transferencias internas, no gastos reales — mismo criterio
+  // que usa el resto de la app desde v65). Antes este reporte SÍ los contaba, así que el PDF mostraba
+  // "Gastos del mes" más alto que lo que el usuario veía en Resumen/Análisis para el mismo mes.
+  const realExpenseTx = transactions.filter(t => {
+    if (t.payCardId) return false;
+    if (t.category === 'pago_tarjeta') return false;
+    if (state.customCategories) {
+      const cat = state.customCategories.find(c => c.id === t.category);
+      if (cat && cat.isPagoTarjeta) return false;
+    }
+    return true;
+  });
+  const totalExpenses = realExpenseTx.reduce((s, t) => s + (t.amount || 0), 0);
   const totalCashback = transactions.reduce((s, t) => s + (t.cashback || 0), 0);
-  const recurrentIncome = (state.incomes || []).reduce((s, i) => s + (i.amount || 0), 0);
+  // FIX: usar el ingreso REAL de ESE mes específico (snapshot histórico), no las plantillas
+  // recurrentes actuales. Si generas el reporte de un mes pasado con un salario distinto al de
+  // hoy, antes este cálculo mostraba tu ingreso ACTUAL en vez del que realmente tuviste ese mes.
+  let recurrentIncome = 0;
+  if (state.monthlyIncomes && state.monthlyIncomes[monthKey]) {
+    recurrentIncome = state.monthlyIncomes[monthKey].reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  } else {
+    recurrentIncome = (state.incomes || []).reduce((s, i) => s + (i.amount || 0), 0);
+  }
   const totalExtras = extraIncomes.reduce((s, i) => s + (i.amount || 0), 0);
-  const totalIncome = recurrentIncome + totalExtras;
-  const margin = totalIncome - totalExpenses + totalCashback;
+  // FIX: incluir cashback en "Ingresos del mes" para que coincida con la definición que usa
+  // el resto de la app (Resumen: recurrentes + extras + cashback). Antes el PDF no lo incluía
+  // aquí y luego lo volvía a sumar en el margen, dando un "Ingresos del mes" distinto al del dashboard.
+  const totalIncome = recurrentIncome + totalExtras + totalCashback;
+  const margin = totalIncome - totalExpenses;
 
   // Tarjetas de métricas en grid 2x3
   const cards = [
     { label: 'Patrimonio total', value: fmt(netWorth), color: primaryColor, sub: `${fmt(totalPockets)} - ${fmt(totalDebts)} deudas` },
-    { label: 'Ingresos del mes', value: fmt(totalIncome), color: successColor, sub: `Salario + extras` },
-    { label: 'Gastos del mes', value: fmt(totalExpenses), color: dangerColor, sub: `${transactions.length} transacciones` },
+    { label: 'Ingresos del mes', value: fmt(totalIncome), color: successColor, sub: `Salario + extras + cashback` },
+    { label: 'Gastos del mes', value: fmt(totalExpenses), color: dangerColor, sub: `${realExpenseTx.length} transacciones (excl. pagos de tarjeta)` },
     { label: 'Ahorro/Margen', value: fmt(margin), color: margin > 0 ? successColor : dangerColor, sub: totalIncome > 0 ? `${((margin/totalIncome)*100).toFixed(1)}% tasa ahorro` : '' },
     { label: 'Cashback ganado', value: fmt(totalCashback), color: successColor, sub: `+${transactions.filter(t => t.cashback > 0).length} compras` },
     { label: 'Score crediticio', value: state.creditScore?.lastReported || 'N/A', color: primaryColor, sub: state.creditScore?.lastReportedDate || 'Sin reporte' }
@@ -5518,7 +5541,7 @@ async function buildMonthlyPDF(state, monthKey) {
     .map(p => [
       removeEmojis(p.icon + ' ' + p.name),
       fmt(p.amount),
-      ((p.amount / totalPockets) * 100).toFixed(1) + '%'
+      (totalPockets > 0 ? ((p.amount / totalPockets) * 100).toFixed(1) : '0.0') + '%'
     ]);
 
   if (bolsillosBody.length > 0) {
@@ -5908,16 +5931,29 @@ async function buildAnnualPDF(state, year) {
   let totalAnnualExpense = 0;
   let totalAnnualCashback = 0;
   let totalAnnualExtras = 0;
+  let totalAnnualIncome = 0;
   monthsOfYear.forEach(m => {
+    // FIX: excluir pagos de tarjeta (transferencias internas, no gastos reales — v65).
+    // Antes se sumaban TODAS las transacciones, así que "Gastos del año" quedaba inflado
+    // por cada pago de tarjeta hecho durante el año.
     m.txs.forEach(t => {
-      totalAnnualExpense += t.amount || 0;
+      const isCardPay = t.payCardId || t.category === 'pago_tarjeta' ||
+        (state.customCategories && state.customCategories.find(c => c.id === t.category && c.isPagoTarjeta));
+      if (!isCardPay) totalAnnualExpense += t.amount || 0;
       totalAnnualCashback += t.cashback || 0;
     });
     m.extras.forEach(e => totalAnnualExtras += e.amount || 0);
+    // FIX: sumar el ingreso REAL registrado para CADA mes (snapshot histórico), en vez de
+    // extrapolar el ingreso recurrente ACTUAL hacia atrás en todo el año. Si tu salario cambió
+    // durante el año, antes este cálculo mostraba tu ingreso de HOY multiplicado por 12 meses,
+    // en vez de lo que realmente ganaste mes a mes.
+    if (state.monthlyIncomes && state.monthlyIncomes[m.key]) {
+      totalAnnualIncome += state.monthlyIncomes[m.key].reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+    } else {
+      totalAnnualIncome += (state.incomes || []).reduce((s, i) => s + (i.amount || 0), 0);
+    }
   });
-
-  const recurrentMonthly = (state.incomes || []).reduce((s, i) => s + (i.amount || 0), 0);
-  const totalAnnualIncome = recurrentMonthly * monthsOfYear.length + totalAnnualExtras + totalAnnualCashback;
+  totalAnnualIncome += totalAnnualExtras + totalAnnualCashback;
 
   doc.setTextColor(...textPrimary);
   doc.setFontSize(14);
@@ -5963,12 +5999,20 @@ async function buildAnnualPDF(state, year) {
 
   const monthBody = monthsOfYear.map(m => {
     const monthName = new Date(m.key + '-01').toLocaleDateString('es-CO', { month: 'long' });
-    const expenses = m.txs.reduce((s, t) => s + (t.amount || 0), 0);
+    // FIX: mismo criterio que el resto de la app — los pagos de tarjeta son transferencias
+    // internas, no gastos nuevos, así que no deben sumarse aquí (si no, se cuentan dos veces:
+    // una cuando compraste con la tarjeta, otra cuando pagaste el extracto).
+    const realTx = m.txs.filter(t => {
+      const isCardPay = t.payCardId || t.category === 'pago_tarjeta' ||
+        (state.customCategories && state.customCategories.find(c => c.id === t.category && c.isPagoTarjeta));
+      return !isCardPay;
+    });
+    const expenses = realTx.reduce((s, t) => s + (t.amount || 0), 0);
     const cashback = m.txs.reduce((s, t) => s + (t.cashback || 0), 0);
     const extras = m.extras.reduce((s, e) => s + (e.amount || 0), 0);
     return [
       monthName.charAt(0).toUpperCase() + monthName.slice(1),
-      m.txs.length,
+      realTx.length,
       fmt(expenses),
       fmt(cashback),
       fmt(extras)
@@ -12632,12 +12676,17 @@ async function buildAnnualPDF(state, year) {
     if (r === 0 || p === 0) { c.innerHTML = '<div class="empty-state">Configura tasa</div>'; return; }
     const aRG = p * r;
     const dRG = aRG / 365;
-    const UVT = 52374;
-    const dT = UVT * 0.055;
+    const UVT = 52374; // UVT 2026 confirmada por Resolución DIAN 000238 de 2025
+    const dT = UVT * 0.055; // umbral diario: interés ≥ 0.055 UVT/día dispara la retención
     const ex = dRG > dT;
-    const tD = Math.max(0, dRG - dT);
-    const mT = ex ? (tD * 30 * 0.07) : 0;
-    const aT = ex ? (tD * 365 * 0.07) : 0;
+    // FIX: la retención del 7% se aplica sobre el TOTAL del rendimiento diario una vez se
+    // supera el umbral (no solo sobre el excedente). Así lo confirma la DIAN en el Oficio
+    // 17396 de 2015: "la base gravable es el total del valor del pago... no se debe excluir
+    // el valor que comprende la cuantía inferior o igual al monto a partir del cual se
+    // practica retención". Antes este cálculo restaba el umbral primero, lo que subestimaba
+    // el impuesto y mostraba una renta neta más alta de la real.
+    const mT = ex ? (dRG * 30 * 0.07) : 0;
+    const aT = ex ? (dRG * 365 * 0.07) : 0;
     const mRG = p * (Math.pow(1 + r, 1/12) - 1);
     const mRN = mRG - mT;
     const aRN = aRG - aT;
@@ -12654,7 +12703,7 @@ async function buildAnnualPDF(state, year) {
     h += `<div class="metric-card"><div class="metric-label">Renta mensual neta</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(mRN)}</div></div>`;
     h += `<div class="metric-card"><div class="metric-label">Renta anual neta</div><div class="metric-value" style="font-size: 18px; color: var(--success-text);">${fmt(aRN)}</div></div>`;
     h += `</div>`;
-    if (ex) h += `<div class="alert alert-info" style="font-size: 12px;"><strong>Retefuente activa:</strong> Lulo retiene 7% sobre el excedente del umbral diario.</div>`;
+    if (ex) h += `<div class="alert alert-info" style="font-size: 12px;"><strong>Retefuente activa:</strong> Tu rendimiento diario supera el umbral de la DIAN (0.055 UVT), así que Lulo retiene 7% sobre el <strong>total</strong> del rendimiento diario (no solo sobre el excedente).</div>`;
     h += `<p style="font-size: 13px; font-weight: 500; margin: 16px 0 8px;">Proyección con interés compuesto</p>`;
     h += `<table style="width: 100%; font-size: 12px;"><thead><tr style="border-bottom: 0.5px solid var(--border);"><th style="text-align: left; padding: 8px 4px; color: var(--text-secondary); font-weight: 500;">Plazo</th><th style="text-align: right; padding: 8px 4px; color: var(--text-secondary); font-weight: 500;">Sin aportes</th><th style="text-align: right; padding: 8px 4px; color: var(--text-secondary); font-weight: 500;">+ ${fmt(margin)}/mes</th></tr></thead><tbody>`;
     h += `<tr><td style="padding: 8px 4px;">Hoy</td><td style="text-align: right; padding: 8px 4px;">${fmt(p)}</td><td style="text-align: right; padding: 8px 4px;">${fmt(p)}</td></tr>`;
