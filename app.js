@@ -1,4 +1,5 @@
-if (window.pdfjsLib) {
+
+  if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
@@ -1022,10 +1023,7 @@ function renderProfileStats() {
     }
   } catch(e) {}
 
-  const fmt = (n) => {
-    if (n === null || n === undefined || isNaN(n)) return '$ 0';
-    return '$ ' + Math.round(n).toLocaleString('es-CO');
-  };
+  const fmt = (n) => '$ ' + Math.round(n).toLocaleString('es-CO');
 
   container.innerHTML = `
     <div style="padding: 12px; background: var(--bg-secondary); border-radius: 10px;">
@@ -3519,10 +3517,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let pendingImport = []; // Movimientos pendientes de confirmación
 
-const fmtMoney = (n) => {
-  if (n === null || n === undefined || isNaN(n)) return '$ 0';
-  return '$ ' + Math.round(n).toLocaleString('es-CO');
-};
+const fmtMoney = (n) => '$ ' + Math.round(n).toLocaleString('es-CO');
 
 // === 1. IMPORTAR MOVIMIENTOS DESDE BANCO ===
 function setupBankImport() {
@@ -5111,9 +5106,8 @@ function renderTrends() {
     const realExpenses = txs.filter(t => {
       if (t.payCardId) return false;
       if (t.category === 'pago_tarjeta') return false;
-      // v65 fix: las categorías custom viven en state.customCategories, no en state.categories
-      if (state.customCategories) {
-        const cat = state.customCategories.find(c => c.id === t.category);
+      if (state.categories) {
+        const cat = state.categories.find(c => c.id === t.category);
         if (cat && cat.isPagoTarjeta) return false;
       }
       return true;
@@ -5136,7 +5130,7 @@ function renderTrends() {
   html += `</div>`;
 
   // Resumen
-  const avg = totals.length > 0 ? totals.reduce((s, t) => s + t.total, 0) / totals.length : 0;
+  const avg = totals.reduce((s, t) => s + t.total, 0) / totals.length;
   html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">`;
   html += `<div style="padding: 8px; background: var(--bg-secondary); border-radius: 8px;">`;
   html += `<div style="color: var(--text-secondary); font-size: 11px;">Promedio mensual</div>`;
@@ -5314,9 +5308,9 @@ async function buildMonthlyPDF(state, monthKey) {
     { label: 'Patrimonio total', value: fmt(netWorth), color: primaryColor, sub: `${fmt(totalPockets)} - ${fmt(totalDebts)} deudas` },
     { label: 'Ingresos del mes', value: fmt(totalIncome), color: successColor, sub: `Salario + extras` },
     { label: 'Gastos del mes', value: fmt(totalExpenses), color: dangerColor, sub: `${transactions.length} transacciones` },
-    { label: 'Ahorro/Margen', value: fmt(margin), color: margin > 0 ? successColor : dangerColor, sub: (totalIncome + totalCashback) > 0 ? `${((margin/(totalIncome + totalCashback))*100).toFixed(1)}% tasa ahorro` : '' },
+    { label: 'Ahorro/Margen', value: fmt(margin), color: margin > 0 ? successColor : dangerColor, sub: totalIncome > 0 ? `${((margin/totalIncome)*100).toFixed(1)}% tasa ahorro` : '' },
     { label: 'Cashback ganado', value: fmt(totalCashback), color: successColor, sub: `+${transactions.filter(t => t.cashback > 0).length} compras` },
-    { label: 'Score crediticio', value: (state.creditScore?.lastReported != null) ? state.creditScore.lastReported : 'N/A', color: primaryColor, sub: state.creditScore?.lastReportedDate || 'Sin reporte' }
+    { label: 'Score crediticio', value: state.creditScore?.lastReported || 'N/A', color: primaryColor, sub: state.creditScore?.lastReportedDate || 'Sin reporte' }
   ];
 
   cards.forEach((c, i) => {
@@ -5365,7 +5359,7 @@ async function buildMonthlyPDF(state, monthKey) {
     .map(p => [
       removeEmojis(p.icon + ' ' + p.name),
       fmt(p.amount),
-      (totalPockets > 0 ? ((p.amount / totalPockets) * 100).toFixed(1) : '0.0') + '%'
+      ((p.amount / totalPockets) * 100).toFixed(1) + '%'
     ]);
 
   if (bolsillosBody.length > 0) {
@@ -6165,6 +6159,7 @@ async function buildAnnualPDF(state, year) {
   function setupPaymentMethodListener() {
     const methodSel = document.getElementById('tx-payment-method');
     const cardSel = document.getElementById('tx-card');
+    const cardGroup = document.getElementById('tx-card-group'); // v69: wrapper con label
     const cashbackInfo = document.getElementById('tx-cashback-info');
     const amountInput = document.getElementById('tx-amount');
     const pocketRow = document.getElementById('tx-pocket-row');
@@ -6174,7 +6169,9 @@ async function buildAnnualPDF(state, year) {
     function updateUI() {
       const isCard = methodSel.value === 'tarjeta';
       const isCash = methodSel.value === 'efectivo';
-      cardSel.style.display = isCard ? 'block' : 'none';
+      // v69: alternar el contenedor (label + select) en vez de solo el select suelto
+      if (cardGroup) cardGroup.style.display = isCard ? 'flex' : 'none';
+      else cardSel.style.display = isCard ? 'block' : 'none';
       if (pocketRow) pocketRow.style.display = isCard ? 'none' : 'block';
 
       if (isCash && pocketSel) {
@@ -6206,9 +6203,7 @@ async function buildAnnualPDF(state, year) {
         // Float total = días entre compra y pago (aprox 5 días después del corte)
         const floatDays = Math.max(1, daysUntilCutoff + 5);
         const floatGain = amount * tasaDiaria * floatDays;
-        // Usar el % de cashback de la tarjeta (default 0). Antes estaba hardcoded a 1%.
-        const cbPercent = (d.cashbackPercent != null) ? (parseFloat(d.cashbackPercent) || 0) : 0;
-        const cashback = amount * (cbPercent / 100);
+        const cashback = amount * 0.01;
 
         // Verificar si esta compra excedería el 3% utilización
         const newBalance = d.balance + amount;
@@ -6414,9 +6409,8 @@ async function buildAnnualPDF(state, year) {
     // Caso 2: categoría con flag isPagoTarjeta o id 'pago_tarjeta'
     if (t.category === 'pago_tarjeta') return true;
     // Caso 3: categoría custom marcada como pago de tarjeta
-    // v65 fix: las categorías custom viven en state.customCategories, no en state.categories
-    if (state.customCategories) {
-      const cat = state.customCategories.find(c => c.id === t.category);
+    if (state.categories) {
+      const cat = state.categories.find(c => c.id === t.category);
       if (cat && cat.isPagoTarjeta) return true;
     }
     return false;
@@ -9024,11 +9018,9 @@ async function buildAnnualPDF(state, year) {
     if (method === 'tarjeta' && cardId) {
       // En tarjeta SIEMPRE se carga el TOTAL (porque la tarjeta paga todo)
       // El cashback SIEMPRE es del dueño de la tarjeta, sin importar quién lo gastó
+      cashback = totalAmount * 0.01;
       cardIdNum = parseInt(cardId);
       const card = state.debts.find(x => x.id === cardIdNum);
-      // Usar el % de cashback configurado en la tarjeta (default 0 si no se definió)
-      const cbPercent = card && card.cashbackPercent != null ? (parseFloat(card.cashbackPercent) || 0) : 0;
-      cashback = totalAmount * (cbPercent / 100);
       if (card) {
         card.balance += totalAmount;
       }
@@ -9055,7 +9047,6 @@ async function buildAnnualPDF(state, year) {
       }
     }
 
-    let realPaidApplied = 0;
     if (isPagoTarjeta && payCardId) {
       payCardIdNum = parseInt(payCardId);
       const payCard = state.debts.find(x => x.id === payCardIdNum);
@@ -9063,7 +9054,6 @@ async function buildAnnualPDF(state, year) {
         const previousBalance = payCard.balance || 0;
         payCard.balance = Math.max(0, previousBalance - a);
         const realPaid = previousBalance - payCard.balance;
-        realPaidApplied = realPaid; // Guardar para poder revertir solo lo que se aplicó
         if (typeof toastSuccess === 'function') {
           if (a > previousBalance) {
             toastSuccess('Pago aplicado', `${payCard.name}: $${realPaid.toLocaleString('es-CO')} aplicado. ¡Tarjeta saldada! 🎉`);
@@ -9078,8 +9068,8 @@ async function buildAnnualPDF(state, year) {
     const txId = Date.now();
     const newTx = {
       id: txId,
-      date: dt,
-      desc: d,
+      date: dt, 
+      desc: d, 
       amount: a,  // Tu parte (0 si prestado)
       category: c,
       paymentMethod: method,
@@ -9087,8 +9077,6 @@ async function buildAnnualPDF(state, year) {
       pocketId: pocketIdNum,
       payCardId: payCardIdNum,
       cashback: cashback,
-      // Solo se aplica realmente lo que cabía en el saldo de la tarjeta. Guardamos esto para revertir bien al eliminar.
-      realPaidApplied: payCardIdNum ? realPaidApplied : undefined,
       createdAt: Date.now()
     };
     
@@ -9327,13 +9315,11 @@ async function buildAnnualPDF(state, year) {
         pocket.amount = pocket.amount + totalCharged;
       }
     }
-    // Si fue un PAGO DE TARJETA, devolver SOLO lo que realmente se aplicó (no lo que se digitó)
+    // Si fue un PAGO DE TARJETA, devolver la deuda
     if (tx.payCardId) {
       const payCard = state.debts.find(x => x.id === tx.payCardId);
       if (payCard) {
-        // Si la tx vieja no guardó realPaidApplied, hacemos fallback al amount (comportamiento legacy)
-        const amountToRefund = (tx.realPaidApplied != null) ? tx.realPaidApplied : tx.amount;
-        payCard.balance = (payCard.balance || 0) + amountToRefund;
+        payCard.balance = (payCard.balance || 0) + tx.amount;
         if (typeof toastInfo === 'function') {
           toastInfo('Pago revertido', `${payCard.name}: saldo actualizado a $${payCard.balance.toLocaleString('es-CO')}`);
         }
@@ -9975,7 +9961,6 @@ async function buildAnnualPDF(state, year) {
 
   function getCutoffStatus(cutoffDay, cardBalance, cardLimit, cardId) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalizar hora para evitar errores de días por timezone/hora
     const currentDay = today.getDate();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
@@ -9988,7 +9973,7 @@ async function buildAnnualPDF(state, year) {
       nextCutoff = new Date(currentYear, currentMonth + 1, cutoffDay);
     }
 
-    const daysLeft = Math.round((nextCutoff - today) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
     const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
 
     // Calcular utilización actual y cuánto debe pagar para mantener <3%
@@ -13085,7 +13070,6 @@ async function buildAnnualPDF(state, year) {
   function getNextDueDate(dueDay) {
     if (!dueDay || dueDay < 1 || dueDay > 31) return null;
     const now = new Date();
-    now.setHours(0, 0, 0, 0); // Normalizar a inicio del día para que el día de vencimiento cuente como "hoy"
     let due = new Date(now.getFullYear(), now.getMonth(), dueDay);
     // Si ya pasó este mes, el próximo es el mes siguiente
     if (due < now) {

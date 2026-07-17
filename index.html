@@ -856,31 +856,54 @@
     <div class="sub-section active" id="subsection-movimientos">
       <div class="raised-card">
         <p class="card-title">➕ Registrar gasto</p>
-        <div class="quick-add">
-          <input type="text" id="tx-desc" placeholder="¿En qué gastaste?" />
-          <input type="number" inputmode="decimal" id="tx-amount" placeholder="Monto" min="0" step="0.01" />
-          <select id="tx-category"></select>
-          <button onclick="addTransaction()">Agregar</button>
+
+        <div class="form-section-title no-border-top">📝 ¿Qué compraste?</div>
+        <div class="field-group" style="margin-bottom: 10px;">
+          <label class="field-label" for="tx-desc">Descripción</label>
+          <input type="text" id="tx-desc" placeholder="Ej: Almuerzo, Uber, Mercado..." />
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; align-items: center;">
-          <select id="tx-payment-method"></select>
-          <select id="tx-card" style="display: none;">
-            <option value="">Selecciona tarjeta</option>
-          </select>
-          <input type="date" id="tx-date" />
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label" for="tx-amount">Monto</label>
+            <input type="number" inputmode="decimal" id="tx-amount" placeholder="$ 0" min="0" step="0.01" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="tx-category">Categoría</label>
+            <select id="tx-category"></select>
+          </div>
         </div>
-        <div id="tx-pocket-row" style="display: none; margin-top: 8px;">
-          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
-            <select id="tx-pocket">
-              <option value="">¿De qué bolsillo salió?</option>
+
+        <div class="form-section-title">💳 Método de pago y fecha</div>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label" for="tx-payment-method">Pagaste con</label>
+            <select id="tx-payment-method"></select>
+          </div>
+          <div class="field-group" id="tx-card-group" style="display: none;">
+            <label class="field-label" for="tx-card">Tarjeta</label>
+            <select id="tx-card">
+              <option value="">Selecciona tarjeta</option>
             </select>
-            <span style="font-size: 11px; color: var(--text-tertiary);">Se descontará automáticamente</span>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="tx-date">Fecha</label>
+            <input type="date" id="tx-date" />
+          </div>
+        </div>
+
+        <div id="tx-pocket-row" style="display: none; margin-top: 2px; margin-bottom: 10px;">
+          <div class="field-group">
+            <label class="field-label" for="tx-pocket">¿De qué bolsillo salió el dinero?</label>
+            <select id="tx-pocket">
+              <option value="">Selecciona un bolsillo</option>
+            </select>
+            <span class="field-hint">💡 Se descontará automáticamente de ese bolsillo</span>
           </div>
         </div>
 
         <!-- Selector de TARJETA A PAGAR (aparece cuando categoría es "Pago de tarjeta") -->
         <div id="tx-pay-card-row" style="display: none; margin-top: 8px;">
-          <div style="background: linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06)); border: 1px solid rgba(127, 119, 221, 0.3); border-radius: 10px; padding: 12px;">
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; padding: 12px;">
             <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 16px;">💳</span>
               <span>¿Qué tarjeta estás pagando?</span>
@@ -895,11 +918,10 @@
         </div>
 
         <!-- TIPO DE GASTO: Personal / Compartido / Para otros -->
-        <div style="margin-top: 10px;">
-          <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">¿DE QUIÉN ES ESTE GASTO?</label>
-          
+        <div class="form-section-title">👥 ¿De quién es este gasto?</div>
+        <div>
           <div class="expense-type-selector" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
-            <label class="expense-type-option" data-type="own" onclick="setExpenseType('own')" style="cursor: pointer; padding: 10px 8px; background: var(--bg-secondary); border: 2px solid var(--accent-from, #7F77DD); border-radius: 10px; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <label class="expense-type-option" data-type="own" onclick="setExpenseType('own')" style="cursor: pointer; padding: 10px 8px; background: var(--bg-secondary); border: 2px solid var(--accent-to); border-radius: 10px; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px;">
               <span style="font-size: 20px;">💼</span>
               <span style="font-size: 11px; font-weight: 600; line-height: 1.2;">Solo mío</span>
             </label>
@@ -918,11 +940,11 @@
           <input type="checkbox" id="tx-is-shared" style="display: none;" />
 
           <!-- PANEL: Compartido -->
-          <div id="tx-shared-row" style="display: none; margin-top: 10px; padding: 14px; background: linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06)); border: 1px solid rgba(127, 119, 221, 0.3); border-radius: 10px;">
+          <div id="tx-shared-row" style="display: none; margin-top: 10px; padding: 14px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px;">
             <div style="display: grid; gap: 10px;">
-              <div>
-                <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">PERSONAS QUE TE DEBEN (sin contarte a ti)</label>
-                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Escribe los nombres separados por coma o toca alguno frecuente abajo</p>
+              <div class="field-group">
+                <label class="field-label">Personas que te deben (sin contarte a ti)</label>
+                <span class="field-hint" style="margin-top: -3px; margin-bottom: 3px;">💡 Escribe los nombres separados por coma o toca alguno frecuente abajo</span>
                 <input type="text" id="tx-shared-names" placeholder="Andrés, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="updateSharedCalculation()" autocomplete="off" />
                 <div id="tx-shared-frequent" style="display: none; margin-top: 8px;">
                   <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas frecuentes (toca para agregar):</div>
@@ -931,10 +953,10 @@
                 
                 <!-- Toggle para división personalizada -->
                 <div style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
-                  <button type="button" id="tx-shared-mode-equal" onclick="window.setSharedSplitMode('equal')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--accent-from, #7F77DD); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                  <button type="button" id="tx-shared-mode-equal" onclick="window.setSharedSplitMode('equal')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--accent-to); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
                     ⚖️ División igual
                   </button>
-                  <button type="button" id="tx-shared-mode-custom" onclick="window.setSharedSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                  <button type="button" id="tx-shared-mode-custom" onclick="window.setSharedSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
                     ✏️ Montos personalizados
                   </button>
                 </div>
@@ -947,11 +969,11 @@
                 </div>
               </div>
 
-              <div id="tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-from, #7F77DD); display: none;">
+              <div id="tx-shared-summary" style="background: var(--bg-primary); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-to); display: none;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center;">
                   <div>
                     <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">PERSONAS</div>
-                    <div id="tx-shared-count" style="font-size: 16px; font-weight: 700; color: var(--accent-from, #7F77DD);">0</div>
+                    <div id="tx-shared-count" style="font-size: 16px; font-weight: 700; color: var(--accent-to);">0</div>
                   </div>
                   <div>
                     <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 2px;">TU PARTE</div>
@@ -968,16 +990,16 @@
           </div>
 
           <!-- PANEL: Para otros (presté la tarjeta) -->
-          <div id="tx-lent-row" style="display: none; margin-top: 10px; padding: 14px; background: linear-gradient(135deg, rgba(29, 158, 117, 0.10), rgba(127, 119, 221, 0.06)); border: 1px solid rgba(29, 158, 117, 0.35); border-radius: 10px;">
+          <div id="tx-lent-row" style="display: none; margin-top: 10px; padding: 14px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px;">
             <div style="display: grid; gap: 10px;">
               <div style="background: var(--info-bg); color: var(--info-text); padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; border-left: 3px solid var(--info-text);">
                 💡 <strong>Modo "Presté la tarjeta":</strong> Tú no pones plata propia. Solo financias temporalmente. El monto completo va como cuenta por cobrar.
                 <br><br>
                 💰 <strong>El cashback es tuyo:</strong> Al ser tu tarjeta, el cashback siempre queda a tu favor sin importar quién haya gastado.
               </div>
-              <div>
-                <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">¿A QUIÉN(ES) LE PRESTASTE LA TARJETA?</label>
-                <p style="font-size: 11px; color: var(--text-tertiary); margin: 0 0 6px;">💡 Nombres separados por coma o toca alguno frecuente abajo</p>
+              <div class="field-group">
+                <label class="field-label">¿A quién(es) le prestaste la tarjeta?</label>
+                <span class="field-hint" style="margin-top: -3px; margin-bottom: 3px;">💡 Nombres separados por coma o toca alguno frecuente abajo</span>
                 <input type="text" id="tx-lent-names" placeholder="Daniel, María..." style="width: 100%; padding: 10px 12px; height: 42px;" oninput="updateLentCalculation()" autocomplete="off" />
                 <div id="tx-lent-frequent" style="display: none; margin-top: 8px;">
                   <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500;">👥 Personas con deuda activa (toca para sumar):</div>
@@ -989,7 +1011,7 @@
                   <button type="button" id="tx-lent-mode-equal" onclick="window.setLentSplitMode('equal')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--success-text); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
                     ⚖️ División igual
                   </button>
-                  <button type="button" id="tx-lent-mode-custom" onclick="window.setLentSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                  <button type="button" id="tx-lent-mode-custom" onclick="window.setLentSplitMode('custom')" style="flex: 1; min-width: 140px; padding: 8px 12px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600;">
                     ✏️ Montos personalizados
                   </button>
                 </div>
@@ -1022,35 +1044,39 @@
         <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
 
         <!-- v63: Compra a CUOTAS -->
-        <div id="tx-installments-wrapper" style="margin-top: 10px; display: none;">
-          <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; cursor: pointer; font-size: 13px; user-select: none;">
+        <div id="tx-installments-wrapper" style="margin-top: 6px; display: none;">
+          <div class="form-section-title" style="margin-bottom: 8px;">🧾 Financiación</div>
+          <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px; user-select: none;">
             <input type="checkbox" id="tx-is-installment" onchange="toggleInstallmentFields(this.checked)" style="width: auto; height: auto; min-height: auto; margin: 0; cursor: pointer;" />
             <span>💳 <strong>Compra a cuotas</strong> — dividir en pagos mensuales</span>
           </label>
 
-          <div id="tx-installment-fields" style="display: none; margin-top: 8px; padding: 12px; background: rgba(127, 119, 221, 0.06); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD); gap: 10px; flex-direction: column;">
+          <div id="tx-installment-fields" style="display: none; margin-top: 8px; padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-to); gap: 10px; flex-direction: column;">
             <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">⚙️ Configuración de la financiación</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <div>
-                <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📅 # Cuotas</label>
+            <div class="form-grid-2" style="margin-bottom: 0;">
+              <div class="field-group">
+                <label class="field-label">📅 Número de cuotas</label>
                 <input type="number" id="tx-installments-count" placeholder="Ej: 24" min="2" max="60" oninput="updateInstallmentPreview()" />
               </div>
-              <div>
-                <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📆 Inicia mes</label>
+              <div class="field-group">
+                <label class="field-label">📆 Inicia en el mes</label>
                 <select id="tx-installments-start" onchange="updateInstallmentPreview()"></select>
               </div>
             </div>
-            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg-primary); border-radius: 8px; cursor: pointer; font-size: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 12px;">
               <input type="checkbox" id="tx-installments-has-interest" onchange="toggleInterestField(); updateInstallmentPreview()" style="width: auto; height: auto; min-height: auto; margin: 0; cursor: pointer;" />
               <span>💵 <strong>Con intereses</strong></span>
             </label>
-            <div id="tx-installments-interest-field" style="display: none;">
-              <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📊 Tasa mensual (%)</label>
+            <div id="tx-installments-interest-field" class="field-group" style="display: none;">
+              <label class="field-label">📊 Tasa mensual (%)</label>
               <input type="number" id="tx-installments-rate" placeholder="Ej: 2.5" min="0" max="20" step="0.01" oninput="updateInstallmentPreview()" />
             </div>
-            <div id="tx-installments-preview" style="font-size: 11px; color: var(--text-secondary); line-height: 1.5; padding: 8px; background: var(--bg-primary); border-radius: 8px; display: none;"></div>
+            <div id="tx-installments-preview" style="font-size: 11px; color: var(--text-secondary); line-height: 1.5; padding: 8px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; display: none;"></div>
           </div>
         </div>
+
+        <!-- v69: botón de envío al FINAL del formulario (antes aparecía a mitad de camino, confuso) -->
+        <button onclick="addTransaction()" style="width: 100%; margin-top: 18px; padding: 13px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;">➕ Agregar gasto</button>
       </div>
 
       <div class="raised-card">

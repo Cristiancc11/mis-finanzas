@@ -179,8 +179,51 @@
   }
   input:focus, select:focus, textarea:focus {
     outline: none;
-    border-color: var(--info-text) !important;
-    box-shadow: 0 0 0 3px rgba(127, 119, 221, 0.15);
+    border-color: var(--accent-to) !important;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  /* v69: sistema de labels para formularios — más fácil de entender qué va en cada campo */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.2px;
+  }
+  .field-hint {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+  }
+  /* Título de subsección dentro de un formulario (agrupa campos relacionados) */
+  .form-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 14px 0 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .form-section-title:first-child,
+  .form-section-title.no-border-top {
+    padding-top: 0;
+    border-top: none;
+    margin-top: 0;
+  }
+  /* v69: grids reutilizables de 2/3 columnas para agrupar campos relacionados */
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  @media (max-width: 640px) {
+    .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
   }
 
   /* ========================================
@@ -196,12 +239,13 @@
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: rgba(127, 119, 221, 0.3);
+    background: var(--accent-glow, rgba(47, 117, 102, 0.3));
     border-radius: 4px;
     transition: background 0.2s;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(127, 119, 221, 0.5);
+    background: var(--accent-to);
+    opacity: 0.6;
   }
 
   /* ========================================
