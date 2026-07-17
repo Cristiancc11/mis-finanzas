@@ -1352,75 +1352,110 @@
   </div>
 
   <div class="fin-section" id="section-ingresos">
+
+    <!-- v86: resumen visual arriba — de un vistazo, de dónde viene tu ingreso del mes -->
+    <div class="section-group-title" style="margin-top: 4px;">📊 Resumen del mes</div>
+    <div class="hero-metrics" id="income-overview-stats"></div>
+
+    <div class="section-group-title">💼 Ingreso recurrente</div>
     <div class="raised-card">
-      <p class="card-title">💼 Agregar ingreso</p>
+      <p class="card-title">➕ Agregar ingreso</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Salario, freelance, bonos o cualquier dinero. Elige el mes y marca "Recurrente" si se repite cada mes.</p>
-      <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-        <input type="text" id="income-name" placeholder="Concepto (Ej: Salario, Bono navidad, Proyecto X)" />
-        <input type="number" inputmode="decimal" id="income-amount" placeholder="Monto" min="0" step="0.01" />
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
-          <label style="font-size: 12px; color: var(--text-secondary); padding-left: 4px;">📅 Mes:</label>
+
+      <div class="form-section-title no-border-top">📝 ¿Qué recibiste?</div>
+      <div class="field-group" style="margin-bottom: 10px;">
+        <label class="field-label" for="income-name">Concepto</label>
+        <input type="text" id="income-name" placeholder="Ej: Salario, Bono navidad, Proyecto X" />
+      </div>
+      <div class="form-grid-2">
+        <div class="field-group">
+          <label class="field-label" for="income-amount">Monto</label>
+          <input type="number" inputmode="decimal" id="income-amount" placeholder="$ 0" min="0" step="0.01" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="income-month">📅 Mes</label>
           <select id="income-month" title="¿En qué mes recibiste este ingreso?"></select>
         </div>
-        <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; cursor: pointer; font-size: 13px; user-select: none;">
-          <input type="checkbox" id="income-recurring" onchange="toggleRecurringFields(this.checked)" style="width: auto; height: auto; min-height: auto; margin: 0; cursor: pointer;" />
-          <span>🔁 <strong>Recurrente</strong> — se repite cada mes automáticamente</span>
-        </label>
-        
-        <!-- v62: campos solo para recurrentes -->
-        <div id="income-recurring-fields" style="display: none; padding: 12px; background: rgba(127, 119, 221, 0.06); border-radius: 10px; border-left: 3px solid var(--accent-from, #7F77DD); gap: 10px; flex-direction: column;">
-          <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">⚙️ Configuración del recurrente</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div>
-              <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📅 Día de pago (1-31)</label>
-              <input type="number" id="income-payment-day" placeholder="Ej: 28" min="1" max="31" />
-            </div>
-            <div>
-              <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">📆 Aplicar al mes</label>
-              <select id="income-month-assignment">
-                <option value="auto">🤖 Automático</option>
-                <option value="same">📍 Mismo mes</option>
-                <option value="next">➡️ Mes siguiente</option>
-              </select>
-            </div>
+      </div>
+
+      <div class="form-section-title">🔁 ¿Se repite cada mes?</div>
+      <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px; user-select: none;">
+        <input type="checkbox" id="income-recurring" onchange="toggleRecurringFields(this.checked)" style="width: auto; height: auto; min-height: auto; margin: 0; cursor: pointer;" />
+        <span>🔁 <strong>Recurrente</strong> — se repite cada mes automáticamente</span>
+      </label>
+
+      <!-- v62: campos solo para recurrentes -->
+      <div id="income-recurring-fields" style="display: none; margin-top: 8px; padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-to); gap: 10px; flex-direction: column;">
+        <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">⚙️ Configuración del recurrente</div>
+        <div class="form-grid-2" style="margin-bottom: 0;">
+          <div class="field-group">
+            <label class="field-label">📅 Día de pago (1-31)</label>
+            <input type="number" id="income-payment-day" placeholder="Ej: 28" min="1" max="31" />
           </div>
-          <div style="font-size: 11px; color: var(--text-tertiary); line-height: 1.4;">
-            💡 <strong>Automático:</strong> si el pago cae en los últimos 5 días del mes, se cuenta como ingreso del MES SIGUIENTE (común para nóminas pagadas el 28 que son de junio).
+          <div class="field-group">
+            <label class="field-label">📆 Aplicar al mes</label>
+            <select id="income-month-assignment">
+              <option value="auto">🤖 Automático</option>
+              <option value="same">📍 Mismo mes</option>
+              <option value="next">➡️ Mes siguiente</option>
+            </select>
           </div>
         </div>
-        
-        <button onclick="addIncome()" style="padding: 12px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">➕ Agregar ingreso</button>
+        <div style="font-size: 11px; color: var(--text-tertiary); line-height: 1.4;">
+          💡 <strong>Automático:</strong> si el pago cae en los últimos 5 días del mes, se cuenta como ingreso del MES SIGUIENTE (común para nóminas pagadas el 28 que son de junio).
+        </div>
       </div>
+
+      <button onclick="addIncome()" style="width: 100%; margin-top: 16px; padding: 13px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">➕ Agregar ingreso</button>
     </div>
+
     <div class="raised-card">
       <p class="card-title">📋 Mis ingresos</p>
       <div id="income-list"></div>
       <div class="summary-row" style="margin-top: 12px; font-weight: 500;"><span>Total del mes</span><span id="income-total" style="color: var(--success-text);">—</span></div>
     </div>
 
+    <div class="section-group-title">💰 Ingresos ocasionales</div>
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
-      <p class="card-title">💰 Registrar ingreso extra (no recurrente)</p>
+      <p class="card-title">Registrar ingreso extra (no recurrente)</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Bonos, devoluciones, regalos, ventas, freelance ocasional</p>
-      <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center;">
-        <input type="text" id="extra-desc" placeholder="¿De dónde viene?" />
-        <input type="number" inputmode="decimal" id="extra-amount" placeholder="Monto" min="0" step="0.01" />
-        <select id="extra-source"></select>
-        <button onclick="addExtraIncome()">Agregar</button>
+
+      <div class="field-group" style="margin-bottom: 10px;">
+        <label class="field-label" for="extra-desc">¿De dónde viene?</label>
+        <input type="text" id="extra-desc" placeholder="Ej: Devolución Rappi, Venta bicicleta..." />
       </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center;">
-        <input type="date" id="extra-date" />
-        <select id="extra-pocket">
-          <option value="">¿A qué bolsillo va?</option>
-        </select>
+      <div class="form-grid-2">
+        <div class="field-group">
+          <label class="field-label" for="extra-amount">Monto</label>
+          <input type="number" inputmode="decimal" id="extra-amount" placeholder="$ 0" min="0" step="0.01" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="extra-source">Tipo</label>
+          <select id="extra-source"></select>
+        </div>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-        <p style="font-size: 11px; color: var(--text-tertiary); margin: 0;">Si seleccionas un bolsillo, el dinero se sumará automáticamente</p>
-        <button onclick="openIncomeTypesManager()" style="font-size: 11px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">⚙️ Gestionar tipos</button>
+      <div class="form-grid-2">
+        <div class="field-group">
+          <label class="field-label" for="extra-date">Fecha</label>
+          <input type="date" id="extra-date" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="extra-pocket">¿A qué bolsillo va?</label>
+          <select id="extra-pocket">
+            <option value="">No agregar a bolsillo</option>
+          </select>
+        </div>
+      </div>
+      <span class="field-hint">💡 Si seleccionas un bolsillo, el dinero se sumará automáticamente ahí</span>
+
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button onclick="addExtraIncome()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 13px;">➕ Agregar ingreso extra</button>
+        <button onclick="openIncomeTypesManager()" style="padding: 12px 14px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 13px; white-space: nowrap;">⚙️ Tipos</button>
       </div>
     </div>
 
     <div class="raised-card">
-      <p class="card-title">💸 Ingresos extras del mes</p>
+      <p class="card-title">📆 Ingresos extras del mes</p>
       <div class="month-selector" style="margin-bottom: 12px;">
         <label style="font-size: 13px; color: var(--text-secondary);">Mes:</label>
         <select id="extra-month-select"></select>

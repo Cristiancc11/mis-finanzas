@@ -8088,7 +8088,54 @@ async function buildAnnualPDF(state, year) {
     const cashback = currentExtraMonth === currentMonth ? totalMonthCashback() : 0;
     const grandTotal = recurrent + extraTotal + cashback;
     document.getElementById('extra-grand-total').textContent = fmt(grandTotal);
+
+    // v86: refrescar también el resumen visual de arriba
+    try { renderIncomeOverviewStats(); } catch(e) { console.error('❌ Error en renderIncomeOverviewStats:', e); }
   }
+
+  // v86: resumen visual de arriba — de un vistazo, de dónde viene tu ingreso del mes
+  function renderIncomeOverviewStats() {
+    const container = document.getElementById('income-overview-stats');
+    if (!container) return;
+
+    const recurrent = totalIncome();
+    const extras = totalMonthExtraIncome(currentMonth);
+    const cashback = totalMonthCashback();
+    const total = recurrent + extras + cashback;
+
+    if (total === 0 && recurrent === 0 && extras === 0) {
+      container.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;">Agrega tu primer ingreso para ver el resumen del mes.</div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="metric-hero">
+        <div class="metric-hero-icon blue">💼</div>
+        <div class="metric-hero-label">Recurrente</div>
+        <p class="metric-hero-value" style="color: var(--info-text);">${fmt(recurrent)}</p>
+        <div class="metric-hero-sub">Salario y fijos</div>
+      </div>
+      <div class="metric-hero">
+        <div class="metric-hero-icon amber">💰</div>
+        <div class="metric-hero-label">Extras</div>
+        <p class="metric-hero-value" style="color: var(--warning-text);">${fmt(extras)}</p>
+        <div class="metric-hero-sub">Bonos, ventas, etc.</div>
+      </div>
+      <div class="metric-hero">
+        <div class="metric-hero-icon green">🎁</div>
+        <div class="metric-hero-label">Cashback</div>
+        <p class="metric-hero-value" style="color: var(--success-text);">${fmt(cashback)}</p>
+        <div class="metric-hero-sub">De tus tarjetas</div>
+      </div>
+      <div class="metric-hero">
+        <div class="metric-hero-icon purple">💎</div>
+        <div class="metric-hero-label">Ingreso TOTAL</div>
+        <p class="metric-hero-value" style="color: var(--success-text); font-weight: 700;">${fmt(total)}</p>
+        <div class="metric-hero-sub">Este mes</div>
+      </div>
+    `;
+  }
+  window.renderIncomeOverviewStats = renderIncomeOverviewStats;
 
   // Plantillas de tarjetas colombianas (datos típicos de mercado abr 2026)
   const CARD_TEMPLATES = {
@@ -10045,6 +10092,9 @@ async function buildAnnualPDF(state, year) {
     
     const totalEl = document.getElementById('income-total');
     if (totalEl) totalEl.textContent = fmt(totalIncome());
+
+    // v86: refrescar también el resumen visual de arriba
+    try { renderIncomeOverviewStats(); } catch(e) { console.error('❌ Error en renderIncomeOverviewStats:', e); }
   }
 
   // SVGs de logos
