@@ -282,6 +282,7 @@
     --bg-primary: #ffffff;
     --bg-secondary: #f5f4ef;
     --bg-tertiary: #faf9f5;
+    --bg-sidebar: #eeebe2;
     --text-primary: #1a1a18;
     --text-secondary: #56564f;
     --text-tertiary: #82827a;
@@ -301,7 +302,7 @@
     --radius-lg: 12px;
   }
   html.theme-dark {
-    --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f;
+    --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f; --bg-sidebar: #100f0c;
     --text-primary: #e8e6df; --text-secondary: #a8a8a0; --text-tertiary: #757570;
     --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
     --success-bg: #173404; --success-text: #c0dd97;
@@ -313,7 +314,7 @@
   /* Solo se aplica si no hay clase manual (auto basado en sistema) */
   @media (prefers-color-scheme: dark) {
     html:not(.theme-light):not(.theme-dark) {
-      --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f;
+      --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f; --bg-sidebar: #100f0c;
       --text-primary: #e8e6df; --text-secondary: #a8a8a0; --text-tertiary: #757570;
       --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
       --success-bg: #173404; --success-text: #c0dd97;
@@ -369,11 +370,15 @@
   .chart-container { position: relative; height: 280px; margin-top: 8px; }
   .summary-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; font-size: 13px; }
   .summary-row + .summary-row { border-top: 0.5px solid var(--border); }
-  .alert { padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 12px; }
-  .alert-success { background: var(--success-bg); color: var(--success-text); }
-  .alert-warning { background: var(--warning-bg); color: var(--warning-text); }
-  .alert-danger { background: var(--danger-bg); color: var(--danger-text); }
-  .alert-info { background: var(--info-bg); color: var(--info-text); }
+  .alert { padding: 11px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-left: 3px solid var(--text-tertiary); color: var(--text-primary); }
+  .alert-success { border-left-color: var(--success-text); }
+  .alert-success strong { color: var(--success-text); }
+  .alert-warning { border-left-color: var(--warning-text); }
+  .alert-warning strong { color: var(--warning-text); }
+  .alert-danger { border-left-color: var(--danger-text); }
+  .alert-danger strong { color: var(--danger-text); }
+  .alert-info { border-left-color: var(--info-text); }
+  .alert-info strong { color: var(--info-text); }
   .health-meter { display: flex; align-items: center; gap: 16px; padding: 16px 18px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: 1rem; }
   .health-score { font-size: 36px; font-weight: 500; min-width: 70px; }
   .health-info { flex: 1; }
@@ -448,14 +453,14 @@
 
   /* HERO BANNER */
   .hero-banner {
-    background: linear-gradient(135deg, #7F77DD 0%, #1D9E75 100%);
+    background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%);
     border-radius: var(--radius-lg);
-    padding: 28px 32px;
+    padding: 24px 32px;
     margin-bottom: 1.5rem;
     color: white;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(127, 119, 221, 0.25);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   }
   .hero-banner::before {
     content: '';
@@ -590,11 +595,12 @@
     font-size: 20px;
     margin-bottom: 12px;
   }
-  .metric-hero-icon.purple { background: var(--purple-bg); color: var(--purple-text); }
-  .metric-hero-icon.green { background: var(--success-bg); color: var(--success-text); }
-  .metric-hero-icon.red { background: var(--danger-bg); color: var(--danger-text); }
-  .metric-hero-icon.amber { background: var(--warning-bg); color: var(--warning-text); }
-  .metric-hero-icon.blue { background: var(--info-bg); color: var(--info-text); }
+  .metric-hero-icon.purple, .metric-hero-icon.green, .metric-hero-icon.red, .metric-hero-icon.amber, .metric-hero-icon.blue { background: var(--bg-secondary); border: 1px solid var(--border); }
+  .metric-hero-icon.purple { color: var(--purple-text); }
+  .metric-hero-icon.green { color: var(--success-text); }
+  .metric-hero-icon.red { color: var(--danger-text); }
+  .metric-hero-icon.amber { color: var(--warning-text); }
+  .metric-hero-icon.blue { color: var(--info-text); }
   .metric-hero-label {
     font-size: 11px;
     color: var(--text-secondary);
@@ -3180,13 +3186,13 @@ button.btn-loading.btn-secondary::after {
    Variables que se redefinen según el tema
    ======================================== */
 
-/* Tema CLÁSICO (default) - Morado/Verde */
+/* Tema CLÁSICO (default) - v66: Paleta profesional Navy/Teal (antes morado/verde brillante) */
 html, html.color-default {
-  --accent-from: #7F77DD;
-  --accent-to: #1D9E75;
-  --accent-from-light: #9B95E8;
-  --accent-to-light: #34c89c;
-  --accent-glow: rgba(127, 119, 221, 0.3);
+  --accent-from: #24435a;
+  --accent-to: #2f7566;
+  --accent-from-light: #35576f;
+  --accent-to-light: #3e9683;
+  --accent-glow: rgba(47, 117, 102, 0.25);
 }
 
 /* Tema OCÉANO - Azul */
@@ -5862,41 +5868,85 @@ button[onclick*="deleteReminder"]:active,
 }
 
 /* ============================================================
-   v56: SIDEBAR LATERAL EN DESKTOP + LAYOUT EXPANDIDO
+   v56/v66: SIDEBAR LATERAL FIJA DE ALTURA COMPLETA + LAYOUT PROFESIONAL
    ============================================================ */
 
 /* Botón toggle: oculto por defecto, solo aparece en desktop debajo del menú */
 .sidebar-toggle-btn {
   display: none;
-  background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75));
-  border: none;
-  border-radius: 12px;
-  padding: 12px 18px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
   cursor: pointer;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  box-shadow: 0 6px 20px rgba(127, 119, 221, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: all 0.18s ease;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
   width: 100%;
 }
 
 .sidebar-toggle-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 26px rgba(127, 119, 221, 0.55), 0 3px 8px rgba(0, 0, 0, 0.35);
-}
-
-.sidebar-toggle-btn:active {
-  transform: translateY(0);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 .sidebar-toggle-icon {
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
 }
+
+/* v66: marca compacta arriba del sidebar (solo desktop) */
+.sidebar-brand {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-brand-mark {
+  font-size: 20px;
+  line-height: 1;
+}
+.sidebar-brand-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+/* v66: bloque de cuenta/logout, siempre visible al fondo del sidebar */
+.sidebar-account {
+  display: none;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--danger-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sidebar-logout-btn:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-text);
+}
+.sidebar-logout-icon { font-size: 15px; line-height: 1; }
 
 /* Layout normal por defecto (móvil/tablet sin cambios) */
 .app-layout {
@@ -5904,71 +5954,81 @@ button[onclick*="deleteReminder"]:active,
 }
 
 /* ============================================================
-   DESKTOP: sidebar vertical
+   DESKTOP: sidebar fija de altura completa (ocupa toda la izquierda)
    ============================================================ */
 @media (min-width: 1025px) {
 
-  /* Ampliar el wrapper para aprovechar pantalla */
+  /* El contenido (hero + tabs + secciones) se desplaza para dejar sitio a la sidebar fija */
   .wrapper {
-    max-width: 1500px !important;
+    max-width: 1280px !important;
+    margin-left: 232px !important;
+    margin-right: auto !important;
+    transition: margin-left 0.25s ease;
   }
 
-  /* Mostrar el botón toggle */
+  /* Mostrar marca, toggle y bloque de cuenta */
+  .sidebar-brand,
   .sidebar-toggle-btn {
-    display: inline-flex;
+    display: flex;
+  }
+  .sidebar-account {
+    display: block;
   }
 
-  /* Layout en columnas: sidebar-column + contenido */
+  /* Ya no usamos grid: la sidebar es fixed y el contenido fluye normal */
   .app-layout {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 24px;
-    align-items: start;
+    display: block;
   }
 
-  /* Columna izquierda: agrupa menú + botón toggle */
+  /* La sidebar: fija, pegada al borde izquierdo real del viewport, altura completa */
   .sidebar-column {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 212px;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    position: sticky;
-    top: 12px;
-    max-height: calc(100vh - 24px);
-    transition: all 0.25s ease;
+    padding: 20px 14px;
+    background: var(--bg-sidebar, var(--bg-tertiary));
+    border-right: 1px solid var(--border);
+    z-index: 40;
+    transition: width 0.25s ease, padding 0.25s ease;
   }
 
-  /* La sidebar (menú vertical) */
+  /* El menú (nav) ocupa el espacio disponible, con scroll propio si hace falta */
   .fin-tabs {
     display: flex !important;
     flex-direction: column !important;
     flex-wrap: nowrap !important;
-    gap: 4px !important;
-    padding: 14px 10px !important;
+    gap: 2px !important;
+    padding: 0 !important;
     margin: 0 !important;
     border-bottom: none !important;
-    background: var(--bg-secondary);
-    border-radius: 14px;
-    border: 0.5px solid var(--border);
+    background: transparent;
+    border-radius: 0;
+    border: none;
     overflow-y: auto;
     flex: 1;
     min-height: 0;
-    transition: transform 0.25s ease, opacity 0.25s ease, max-width 0.25s ease;
+    transition: opacity 0.2s ease;
   }
 
   /* Scrollbar minimalista dentro de la sidebar */
-  .fin-tabs::-webkit-scrollbar { width: 6px; }
+  .fin-tabs::-webkit-scrollbar { width: 5px; }
   .fin-tabs::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 3px;
   }
 
-  /* Cada item de la sidebar */
+  /* Cada item de la sidebar: reposado, sin gradiente en reposo */
   .fin-tabs .fin-tab {
     width: 100%;
     justify-content: flex-start !important;
     text-align: left !important;
-    padding: 10px 14px !important;
-    border-radius: 10px !important;
+    padding: 9px 12px !important;
+    border-radius: 8px !important;
     font-size: 13px !important;
     display: flex !important;
     align-items: center !important;
@@ -5985,16 +6045,18 @@ button[onclick*="deleteReminder"]:active,
     color: var(--text-primary) !important;
   }
 
+  /* Activo: acento sutil (borde izquierdo + tinte), no gradiente completo */
   .fin-tabs .fin-tab.active {
-    background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)) !important;
-    color: white !important;
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
     font-weight: 600 !important;
-    border-color: transparent !important;
-    box-shadow: 0 2px 8px rgba(127, 119, 221, 0.25);
+    border-color: var(--border) !important;
+    border-left: 2px solid var(--accent-to) !important;
+    box-shadow: none;
   }
 
   .fin-tabs .tab-icon {
-    font-size: 16px;
+    font-size: 15px;
     flex-shrink: 0;
   }
 
@@ -6008,29 +6070,34 @@ button[onclick*="deleteReminder"]:active,
    DESKTOP: estado "sidebar oculta" (cuando user da click al toggle)
    ============================================================ */
 @media (min-width: 1025px) {
-  html[data-sidebar="hidden"] .app-layout {
-    grid-template-columns: auto 1fr;
-    gap: 16px;
+  html[data-sidebar="hidden"] .wrapper {
+    margin-left: 68px !important;
   }
 
-  /* Cuando está oculta: el menú desaparece pero el botón queda */
-  html[data-sidebar="hidden"] .fin-tabs {
+  html[data-sidebar="hidden"] .sidebar-column {
+    width: 52px;
+    padding: 20px 8px;
+  }
+
+  /* Cuando está oculta: el menú y la marca desaparecen, solo queda el botón + logout compacto */
+  html[data-sidebar="hidden"] .fin-tabs,
+  html[data-sidebar="hidden"] .sidebar-brand-name {
     display: none !important;
   }
 
-  /* El botón se vuelve compacto (solo ícono) cuando la sidebar está cerrada */
-  html[data-sidebar="hidden"] .sidebar-column {
-    width: 50px;
-  }
-
   html[data-sidebar="hidden"] .sidebar-toggle-btn {
-    padding: 12px;
-    width: 50px;
-    height: 50px;
+    padding: 10px;
+    width: 100%;
   }
 
-  html[data-sidebar="hidden"] .sidebar-toggle-text {
+  html[data-sidebar="hidden"] .sidebar-toggle-text,
+  html[data-sidebar="hidden"] .sidebar-logout-text {
     display: none;
+  }
+
+  html[data-sidebar="hidden"] .sidebar-logout-btn {
+    justify-content: center;
+    padding: 10px;
   }
 }
 
@@ -6039,10 +6106,6 @@ button[onclick*="deleteReminder"]:active,
    ============================================================ */
 @media (min-width: 1600px) {
   .wrapper {
-    max-width: 1700px !important;
-  }
-  .app-layout {
-    grid-template-columns: 240px 1fr;
-    gap: 32px;
+    max-width: 1400px !important;
   }
 }

@@ -483,7 +483,6 @@
       <button onclick="exportData()" class="btn-icon" title="Exportar datos">📥 Exportar</button>
       <button onclick="importData()" class="btn-icon" title="Importar datos">📤 Importar</button>
       <button onclick="migrateLocalData()" class="btn-icon" title="Migrar datos del navegador a la nube" id="migrate-btn" style="display: none;">☁️ Subir local</button>
-      <button onclick="handleLogout()" class="btn-icon" title="Cerrar sesión">🚪 Salir</button>
       <button class="reset-btn" onclick="resetData()" title="Resetear datos">↻</button>
       <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
@@ -614,6 +613,12 @@
   <!-- Columna izquierda: menú + botón toggle -->
   <div class="sidebar-column">
 
+  <!-- v66: Marca compacta (solo visible en desktop, dentro del sidebar fijo) -->
+  <div class="sidebar-brand">
+    <span class="sidebar-brand-mark">💎</span>
+    <span class="sidebar-brand-name">FinanzasPro</span>
+  </div>
+
   <div class="fin-tabs">
     <button class="fin-tab active" data-tab="resumen"><span class="tab-icon">🏠</span><span class="tab-label">Resumen</span></button>
     <button class="fin-tab" data-tab="presupuesto"><span class="tab-icon">💸</span><span class="tab-label">Presupuesto</span></button>
@@ -632,6 +637,14 @@
     <span class="sidebar-toggle-icon">☰</span>
     <span class="sidebar-toggle-text">Menú</span>
   </button>
+
+  <!-- v66: Bloque de cuenta + cerrar sesión, siempre visible al fondo del sidebar -->
+  <div class="sidebar-account">
+    <button onclick="handleLogout()" class="sidebar-logout-btn" title="Cerrar sesión">
+      <span class="sidebar-logout-icon">🚪</span>
+      <span class="sidebar-logout-text">Cerrar sesión</span>
+    </button>
+  </div>
 
   </div> <!-- /sidebar-column -->
 
