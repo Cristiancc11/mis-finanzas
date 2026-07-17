@@ -6406,7 +6406,11 @@ async function buildAnnualPDF(state, year) {
         // Float total = días entre compra y pago (aprox 5 días después del corte)
         const floatDays = Math.max(1, daysUntilCutoff + 5);
         const floatGain = amount * tasaDiaria * floatDays;
-        const cashback = amount * 0.01;
+        // FIX: usar el % de cashback REAL configurado para esta tarjeta, no un 1% fijo para todas.
+        // Antes esto asumía que todas las tarjetas dan el mismo cashback, lo que podía recomendar
+        // la tarjeta equivocada si alguna da más o menos que 1%.
+        const cbPercent = (d.cashbackPercent === undefined || d.cashbackPercent === null) ? 1 : d.cashbackPercent;
+        const cashback = amount * (cbPercent / 100);
 
         // Verificar si esta compra excedería el 3% utilización
         const newBalance = d.balance + amount;
@@ -6419,6 +6423,7 @@ async function buildAnnualPDF(state, year) {
           floatDays,
           floatGain,
           cashback,
+          cbPercent,
           totalBenefit: floatGain + cashback,
           newUtilization,
           exceeds3pct,
@@ -6441,47 +6446,68 @@ async function buildAnnualPDF(state, year) {
     function updateCashbackPreview() {
       const isCard = methodSel.value === 'tarjeta';
       const amount = parseFloat(amountInput.value) || 0;
+      const cashbackAmountEl = document.getElementById('tx-cashback-amount');
+      const cashbackFieldGroup = document.getElementById('tx-cashback-field-group');
 
       if (isCard && amount > 0) {
         const recommendations = getRecommendedCard(amount);
+
+        // v80 FIX: usar la tarjeta que el usuario YA seleccionó (si eligió una manualmente),
+        // en vez de siempre forzar la "mejor" recomendación. Antes esto ignoraba tu elección.
+        let selected = null;
         if (recommendations && recommendations.length > 0) {
-          const best = recommendations[0];
-          let html = `💰 <strong>Cashback estimado:</strong> ${fmt(best.cashback)} (1%)`;
-
-          // Mostrar recomendación de tarjeta óptima
-          html += `<div style="margin-top: 8px; padding: 8px 10px; background: var(--info-bg); border-radius: var(--radius-md); color: var(--info-text);">`;
-          html += `<strong>🎯 Recomendación: usa la ${esc(best.card.name)}</strong><br>`;
-          html += `<span style="font-size: 11px;">${best.floatDays} días de float al ${(state.interestRate || 7.87)}% E.A. = +${fmt(best.floatGain)} extra</span><br>`;
-          html += `<span style="font-size: 11px;">Beneficio total: <strong>+${fmt(best.totalBenefit)}</strong></span>`;
-          if (best.exceeds3pct) {
-            html += `<br><span style="font-size: 11px; color: var(--warning-text);">⚠️ Esta compra subirá tu utilización a ${best.newUtilization.toFixed(1)}% (sobre el 3% objetivo)</span>`;
+          if (cardSel.value) {
+            selected = recommendations.find(r => String(r.card.id) === String(cardSel.value));
           }
-          html += `</div>`;
+          if (!selected) {
+            selected = recommendations[0];
+            if (!cardSel.value) cardSel.value = selected.card.id;
+          }
+        } else if (cardSel.value) {
+          // La tarjeta elegida no tiene día de corte configurado (no entra en "recommendations"),
+          // igual calculamos su cashback real directamente.
+          const card = state.debts.find(d => String(d.id) === String(cardSel.value));
+          if (card) {
+            const cbPercent = (card.cashbackPercent === undefined || card.cashbackPercent === null) ? 1 : card.cashbackPercent;
+            selected = { card, cashback: amount * (cbPercent / 100), cbPercent, floatGain: 0, totalBenefit: amount * (cbPercent / 100), exceeds3pct: false };
+          }
+        }
 
-          // Si hay segunda opción, mostrar comparativa
-          if (recommendations.length > 1) {
-            const second = recommendations[1];
-            const diff = best.totalBenefit - second.totalBenefit;
-            html += `<div style="margin-top: 6px; font-size: 11px; color: var(--text-secondary);">vs ${esc(second.card.name)}: ${fmt(second.totalBenefit)} (diferencia: ${fmt(diff)})</div>`;
+        if (selected) {
+          let html = `💰 <strong>Cashback estimado:</strong> ${fmt(selected.cashback)} (${selected.cbPercent}% · ${esc(selected.card.name)})`;
+
+          // Si hay OTRA tarjeta que te conviene más, sugerirla (sin forzar el cambio)
+          if (recommendations && recommendations.length > 0 && String(recommendations[0].card.id) !== String(selected.card.id)) {
+            const best = recommendations[0];
+            html += `<div style="margin-top: 8px; padding: 8px 10px; background: var(--info-bg); border-radius: var(--radius-md); color: var(--info-text);">`;
+            html += `<strong>🎯 ${esc(best.card.name)} te conviene más</strong><br>`;
+            html += `<span style="font-size: 11px;">Beneficio total: <strong>+${fmt(best.totalBenefit)}</strong> (cashback ${best.cbPercent}% + float) vs +${fmt(selected.totalBenefit)} con ${esc(selected.card.name)}</span>`;
+            html += `</div>`;
+          } else if (selected.exceeds3pct) {
+            html += `<div style="margin-top: 8px; font-size: 11px; color: var(--warning-text);">⚠️ Esta compra subirá tu utilización a ${selected.newUtilization.toFixed(1)}% (sobre el 3% objetivo)</div>`;
           }
 
           cashbackInfo.style.display = 'block';
           cashbackInfo.innerHTML = html;
 
-          // Auto-seleccionar la tarjeta óptima si no hay ninguna seleccionada
-          if (!cardSel.value) {
-            cardSel.value = best.card.id;
+          // v80: auto-rellenar el campo editable de cashback (respeta si el usuario ya lo ajustó a mano)
+          if (cashbackAmountEl && cashbackAmountEl.dataset.userEdited !== 'true') {
+            cashbackAmountEl.value = Math.round(selected.cashback);
           }
+          if (cashbackFieldGroup) cashbackFieldGroup.style.display = 'flex';
         } else {
-          cashbackInfo.style.display = 'block';
-          cashbackInfo.innerHTML = `💰 Cashback estimado: <strong>${fmt(amount * 0.01)}</strong> (1% del gasto)`;
+          cashbackInfo.style.display = 'none';
+          if (cashbackFieldGroup) cashbackFieldGroup.style.display = 'none';
         }
       } else {
         cashbackInfo.style.display = 'none';
+        if (cashbackFieldGroup) cashbackFieldGroup.style.display = 'none';
       }
     }
 
     methodSel.addEventListener('change', updateUI);
+    // v80: recalcular cuando el usuario elige manualmente otra tarjeta
+    if (cardSel) cardSel.addEventListener('change', updateCashbackPreview);
     amountInput.addEventListener('input', updateCashbackPreview);
     amountInput.addEventListener('input', () => {
       // v63: actualizar preview de cuotas si está visible
@@ -9335,9 +9361,21 @@ async function buildAnnualPDF(state, year) {
     if (method === 'tarjeta' && cardId) {
       // En tarjeta SIEMPRE se carga el TOTAL (porque la tarjeta paga todo)
       // El cashback SIEMPRE es del dueño de la tarjeta, sin importar quién lo gastó
-      cashback = totalAmount * 0.01;
       cardIdNum = parseInt(cardId);
       const card = state.debts.find(x => x.id === cardIdNum);
+      // v80 FIX: antes esto SIEMPRE calculaba 1% fijo, ignorando el % de cashback real
+      // configurado para cada tarjeta (campo "Cashback %" al crearla). Ahora:
+      // 1) si el usuario ajustó manualmente el campo de cashback de esta compra, se respeta ese valor
+      // 2) si no, se calcula con el % real de la tarjeta (o 1% si nunca se configuró)
+      const cashbackFieldEl = document.getElementById('tx-cashback-amount');
+      if (cashbackFieldEl && cashbackFieldEl.value !== '' && cashbackFieldEl.offsetParent !== null) {
+        cashback = parseFloat(cashbackFieldEl.value) || 0;
+      } else if (card) {
+        const cbPercent = (card.cashbackPercent === undefined || card.cashbackPercent === null) ? 1 : card.cashbackPercent;
+        cashback = totalAmount * (cbPercent / 100);
+      } else {
+        cashback = totalAmount * 0.01;
+      }
       if (card) {
         card.balance += totalAmount;
       }
@@ -9517,6 +9555,15 @@ async function buildAnnualPDF(state, year) {
     if (document.getElementById('tx-pocket')) document.getElementById('tx-pocket').value = '';
     if (document.getElementById('tx-pay-card')) document.getElementById('tx-pay-card').value = '';
     document.getElementById('tx-cashback-info').style.display = 'none';
+
+    // v80: resetear el campo editable de cashback para que el próximo gasto se autocalcule de nuevo
+    const cashbackFieldEl = document.getElementById('tx-cashback-amount');
+    if (cashbackFieldEl) {
+      cashbackFieldEl.value = '';
+      delete cashbackFieldEl.dataset.userEdited;
+    }
+    const cashbackFieldGroupEl = document.getElementById('tx-cashback-field-group');
+    if (cashbackFieldGroupEl) cashbackFieldGroupEl.style.display = 'none';
     
     // v63: limpiar campos de cuotas
     const instChk = document.getElementById('tx-is-installment');
@@ -10192,7 +10239,27 @@ async function buildAnnualPDF(state, year) {
           ${cardStats.txCount > 0 ? `<div style="margin-top: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 12px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: var(--text-secondary);">📊 Compras este mes:</span><span style="font-weight: 500;">${cardStats.txCount} (${fmt(cardStats.totalSpent)})</span></div>
             <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">💰 Cashback ganado:</span><span style="font-weight: 500; color: var(--success-text);">+${fmt(cardStats.totalCashback)}</span></div>
-          </div>` : ''}
+          </div>
+          <details style="margin-top: 6px; font-size: 12px;">
+            <summary style="cursor: pointer; color: var(--text-secondary); padding: 4px 0;">📋 Ver los ${cardStats.txCount} gastos de este mes</summary>
+            <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto;">
+              ${cardStats.transactions.map(t => {
+                const cat = (typeof CATEGORIES !== 'undefined' ? CATEGORIES : []).find(c => c.id === t.category);
+                const catIcon = cat ? cat.icon : '📋';
+                const ds = new Date(t.date + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+                return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
+                  <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${catIcon} ${esc(t.desc)}</div>
+                    <div style="font-size: 10px; color: var(--text-tertiary);">${ds}${t.installment ? ` · Cuota ${t.installment.current}/${t.installment.total}` : ''}</div>
+                  </div>
+                  <div style="text-align: right; flex-shrink: 0; margin-left: 8px;">
+                    <div style="font-weight: 600;">${fmt(t.amount)}</div>
+                    ${t.cashback > 0 ? `<div style="font-size: 10px; color: var(--success-text);">+${fmt(t.cashback)} cashback</div>` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </details>` : ''}
           <div style="display: grid; grid-template-columns: 1fr 100px auto; gap: 8px; margin-top: 10px; align-items: center;">
             <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, 'balance', this.value)" placeholder="Saldo actual" title="Editar saldo rápido" />
             <input type="number" value="${d.cutoffDay || ''}" min="1" max="31" onchange="updateDebt(${d.id}, 'cutoffDay', this.value)" placeholder="Día corte" title="Día del mes que cierra el periodo" />
@@ -10375,7 +10442,9 @@ async function buildAnnualPDF(state, year) {
     const cardTxs = txs.filter(t => t.cardId === cardId);
     const totalSpent = cardTxs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
     const totalCashback = cardTxs.reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
-    return { txCount: cardTxs.length, totalSpent, totalCashback };
+    // v80: lista ordenada por fecha (más reciente primero), para mostrar el detalle de gastos por tarjeta
+    const sortedTxs = [...cardTxs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    return { txCount: cardTxs.length, totalSpent, totalCashback, transactions: sortedTxs };
   }
 
   // v64: Información de cuotas activas de una tarjeta
