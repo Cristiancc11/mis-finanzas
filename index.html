@@ -479,7 +479,7 @@
     </div>
     <div class="hero-controls">
       <select id="currency-select"><option value="COP" selected>COP $</option></select>
-      <button onclick="toggleTheme()" id="theme-toggle-btn" class="btn-icon" title="Cambiar tema">🌗</button>
+      <button onclick="toggleTheme()" id="theme-toggle-btn" class="btn-icon" title="Click para cambiar entre Claro → Oscuro → Automático"><span id="theme-toggle-icon">🌗</span> <span id="theme-toggle-label">Auto</span></button>
       <button onclick="exportData()" class="btn-icon" title="Exportar datos">📥 Exportar</button>
       <button onclick="importData()" class="btn-icon" title="Importar datos">📤 Importar</button>
       <button onclick="migrateLocalData()" class="btn-icon" title="Migrar datos del navegador a la nube" id="migrate-btn" style="display: none;">☁️ Subir local</button>
@@ -1998,51 +1998,13 @@
         </div>
       </div>
 
-      <!-- Selector de tema (claro/oscuro/auto) -->
-      <div style="margin-bottom: 20px;">
-        <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 500;">🌗 Modo</label>
-        <div class="theme-mode-selector">
-          <button class="theme-mode-btn" data-mode="light" onclick="setThemeMode('light')">
-            <span class="theme-mode-icon">☀️</span>
-            <span>Claro</span>
-          </button>
-          <button class="theme-mode-btn" data-mode="dark" onclick="setThemeMode('dark')">
-            <span class="theme-mode-icon">🌙</span>
-            <span>Oscuro</span>
-          </button>
-          <button class="theme-mode-btn active" data-mode="auto" onclick="setThemeMode('auto')">
-            <span class="theme-mode-icon">⚙️</span>
-            <span>Auto</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Selector de densidad -->
-      <div style="margin-bottom: 20px;">
-        <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 500;">📐 Densidad de información</label>
-        <div class="density-selector">
-          <button class="density-btn" data-density="compact" onclick="setDensity('compact')">
-            <span class="density-icon">≡</span>
-            <span class="density-label">Compacto</span>
-            <span class="density-desc">Más info en pantalla</span>
-          </button>
-          <button class="density-btn active" data-density="normal" onclick="setDensity('normal')">
-            <span class="density-icon">═</span>
-            <span class="density-label">Normal</span>
-            <span class="density-desc">Recomendado</span>
-          </button>
-          <button class="density-btn" data-density="comfortable" onclick="setDensity('comfortable')">
-            <span class="density-icon">▭</span>
-            <span class="density-label">Espacioso</span>
-            <span class="density-desc">Más cómodo</span>
-          </button>
-        </div>
-      </div>
+      <!-- v76: "Modo" (claro/oscuro) se quitó de aquí — ya vive en el botón 🌗 del banner,
+           que ahora es más claro de usar. Tener dos controles para lo mismo causaba conflictos. -->
 
       <!-- Botón restablecer -->
       <button onclick="resetVisualPreferences()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span>↺</span>
-        <span>Restablecer a valores por defecto</span>
+        <span>Restablecer color a valores por defecto</span>
       </button>
     </div>
 

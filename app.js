@@ -2168,24 +2168,19 @@ function applyVisualPreferences() {
   const prefs = loadVisualPreferences();
   const html = document.documentElement;
 
-  // Limpiar clases viejas
+  // Limpiar clases viejas de color
   html.classList.forEach(cls => {
-    if (cls.startsWith('color-') || cls.startsWith('density-')) {
+    if (cls.startsWith('color-')) {
       html.classList.remove(cls);
     }
   });
 
-  // Aplicar tema de color
+  // Aplicar tema de color (Clásico/Océano/Coral/etc.)
   html.classList.add('color-' + (prefs.theme || 'default'));
 
-  // Aplicar densidad
-  html.classList.add('density-' + (prefs.density || 'normal'));
-
-  // Aplicar modo (claro/oscuro/auto)
-  html.classList.remove('theme-light', 'theme-dark');
-  if (prefs.mode === 'light') html.classList.add('theme-light');
-  else if (prefs.mode === 'dark') html.classList.add('theme-dark');
-  // 'auto' no agrega clase, deja que prefers-color-scheme actúe
+  // v76: el modo claro/oscuro y la densidad de información se quitaron de aquí.
+  // El modo claro/oscuro ahora lo controla ÚNICAMENTE el botón 🌗 del banner (ver toggleTheme()),
+  // para evitar tener dos sistemas separados peleando por el mismo estado visual.
 
   // Actualizar UI de selectores
   updateVisualSelectors(prefs);
@@ -2195,16 +2190,6 @@ function updateVisualSelectors(prefs) {
   // Color
   document.querySelectorAll('.color-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
-  });
-
-  // Modo
-  document.querySelectorAll('.theme-mode-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === prefs.mode);
-  });
-
-  // Densidad
-  document.querySelectorAll('.density-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.density === prefs.density);
   });
 }
 
@@ -2222,35 +2207,12 @@ window.setColorTheme = function(theme) {
   toastSuccess('Tema actualizado', `Color "${getThemeName(theme)}" aplicado`);
 };
 
-window.setThemeMode = function(mode) {
-  const prefs = loadVisualPreferences();
-  prefs.mode = mode;
-  saveVisualPreferences(prefs);
-  applyVisualPreferences();
-  
-  // Re-render charts si existen
-  if (typeof renderCharts === 'function') {
-    setTimeout(renderCharts, 100);
-  }
-  
-  const names = { light: 'Claro', dark: 'Oscuro', auto: 'Automático' };
-  toastSuccess('Modo actualizado', `Modo ${names[mode]} aplicado`);
-};
-
-window.setDensity = function(density) {
-  const prefs = loadVisualPreferences();
-  prefs.density = density;
-  saveVisualPreferences(prefs);
-  applyVisualPreferences();
-  
-  const names = { compact: 'Compacto', normal: 'Normal', comfortable: 'Espacioso' };
-  toastSuccess('Densidad actualizada', `Vista ${names[density]} aplicada`);
-};
+// v76: setThemeMode y setDensity se quitaron — ya no hay UI que las llame (ver nota en applyVisualPreferences)
 
 window.resetVisualPreferences = async function() {
   const confirmed = await showConfirm({
-    title: '¿Restablecer personalización?',
-    message: 'Volverá a los valores originales: color clásico, modo automático, densidad normal.',
+    title: '¿Restablecer color?',
+    message: 'Volverá al color clásico original.',
     confirmText: 'Sí, restablecer',
     cancelText: 'Cancelar',
     type: 'warning',
@@ -2259,15 +2221,16 @@ window.resetVisualPreferences = async function() {
   
   if (!confirmed) return;
 
-  const defaultPrefs = { theme: 'default', mode: 'auto', density: 'normal' };
-  saveVisualPreferences(defaultPrefs);
+  const prefs = loadVisualPreferences();
+  prefs.theme = 'default';
+  saveVisualPreferences(prefs);
   applyVisualPreferences();
   
   if (typeof renderCharts === 'function') {
     setTimeout(renderCharts, 100);
   }
   
-  toastSuccess('Restablecido', 'Tu dashboard volvió al diseño original');
+  toastSuccess('Restablecido', 'El color volvió al diseño original');
 };
 
 function getThemeName(theme) {
@@ -3133,7 +3096,12 @@ function updateThemeToggleIcon() {
   if (!btn) return;
   const current = localStorage.getItem(THEME_KEY) || 'auto';
   const icons = { light: '☀️', dark: '🌙', auto: '🌗' };
-  btn.textContent = icons[current];
+  const labels = { light: 'Claro', dark: 'Oscuro', auto: 'Auto' };
+  const iconEl = document.getElementById('theme-toggle-icon');
+  const labelEl = document.getElementById('theme-toggle-label');
+  if (iconEl) iconEl.textContent = icons[current];
+  if (labelEl) labelEl.textContent = labels[current];
+  btn.title = `Modo actual: ${labels[current]}. Click para cambiar → Claro → Oscuro → Automático`;
 }
 
 function toggleTheme() {
@@ -3144,7 +3112,22 @@ function toggleTheme() {
 
 // Aplicar tema guardado al cargar
 (function applyStoredTheme() {
-  const saved = localStorage.getItem(THEME_KEY) || 'auto';
+  // v76: migración de seguridad — si el usuario nunca usó el botón del banner (THEME_KEY vacío)
+  // pero SÍ había elegido un modo en el selector viejo de Perfil (ahora eliminado), respetamos
+  // esa elección en vez de perderla silenciosamente.
+  let saved = localStorage.getItem(THEME_KEY);
+  if (!saved) {
+    try {
+      const oldPrefsRaw = localStorage.getItem('finanzaspro_visual_prefs');
+      if (oldPrefsRaw) {
+        const oldPrefs = JSON.parse(oldPrefsRaw);
+        if (oldPrefs && oldPrefs.mode && oldPrefs.mode !== 'auto') {
+          saved = oldPrefs.mode;
+        }
+      }
+    } catch(e) {}
+  }
+  saved = saved || 'auto';
   setTheme(saved);
 })();
 
