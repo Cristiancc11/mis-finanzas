@@ -9339,16 +9339,41 @@ async function buildAnnualPDF(state, year) {
     saveState(); populatePocketsSelector(); renderBudget(); renderTransactions(); renderResumen(); renderDebts(); renderPockets();
   };
 
-  window.resetData = function() {
-    const c = prompt('Escribe "reset" para volver a los datos iniciales, o "borrar" para vaciar todo:');
-    if (c === 'reset') {
-      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-      saveState(); renderAll();
-    } else if (c === 'borrar') {
-      state = { currency: 'COP', pockets: [], incomes: [], debts: [], goals: [], budgets: {}, transactions: {} };
-      saveState(); renderAll();
-    }
+  // v70: Reemplaza el viejo resetData() (un solo prompt con palabras clave "reset"/"borrar",
+  // confuso y peligroso). Ahora son 2 acciones separadas, cada una con su propia confirmación clara.
+
+  // Restablece el dashboard a los valores de ejemplo/iniciales
+  window.resetToDefaults = async function() {
+    const confirmed = await showConfirm({
+      title: '¿Restablecer a valores iniciales?',
+      message: 'Esto reemplazará TODOS tus datos actuales (bolsillos, movimientos, tarjetas, metas, deudas) con los datos de ejemplo iniciales. Tus datos actuales se perderán para siempre.',
+      confirmText: '↻ Sí, restablecer',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    saveState(); renderAll();
+    if (typeof toastSuccess === 'function') toastSuccess('Restablecido', 'Tu dashboard volvió a los valores iniciales');
   };
+
+  // Vacía completamente todos los datos del usuario (deja todo en cero)
+  window.clearAllData = async function() {
+    const confirmed = await showConfirm({
+      title: '¿Vaciar todos tus datos?',
+      message: 'Esto ELIMINARÁ para siempre todos tus bolsillos, movimientos, tarjetas, metas, deudas e ingresos. Empezarás desde cero, con el dashboard completamente vacío. Esta acción no se puede deshacer.',
+      confirmText: '🧹 Sí, vaciar todo',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+    state = { currency: 'COP', pockets: [], incomes: [], debts: [], goals: [], budgets: {}, transactions: {}, monthlyIncomes: {}, extraIncomes: {}, myDebts: [], debtsToMe: [] };
+    saveState(); renderAll();
+    if (typeof toastSuccess === 'function') toastSuccess('Datos vaciados', 'Tu dashboard está limpio, listo para empezar de nuevo');
+  };
+
+  // Legacy: por si algún lugar viejo del código todavía llama a resetData()
+  window.resetData = window.resetToDefaults;
 
   function renderPockets() {
     const list = document.getElementById('pocket-list');

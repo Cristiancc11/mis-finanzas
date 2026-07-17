@@ -483,7 +483,6 @@
       <button onclick="exportData()" class="btn-icon" title="Exportar datos">📥 Exportar</button>
       <button onclick="importData()" class="btn-icon" title="Importar datos">📤 Importar</button>
       <button onclick="migrateLocalData()" class="btn-icon" title="Migrar datos del navegador a la nube" id="migrate-btn" style="display: none;">☁️ Subir local</button>
-      <button class="reset-btn" onclick="resetData()" title="Resetear datos">↻</button>
       <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
     <div id="sync-indicator" style="position: absolute; top: 12px; right: 16px; font-size: 11px; color: rgba(255,255,255,0.7);"></div>
@@ -1994,7 +1993,7 @@
           <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Fecha de nacimiento</label>
           <input type="date" id="profile-birth-date" />
         </div>
-        <button onclick="saveProfile()" style="padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; margin-top: 4px;">💾 Guardar cambios</button>
+        <button onclick="saveProfile()" style="padding: 12px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; margin-top: 4px;">💾 Guardar cambios</button>
       </div>
     </div>
 
@@ -2007,6 +2006,8 @@
       <p class="card-title" style="color: var(--danger-text);">⚠️ Zona peligrosa</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Acciones que no se pueden deshacer.</p>
       <button onclick="changePasswordPrompt()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 8px;">🔑 Cambiar contraseña</button>
+      <button onclick="window.resetToDefaults()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 8px;">↻ Restablecer a valores iniciales</button>
+      <button onclick="window.clearAllData()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 8px;">🧹 Vaciar todos mis datos</button>
       <button onclick="deleteAccountPrompt()" style="width: 100%; padding: 10px; background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); border-radius: 8px; cursor: pointer;">🗑️ Eliminar cuenta</button>
     </div>
   </div>
