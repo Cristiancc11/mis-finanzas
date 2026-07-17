@@ -1620,19 +1620,27 @@
       <div class="summary-row"><span>Pago del mes (sugerido)</span><span id="mydebts-monthly" style="font-weight: 500;">—</span></div>
       <div class="summary-row"><span>Próximo vencimiento</span><span id="mydebts-next-due" style="font-weight: 500; color: var(--info-text);">—</span></div>
       <div class="summary-row"><span>Deudas activas</span><span id="mydebts-count" style="font-weight: 500;">—</span></div>
+      <p style="font-size: 11px; color: var(--text-tertiary); margin: 10px 0 0; line-height: 1.4;">💡 Este total NO incluye cuotas de tarjeta — esas ya están contadas en el saldo de tus tarjetas (ver abajo) para no duplicar la deuda.</p>
+    </div>
+
+    <!-- v93: resumen de solo lectura de cuotas activas — dato real tomado de tus tarjetas,
+         para que veas TODA tu deuda en un solo lugar sin necesidad de registrarla dos veces -->
+    <div class="raised-card" id="mydebts-installments-card" style="display: none; border: 0.5px solid var(--info-text);">
+      <p class="card-title">💳 Cuotas activas de tarjetas</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Ya cuentan como deuda automáticamente (están en el saldo de tu tarjeta) — solo para que las veas junto a tus otras deudas.</p>
+      <div id="mydebts-installments-list"></div>
     </div>
 
     <!-- Card de agregar nueva deuda -->
     <div class="raised-card">
       <p class="card-title">➕ Nueva deuda</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Registra préstamos, tarjetas a cuotas o lo que le debes a alguien.</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Préstamos bancarios o lo que le debes a alguien. <strong>Si compraste algo a cuotas con tarjeta, no lo registres aquí</strong> — ya se trackea solo desde "Registrar gasto" → Financiación (lo verás arriba, en "Cuotas activas").</p>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-        <input type="text" id="mydebt-name" placeholder="Ej: Préstamo banco, Nevera Mastercard, A mamá" />
+        <input type="text" id="mydebt-name" placeholder="Ej: Préstamo banco, A mamá" />
 
         <select id="mydebt-type">
           <option value="prestamo">💼 Préstamo (banco o entidad)</option>
-          <option value="tarjeta_cuotas">💳 Tarjeta a cuotas</option>
           <option value="persona">👤 Persona (informal)</option>
           <option value="otro">📋 Otro</option>
         </select>

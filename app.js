@@ -5446,7 +5446,16 @@ async function buildMonthlyPDF(state, monthKey) {
   const extraIncomes = (state.extraIncomes && state.extraIncomes[monthKey]) || [];
 
   const totalPockets = pockets.reduce((s, p) => s + (p.amount || 0), 0);
-  const totalDebts = debts.reduce((s, d) => s + (d.balance || 0), 0);
+  // v93 FIX: incluir deudas personales (Mis Deudas) en el patrimonio neto, no solo tarjetas.
+  // Se calcula directo sobre el parámetro "state" de esta función (no la función del closure
+  // principal) para evitar depender de que dos copias de state estén sincronizadas.
+  const totalMyDebtsPendingNow = Array.isArray(state.myDebts)
+    ? state.myDebts.filter(d => !d.paid).reduce((s, d) => {
+        const paid = Array.isArray(d.payments) ? d.payments.reduce((s2, p) => s2 + (p.amount || 0), 0) : 0;
+        return s + Math.max(0, (d.totalAmount || 0) - paid);
+      }, 0)
+    : 0;
+  const totalDebts = debts.reduce((s, d) => s + (d.balance || 0), 0) + totalMyDebtsPendingNow;
   const netWorth = totalPockets - totalDebts;
   // FIX: excluir pagos de tarjeta (son transferencias internas, no gastos reales — mismo criterio
   // que usa el resto de la app desde v65). Antes este reporte SÍ los contaba, así que el PDF mostraba
@@ -6008,7 +6017,14 @@ async function buildAnnualPDF(state, year) {
   // v90: patrimonio neto actual (el reporte mensual ya lo mostraba, el anual no) + tasa de
   // ahorro anual — completa el panorama financiero del año, no solo flujos de caja
   const totalPocketsNow = (state.pockets || []).reduce((s, p) => s + (p.amount || 0), 0);
-  const totalDebtsNow = (state.debts || []).reduce((s, d) => s + (d.balance || 0), 0);
+  // v93 FIX: incluir deudas personales (Mis Deudas) en el patrimonio neto, no solo tarjetas
+  const totalMyDebtsPendingNow = Array.isArray(state.myDebts)
+    ? state.myDebts.filter(d => !d.paid).reduce((s, d) => {
+        const paid = Array.isArray(d.payments) ? d.payments.reduce((s2, p) => s2 + (p.amount || 0), 0) : 0;
+        return s + Math.max(0, (d.totalAmount || 0) - paid);
+      }, 0)
+    : 0;
+  const totalDebtsNow = (state.debts || []).reduce((s, d) => s + (d.balance || 0), 0) + totalMyDebtsPendingNow;
   const netWorthNow = totalPocketsNow - totalDebtsNow;
   const annualSavings = totalAnnualIncome - totalAnnualExpense;
   const annualSavingsRate = totalAnnualIncome > 0 ? (annualSavings / totalAnnualIncome) * 100 : 0;
@@ -12420,7 +12436,12 @@ async function buildAnnualPDF(state, year) {
     const incExtras = totalMonthExtraIncome();
     const incCashback = totalMonthCashback();
     const inc = incRecurrent + incExtras + incCashback;
-    const debt = totalDebt();
+    // v93 FIX: el patrimonio neto ahora resta también las deudas personales (préstamos,
+    // "le debo a X" en Mis Deudas). Antes solo restaba el saldo de tarjetas, así que si tenías
+    // un préstamo registrado, ese dinero no afectaba tu patrimonio neto en ningún lado.
+    // Nota: las cuotas de tarjeta NO se suman aparte aquí — ya están incluidas en el saldo
+    // de la tarjeta (se cargan completas desde la primera cuota), sumarlas de nuevo sería duplicar.
+    const debt = totalDebt() + totalMyDebtsPending();
     const nw = sav - debt;
     const spent = totalSpent();
     const budget = totalBudget();
@@ -12428,7 +12449,9 @@ async function buildAnnualPDF(state, year) {
     const bal = inc - exp;
 
     document.getElementById('net-worth').textContent = fmt(nw);
-    document.getElementById('net-worth-detail').textContent = `Ahorros ${fmt(sav)} − Deudas ${fmt(debt)}`;
+    document.getElementById('net-worth-detail').textContent = totalMyDebtsPending() > 0
+      ? `Ahorros ${fmt(sav)} − Deudas ${fmt(debt)} (tarjetas + préstamos)`
+      : `Ahorros ${fmt(sav)} − Deudas ${fmt(debt)}`;
     document.getElementById('m-savings').textContent = sav > 0 ? fmt(sav) : '—';
     if (exp > 0) document.getElementById('m-savings-detail').textContent = `Cubre ${(sav/exp).toFixed(1)} meses de gastos`;
 
@@ -13999,6 +14022,14 @@ async function buildAnnualPDF(state, year) {
     return Math.max(0, orig - paid);
   }
   window.getMyDebtPending = getMyDebtPending;
+
+  // v93: total pendiente de TODAS las deudas personales activas (préstamos, "le debo a X").
+  // Se usa para que el patrimonio neto refleje también estas deudas, no solo las tarjetas.
+  function totalMyDebtsPending() {
+    if (!Array.isArray(state.myDebts)) return 0;
+    return state.myDebts.filter(d => !d.paid).reduce((s, d) => s + getMyDebtPending(d), 0);
+  }
+  window.totalMyDebtsPending = totalMyDebtsPending;
   
   // Helper: total pagado de una deuda
   function getMyDebtPaid(d) {
@@ -14345,10 +14376,52 @@ async function buildAnnualPDF(state, year) {
   };
   
   // Render principal
+  // v93: muestra las cuotas activas de TODAS las tarjetas en Mis Deudas, de solo lectura.
+  // No duplica datos — lee directo de las transacciones con cuotas ya registradas al comprar.
+  function renderCardInstallmentsSummary() {
+    const card = document.getElementById('mydebts-installments-card');
+    const container = document.getElementById('mydebts-installments-list');
+    if (!card || !container) return;
+
+    const allGroups = [];
+    (state.debts || []).forEach(d => {
+      const info = getCardInstallmentInfo(d.id);
+      info.groups.forEach(g => {
+        if (g.cuotasPending > 0) allGroups.push({ ...g, cardName: d.name });
+      });
+    });
+
+    if (allGroups.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = 'block';
+    const totalPending = allGroups.reduce((s, g) => s + g.pendingAmount, 0);
+
+    container.innerHTML = allGroups.map(g => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 6px;">
+        <div style="min-width: 0;">
+          <div style="font-weight: 600; font-size: 13px;">${esc(g.desc)}</div>
+          <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">${esc(g.cardName)} · Cuota ${g.cuotasPaid + 1}/${g.totalCuotas} ${g.hasInterest ? '(con interés)' : '(sin interés)'}</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0; margin-left: 10px;">
+          <div style="font-size: 13px; font-weight: 700;">${fmt(g.pendingAmount)}</div>
+          <div style="font-size: 10px; color: var(--text-tertiary);">pendiente</div>
+        </div>
+      </div>
+    `).join('') + `
+      <div class="summary-row" style="margin-top: 8px; font-weight: 500;"><span>Total en cuotas pendientes</span><span style="color: var(--warning-text);">${fmt(totalPending)}</span></div>
+    `;
+  }
+
   function renderMyDebts() {
     const list = document.getElementById('mydebts-list');
     if (!list) return;
-    
+
+    // v93: resumen de solo lectura de cuotas activas de tarjeta (dato real, no duplicado)
+    try { renderCardInstallmentsSummary(); } catch(e) { console.error('❌ Error en renderCardInstallmentsSummary:', e); }
+
     const debts = Array.isArray(state.myDebts) ? state.myDebts : [];
     const active = debts.filter(d => !d.paid);
     const paid = debts.filter(d => d.paid);
