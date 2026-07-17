@@ -10668,19 +10668,24 @@ async function buildAnnualPDF(state, year) {
     if (!list) return;
 
     let tBudget = 0, tSpent = 0;
-    let html = '', editHtml = '';
+    let overCount = 0, warnCount = 0, okCount = 0;
 
-    CATEGORIES.forEach(cat => {
+    // v85: primero calculamos todo por categoría, LUEGO ordenamos por urgencia
+    // (las que están excedidas o cerca del límite aparecen primero — antes el orden
+    // era fijo, sin importar cuáles necesitaban atención de verdad)
+    const catData = CATEGORIES.map(cat => {
       const bg = b[cat.id] || 0;
       const sp = spentByCategory(cat.id);
       const av = bg - sp;
       const hasBudget = bg > 0;
       const pct = hasBudget ? Math.min(100, (sp / bg) * 100) : 0;
+      const realPct = hasBudget ? (sp / bg) * 100 : 0; // sin tope, para poder ordenar bien a los que exceden mucho más que otros
       tBudget += bg; tSpent += sp;
       let cls = 'ok';
-      if (hasBudget && pct >= 100) cls = 'over';
-      else if (hasBudget && pct >= 80) cls = 'warn';
-      
+      if (hasBudget && pct >= 100) { cls = 'over'; overCount++; }
+      else if (hasBudget && pct >= 80) { cls = 'warn'; warnCount++; }
+      else if (hasBudget) okCount++;
+
       let status;
       if (!hasBudget) {
         status = sp > 0 ? 'Sin límite (solo seguimiento)' : 'Sin gastos';
@@ -10688,10 +10693,22 @@ async function buildAnnualPDF(state, year) {
         status = pct >= 100 ? `Excediste ${fmt(sp - bg)}` : `${pct.toFixed(0)}% usado`;
       }
 
-      // Si no hay presupuesto pero sí hay gastos, mostrar barra neutral
       const barWidth = hasBudget ? pct : (sp > 0 ? 100 : 0);
       const barClass = hasBudget ? cls : 'tracking';
 
+      return { cat, bg, sp, av, hasBudget, pct, realPct, cls, status, barWidth, barClass };
+    });
+
+    // Orden de urgencia: excedidas primero, luego en alerta, luego ok, luego sin presupuesto
+    const urgencyRank = { over: 0, warn: 1, ok: 2, tracking: 3 };
+    const sortedCats = [...catData].sort((a, b2) => {
+      const rankDiff = urgencyRank[a.barClass] - urgencyRank[b2.barClass];
+      if (rankDiff !== 0) return rankDiff;
+      return b2.realPct - a.realPct; // dentro del mismo grupo, mayor % primero
+    });
+
+    let html = '';
+    sortedCats.forEach(({ cat, bg, sp, av, hasBudget, status, barWidth, barClass }) => {
       html += `<div class="budget-row">
         <div>${cat.icon} ${cat.label}</div>
         <div>${hasBudget ? fmt(bg) : '<span style="color: var(--text-tertiary); font-style: italic; font-size: 12px;">Sin límite</span>'}</div>
@@ -10702,7 +10719,12 @@ async function buildAnnualPDF(state, year) {
         </div>
         <div style="text-align: right; font-weight: 500;" class="${hasBudget && av < 0 ? 'balance-negative' : (hasBudget ? 'balance-positive' : '')}">${hasBudget ? fmt(av) : '—'}</div>
       </div>`;
+    });
 
+    // v85: el editor de presupuestos SÍ se mantiene en orden natural (más fácil de encontrar
+    // una categoría específica para editarla, no tiene sentido de "urgencia" reordenarlo)
+    let editHtml = '';
+    catData.forEach(({ cat, bg, sp, hasBudget, pct, cls }) => {
       editHtml += `<div class="budget-edit-item ${hasBudget ? 'has-budget' : 'no-budget'} ${cls === 'over' ? 'over-budget' : ''}">
         <div class="budget-edit-header">
           <span class="budget-edit-cat">${cat.icon} ${cat.label}</span>
@@ -10718,6 +10740,21 @@ async function buildAnnualPDF(state, year) {
 
     list.innerHTML = html;
     editList.innerHTML = editHtml;
+
+    // v85: resumen rápido — de un vistazo, cuántas categorías necesitan atención
+    const quickSumEl = document.getElementById('budget-quick-summary');
+    if (quickSumEl) {
+      if (overCount + warnCount + okCount === 0) {
+        quickSumEl.innerHTML = '';
+      } else {
+        let chips = '';
+        if (overCount > 0) chips += `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--danger-bg); color: var(--danger-text); border-radius: 8px; font-size: 11px; font-weight: 600;">⚠️ ${overCount} excedida${overCount > 1 ? 's' : ''}</span>`;
+        if (warnCount > 0) chips += `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--warning-bg); color: var(--warning-text); border-radius: 8px; font-size: 11px; font-weight: 600;">🟡 ${warnCount} cerca del límite</span>`;
+        if (okCount > 0) chips += `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--success-bg); color: var(--success-text); border-radius: 8px; font-size: 11px; font-weight: 600;">✅ ${okCount} bajo control</span>`;
+        quickSumEl.innerHTML = `<div style="display: flex; gap: 6px; flex-wrap: wrap;">${chips}</div>`;
+      }
+    }
+
     document.getElementById('budget-total').textContent = fmt(tBudget);
     document.getElementById('budget-spent-total').textContent = fmt(tSpent);
     const av = tBudget - tSpent;

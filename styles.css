@@ -3952,7 +3952,7 @@ html.density-comfortable .net-worth-hero-value {
    ======================================== */
 
 .info-banner {
-  background: linear-gradient(135deg, var(--info-bg), rgba(127, 119, 221, 0.08));
+  background: linear-gradient(135deg, var(--info-bg), var(--accent-glow));
   border-left: 3px solid var(--info-text);
   padding: 14px 16px;
   border-radius: 12px;
@@ -4041,13 +4041,13 @@ html.density-comfortable .net-worth-hero-value {
 }
 
 .budget-edit-item:hover {
-  border-color: var(--accent-from, #7F77DD);
+  border-color: var(--accent-to);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(127, 119, 221, 0.08);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .budget-edit-item.has-budget {
-  background: linear-gradient(135deg, var(--bg-secondary), rgba(127, 119, 221, 0.05));
+  background: linear-gradient(135deg, var(--bg-secondary), var(--accent-glow));
 }
 
 .budget-edit-item.no-budget {
