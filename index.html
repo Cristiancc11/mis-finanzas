@@ -1411,7 +1411,30 @@
   </div>
 
   <div class="fin-section" id="section-deudas">
-    <div class="insight-box success"><strong>Buen hábito:</strong> Pagas tus tarjetas completas cada mes evitando intereses.</div>
+
+    <!-- v79: resumen general (reemplaza el mensaje estático que siempre decía lo mismo) -->
+    <div class="hero-metrics" id="card-overview-stats"></div>
+
+    <!-- v79: insight dinámico, calculado de verdad a partir de tus tarjetas -->
+    <div id="card-insight-container"></div>
+
+    <!-- v79: próximos pagos consolidados, ordenados por urgencia -->
+    <div class="raised-card" id="upcoming-payments-card" style="display: none;">
+      <p class="card-title">📅 Próximos pagos</p>
+      <div id="upcoming-payments-content"></div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">Mis tarjetas</p>
+      <div id="debt-list"></div>
+      <div class="summary-row" style="margin-top: 12px;"><span>Saldo total</span><span id="debt-total" style="font-weight: 500; color: var(--warning-text);">—</span></div>
+      <div class="summary-row"><span>Cupo disponible</span><span id="debt-available" style="font-weight: 500; color: var(--success-text);">—</span></div>
+      <div class="summary-row"><span>Utilización</span><span id="debt-utilization" style="font-weight: 500;">—</span></div>
+      <div class="summary-row"><span>💰 Cashback total del mes</span><span id="cashback-total" style="font-weight: 500; color: var(--success-text);">—</span></div>
+      <div class="summary-row"><span>🏆 Cashback histórico (todo el tiempo)</span><span id="cashback-alltime" style="font-weight: 500; color: var(--success-text);">—</span></div>
+    </div>
+
+    <div class="section-group-title">➕ Agregar una nueva tarjeta</div>
 
     <!-- SELECTOR DE PLANTILLA -->
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
@@ -1532,15 +1555,6 @@
         <input type="number" inputmode="decimal" id="debt-cashback" placeholder="Cashback %" min="0" max="100" step="0.1" value="0" title="% de cashback que da esta tarjeta" />
         <input type="text" id="debt-benefits" placeholder="Beneficios (opcional)" />
       </div>
-    </div>
-
-    <div class="raised-card">
-      <p class="card-title">Mis tarjetas</p>
-      <div id="debt-list"></div>
-      <div class="summary-row" style="margin-top: 12px;"><span>Saldo total</span><span id="debt-total" style="font-weight: 500; color: var(--warning-text);">—</span></div>
-      <div class="summary-row"><span>Cupo disponible</span><span id="debt-available" style="font-weight: 500; color: var(--success-text);">—</span></div>
-      <div class="summary-row"><span>Utilización</span><span id="debt-utilization" style="font-weight: 500;">—</span></div>
-      <div class="summary-row"><span>💰 Cashback total del mes</span><span id="cashback-total" style="font-weight: 500; color: var(--success-text);">—</span></div>
     </div>
   </div>
 
