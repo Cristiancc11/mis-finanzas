@@ -177,6 +177,13 @@
     transition: all 0.2s ease;
     font-family: inherit;
   }
+  /* v74: refuerzo directo para que la LISTA desplegable de cada select combine con el tema.
+     El color-scheme de arriba ya le indica al navegador qué paleta nativa usar, pero esto
+     asegura consistencia también en navegadores que no lo respetan del todo (ej. Firefox). */
+  select option {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
   input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--accent-to) !important;
@@ -375,6 +382,7 @@
 
 
   :root, html.theme-light {
+    color-scheme: light;
     --bg-primary: #ffffff;
     --bg-secondary: #f5f4ef;
     --bg-tertiary: #faf9f5;
@@ -398,6 +406,7 @@
     --radius-lg: 12px;
   }
   html.theme-dark {
+    color-scheme: dark;
     --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f; --bg-sidebar: #100f0c;
     --text-primary: #e8e6df; --text-secondary: #a8a8a0; --text-tertiary: #757570;
     --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
@@ -410,6 +419,7 @@
   /* Solo se aplica si no hay clase manual (auto basado en sistema) */
   @media (prefers-color-scheme: dark) {
     html:not(.theme-light):not(.theme-dark) {
+      color-scheme: dark;
       --bg-primary: #1a1a18; --bg-secondary: #242422; --bg-tertiary: #15140f; --bg-sidebar: #100f0c;
       --text-primary: #e8e6df; --text-secondary: #a8a8a0; --text-tertiary: #757570;
       --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
