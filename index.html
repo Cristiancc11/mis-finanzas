@@ -1616,6 +1616,57 @@
   <!-- ============================================ -->
   <div class="fin-section" id="section-analisis">
 
+    <!-- v71: CONVERSOR DE MONEDA — TRM oficial + tasas de mercado en vivo -->
+    <div class="raised-card" id="currency-converter-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+        <div>
+          <p class="card-title" style="margin-bottom: 2px;">💱 Conversor de moneda</p>
+          <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">TRM oficial (Superintendencia Financiera) + tasas de mercado, actualizadas automáticamente</p>
+        </div>
+        <button onclick="window.fetchExchangeRates(true)" id="fx-refresh-btn" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--text-secondary);">
+          🔄 Actualizar
+        </button>
+      </div>
+
+      <!-- TRM oficial destacada -->
+      <div id="fx-trm-display" style="margin-top: 12px; padding: 12px 14px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-left: 3px solid var(--accent-to); border-radius: 10px;">
+        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px;">🏛️ TRM oficial de hoy</div>
+        <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);" id="fx-trm-value">Cargando...</div>
+        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;" id="fx-trm-updated"></div>
+      </div>
+
+      <!-- Conversor interactivo -->
+      <div class="form-section-title">🔁 Convertir</div>
+      <div class="form-grid-3" style="align-items: end;">
+        <div class="field-group">
+          <label class="field-label" for="fx-amount">Monto</label>
+          <input type="number" id="fx-amount" inputmode="decimal" placeholder="0" min="0" step="0.01" value="1" oninput="window.updateCurrencyConversion()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="fx-from">De</label>
+          <select id="fx-from" onchange="window.updateCurrencyConversion()"></select>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="fx-to">A</label>
+          <select id="fx-to" onchange="window.updateCurrencyConversion()"></select>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: center; margin: -4px 0 10px;">
+        <button onclick="window.swapCurrencies()" title="Invertir monedas" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 5px 14px; font-size: 13px; cursor: pointer; color: var(--text-secondary);">⇅ Invertir</button>
+      </div>
+      <div id="fx-result" style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; text-align: center; font-size: 20px; font-weight: 700; color: var(--success-text);">—</div>
+      <div id="fx-result-detail" style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 4px;"></div>
+
+      <!-- Tabla de tasas de referencia -->
+      <div class="form-section-title">📊 Tasas de referencia (1 unidad → COP)</div>
+      <div id="fx-rates-list" style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="font-size: 12px; color: var(--text-tertiary); text-align: center; padding: 12px;">Cargando tasas...</div>
+      </div>
+      <p style="font-size: 10px; color: var(--text-tertiary); margin: 10px 0 0; text-align: center;">
+        Fuente: Superintendencia Financiera de Colombia (TRM) · Investing.com (mercado) vía DolarApi.com
+      </p>
+    </div>
+
     <!-- IMPORTAR MOVIMIENTOS -->
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
       <p class="card-title">🏦 Importar movimientos desde tu banco</p>

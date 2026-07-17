@@ -13622,6 +13622,204 @@ async function buildAnnualPDF(state, year) {
   }, true);
 
   // ============================================================
+  // v71: CONVERSOR DE MONEDA — TRM oficial + tasas de mercado en vivo
+  // Fuente TRM: Superintendencia Financiera de Colombia (oficial)
+  // Fuente otras monedas: Investing.com (mercado)
+  // Ambas vía DolarApi.com (CORS habilitado, sin necesidad de API key)
+  // ============================================================
+  const FX_CACHE_KEY = 'finanzaspro_fx_cache';
+  const FX_STALE_MS = 60 * 60 * 1000; // 1 hora — después de esto se considera "vieja"
+
+  const FX_CURRENCY_META = {
+    COP: { flag: '🇨🇴', name: 'Peso Colombiano' },
+    USD: { flag: '🇺🇸', name: 'Dólar' },
+    EUR: { flag: '🇪🇺', name: 'Euro' },
+    BRL: { flag: '🇧🇷', name: 'Real Brasileño' },
+    MXN: { flag: '🇲🇽', name: 'Peso Mexicano' },
+    CLP: { flag: '🇨🇱', name: 'Peso Chileno' },
+    PEN: { flag: '🇵🇪', name: 'Sol Peruano' },
+    ARS: { flag: '🇦🇷', name: 'Peso Argentino' }
+  };
+
+  function loadFxCache() {
+    try {
+      const raw = localStorage.getItem(FX_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
+  }
+  function saveFxCache(data) {
+    try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify(data)); } catch(e) {}
+  }
+
+  let fxState = loadFxCache() || { trm: null, rates: {}, fetchedAt: 0 };
+
+  // Obtiene las tasas más recientes. Usa caché si no ha pasado 1 hora (a menos que forceRefresh=true)
+  window.fetchExchangeRates = async function(forceRefresh) {
+    const isStale = (Date.now() - (fxState.fetchedAt || 0)) > FX_STALE_MS;
+    if (!forceRefresh && !isStale && fxState.trm) {
+      renderExchangeRates();
+      return;
+    }
+
+    const refreshBtn = document.getElementById('fx-refresh-btn');
+    if (refreshBtn) { refreshBtn.textContent = '⏳ Actualizando...'; refreshBtn.disabled = true; }
+
+    try {
+      const [trmRes, cotizRes] = await Promise.all([
+        fetch('https://co.dolarapi.com/v1/trm').then(r => r.json()),
+        fetch('https://co.dolarapi.com/v1/cotizaciones').then(r => r.json())
+      ]);
+
+      const rates = {};
+      (cotizRes || []).forEach(c => {
+        rates[c.moneda] = { compra: c.compra, venta: c.venta, mid: (c.compra + c.venta) / 2 };
+      });
+
+      fxState = {
+        trm: { valor: trmRes.valor, fecha: trmRes.fechaActualizacion },
+        rates,
+        fetchedAt: Date.now()
+      };
+      saveFxCache(fxState);
+    } catch (e) {
+      console.error('❌ Error obteniendo tasas de cambio:', e);
+      if (typeof toastError === 'function') {
+        toastError(
+          fxState.trm ? 'No se pudo actualizar' : 'Error de conexión',
+          fxState.trm ? 'Mostrando la última tasa conocida' : 'No se pudieron cargar las tasas. Verifica tu conexión.'
+        );
+      }
+    }
+
+    if (refreshBtn) { refreshBtn.innerHTML = '🔄 Actualizar'; refreshBtn.disabled = false; }
+    renderExchangeRates();
+  };
+
+  function renderExchangeRates() {
+    const trmValueEl = document.getElementById('fx-trm-value');
+    const trmUpdatedEl = document.getElementById('fx-trm-updated');
+    const listEl = document.getElementById('fx-rates-list');
+    const fromSel = document.getElementById('fx-from');
+    const toSel = document.getElementById('fx-to');
+    if (!trmValueEl) return; // el conversor todavía no está en el DOM
+
+    if (!fxState.trm) {
+      trmValueEl.textContent = 'No disponible';
+      if (trmUpdatedEl) trmUpdatedEl.textContent = 'No se pudo conectar. Click en "Actualizar" para reintentar.';
+      if (listEl) listEl.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:12px;">Sin datos disponibles</div>';
+      return;
+    }
+
+    trmValueEl.textContent = `$ ${fxState.trm.valor.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} COP`;
+    const fecha = new Date(fxState.trm.fecha);
+    const fechaStr = fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+    const minsAgo = Math.round((Date.now() - fxState.fetchedAt) / 60000);
+    const haceStr = minsAgo < 1 ? 'justo ahora' : minsAgo < 60 ? `hace ${minsAgo} min` : `hace ${Math.round(minsAgo / 60)} h`;
+    if (trmUpdatedEl) trmUpdatedEl.textContent = `Vigente desde el ${fechaStr} · Consultado ${haceStr}`;
+
+    // Lista de tasas de referencia
+    if (listEl) {
+      const currencies = ['USD', 'EUR', 'BRL', 'MXN', 'CLP', 'PEN', 'ARS'];
+      const available = currencies.filter(c => c === 'USD' ? !!fxState.trm : !!fxState.rates[c]);
+      listEl.innerHTML = available.length > 0 ? available.map(code => {
+        const meta = FX_CURRENCY_META[code];
+        // USD usa la TRM oficial (más confiable); las demás, tasa de mercado
+        const value = code === 'USD' ? fxState.trm.valor : fxState.rates[code].mid;
+        const sourceBadge = code === 'USD'
+          ? '<span style="font-size: 9px; background: var(--success-bg); color: var(--success-text); padding: 1px 6px; border-radius: 6px; font-weight: 600; margin-left: 4px;">OFICIAL · TRM</span>'
+          : '<span style="font-size: 9px; background: var(--info-bg); color: var(--info-text); padding: 1px 6px; border-radius: 6px; font-weight: 600; margin-left: 4px;">MERCADO</span>';
+        return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; font-size: 13px;">
+          <span>${meta.flag} <strong>${code}</strong> <span style="color: var(--text-tertiary); font-size: 11px;">${meta.name}</span>${sourceBadge}</span>
+          <span style="font-weight: 600;">$ ${value.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>`;
+      }).join('') : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:12px;">Sin datos disponibles</div>';
+    }
+
+    // Poblar selectores (solo la primera vez, para no perder la selección del usuario)
+    const allCurrencies = ['COP', 'USD', 'EUR', 'BRL', 'MXN', 'CLP', 'PEN', 'ARS'];
+    if (fromSel && fromSel.options.length === 0) {
+      fromSel.innerHTML = allCurrencies.map(c => `<option value="${c}" ${c === 'COP' ? 'selected' : ''}>${FX_CURRENCY_META[c].flag} ${c}</option>`).join('');
+    }
+    if (toSel && toSel.options.length === 0) {
+      toSel.innerHTML = allCurrencies.map(c => `<option value="${c}" ${c === 'USD' ? 'selected' : ''}>${FX_CURRENCY_META[c].flag} ${c}</option>`).join('');
+    }
+
+    window.updateCurrencyConversion();
+  }
+
+  // Cuántos COP vale 1 unidad de la moneda dada.
+  // Para USD usamos la TRM OFICIAL (Superintendencia Financiera) por ser la fuente más confiable,
+  // tal como se pidió. Para las demás monedas (sin TRM oficial propia) usamos la tasa de mercado.
+  function getCopRate(code) {
+    if (code === 'COP') return 1;
+    if (code === 'USD' && fxState.trm) return fxState.trm.valor;
+    if (fxState.rates[code]) return fxState.rates[code].mid;
+    return null;
+  }
+
+  window.updateCurrencyConversion = function() {
+    const amountEl = document.getElementById('fx-amount');
+    const fromEl = document.getElementById('fx-from');
+    const toEl = document.getElementById('fx-to');
+    const resultEl = document.getElementById('fx-result');
+    const detailEl = document.getElementById('fx-result-detail');
+    if (!amountEl || !fromEl || !toEl || !resultEl) return;
+
+    const amount = parseFloat(amountEl.value) || 0;
+    const from = fromEl.value;
+    const to = toEl.value;
+
+    const fromRate = getCopRate(from);
+    const toRate = getCopRate(to);
+
+    const fmtNum = (n) => n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (fromRate === null || toRate === null) {
+      resultEl.textContent = 'Tasa no disponible';
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    const amountInCop = amount * fromRate;
+    const converted = amountInCop / toRate;
+
+    resultEl.textContent = `${fmtNum(amount)} ${from} = ${fmtNum(converted)} ${to}`;
+
+    if (detailEl) {
+      if (from !== 'COP' && to !== 'COP') {
+        detailEl.textContent = `1 ${from} ≈ ${fmtNum(fromRate / toRate)} ${to}`;
+      } else if (from === 'COP' && to !== 'COP') {
+        detailEl.textContent = `1 ${to} ≈ ${fmtNum(toRate)} COP`;
+      } else if (to === 'COP' && from !== 'COP') {
+        detailEl.textContent = `1 ${from} ≈ ${fmtNum(fromRate)} COP`;
+      } else {
+        detailEl.textContent = '';
+      }
+    }
+  };
+
+  window.swapCurrencies = function() {
+    const fromEl = document.getElementById('fx-from');
+    const toEl = document.getElementById('fx-to');
+    if (!fromEl || !toEl) return;
+    const tmp = fromEl.value;
+    fromEl.value = toEl.value;
+    toEl.value = tmp;
+    window.updateCurrencyConversion();
+  };
+
+  // Al entrar a la pestaña Análisis, cargar/actualizar tasas si están viejas (>1h) o no existen
+  document.addEventListener('click', function(e) {
+    const tab = e.target.closest('.fin-tab, .side-menu-item');
+    if (tab && tab.dataset && tab.dataset.tab === 'analisis') {
+      setTimeout(() => window.fetchExchangeRates(false), 50);
+    }
+  }, true);
+
+  // Precargar en segundo plano al abrir la app, para que ya estén listas si el usuario navega a Análisis
+  setTimeout(() => { try { window.fetchExchangeRates(false); } catch(e) {} }, 1500);
+
+  // ============================================================
   // v55: ALERTAS DE RECORDATORIOS PRÓXIMOS
   // Banner en Resumen que muestra recordatorios que vencen pronto
   // ============================================================
