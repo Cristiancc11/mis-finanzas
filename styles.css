@@ -370,7 +370,7 @@
   .chart-container { position: relative; height: 280px; margin-top: 8px; }
   .summary-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; font-size: 13px; }
   .summary-row + .summary-row { border-top: 0.5px solid var(--border); }
-  .alert { padding: 11px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-left: 3px solid var(--text-tertiary); color: var(--text-primary); }
+  .alert { padding: 11px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 10px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-left: 3px solid var(--text-tertiary); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
   .alert-success { border-left-color: var(--success-text); }
   .alert-success strong { color: var(--success-text); }
   .alert-warning { border-left-color: var(--warning-text); }
@@ -595,7 +595,7 @@
     font-size: 20px;
     margin-bottom: 12px;
   }
-  .metric-hero-icon.purple, .metric-hero-icon.green, .metric-hero-icon.red, .metric-hero-icon.amber, .metric-hero-icon.blue { background: var(--bg-secondary); border: 1px solid var(--border); }
+  .metric-hero-icon.purple, .metric-hero-icon.green, .metric-hero-icon.red, .metric-hero-icon.amber, .metric-hero-icon.blue { background: var(--bg-secondary); border: 1px solid var(--border-strong); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
   .metric-hero-icon.purple { color: var(--purple-text); }
   .metric-hero-icon.green { color: var(--success-text); }
   .metric-hero-icon.red { color: var(--danger-text); }
@@ -5875,7 +5875,7 @@ button[onclick*="deleteReminder"]:active,
 .sidebar-toggle-btn {
   display: none;
   background: var(--bg-primary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   padding: 10px 14px;
   cursor: pointer;
@@ -5885,6 +5885,7 @@ button[onclick*="deleteReminder"]:active,
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   transition: all 0.15s ease;
   width: 100%;
 }
@@ -5933,13 +5934,14 @@ button[onclick*="deleteReminder"]:active,
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  background: transparent;
-  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   color: var(--danger-text);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   transition: all 0.15s ease;
 }
 .sidebar-logout-btn:hover {
@@ -5958,11 +5960,14 @@ button[onclick*="deleteReminder"]:active,
    ============================================================ */
 @media (min-width: 1025px) {
 
-  /* El contenido (hero + tabs + secciones) se desplaza para dejar sitio a la sidebar fija */
+  /* El contenido (hero + tabs + secciones) se desplaza para dejar sitio a la sidebar fija
+     y se ajusta FLUIDO al resto del ancho disponible (sin dejar espacio muerto) */
   .wrapper {
-    max-width: 1280px !important;
+    max-width: none !important;
+    width: auto !important;
     margin-left: 232px !important;
-    margin-right: auto !important;
+    margin-right: 0 !important;
+    padding-right: 24px;
     transition: margin-left 0.25s ease;
   }
 
@@ -6102,10 +6107,6 @@ button[onclick*="deleteReminder"]:active,
 }
 
 /* ============================================================
-   PANTALLAS MUY GRANDES: aún más ancho útil
+   PANTALLAS MUY GRANDES: el contenido ya se ajusta fluido (ver regla .wrapper arriba),
+   no se necesita un tope adicional aquí.
    ============================================================ */
-@media (min-width: 1600px) {
-  .wrapper {
-    max-width: 1400px !important;
-  }
-}
