@@ -4900,6 +4900,36 @@ window.deleteReminder = async function(reminderId) {
 };
 
 // === 3. COMPARATIVA MENSUAL ===
+// v77: Lista de categorías por defecto — debe reflejar las mismas que usa el resto de la app.
+// Reemplaza el objeto catLabels viejo que estaba desactualizado (tenía ids que ya no existen
+// como "salidas_milena" o "mascota_extra", y le faltaban las reales como "mercado" o "salidas").
+const ANALYSIS_DEFAULT_CATEGORIES = [
+  { id: 'servicios_casa', label: 'Servicios + casa', icon: '🏠' },
+  { id: 'celular', label: 'Plan celular', icon: '📞' },
+  { id: 'gimnasio', label: 'Gimnasio', icon: '💪' },
+  { id: 'streaming', label: 'Streaming', icon: '📺' },
+  { id: 'pago_tarjeta', label: 'Pago de tarjeta de crédito', icon: '💳' },
+  { id: 'uber', label: 'Uber / Transporte', icon: '🚗' },
+  { id: 'gasolina', label: 'Gasolina', icon: '⛽' },
+  { id: 'comida_fuera', label: 'Comida fuera', icon: '🍔' },
+  { id: 'rappi', label: 'Domicilios', icon: '🛵' },
+  { id: 'mercado', label: 'Mercado / Supermercado', icon: '🛒' },
+  { id: 'salidas', label: 'Salidas / Entretenimiento', icon: '🎭' },
+  { id: 'salud', label: 'Salud / Medicina', icon: '💊' },
+  { id: 'compras', label: 'Compras varias', icon: '🛍️' },
+  { id: 'mascota', label: 'Mascota', icon: '🐾' },
+  { id: 'otros', label: 'Otros', icon: '📋' }
+];
+
+// Combina categorías por defecto + personalizadas del usuario, devuelve un mapa id → {label, icon}
+function getCategoryMapFor(state) {
+  const customs = (state && state.customCategories) ? state.customCategories : [];
+  const all = [...ANALYSIS_DEFAULT_CATEGORIES, ...customs];
+  const map = {};
+  all.forEach(c => { map[c.id] = c; });
+  return map;
+}
+
 function renderMonthComparison() {
   const container = document.getElementById('month-comparison-content');
   if (!container) return;
@@ -4934,22 +4964,8 @@ function renderMonthComparison() {
 
   const allCats = new Set([...Object.keys(currentByCat), ...Object.keys(prevByCat)]);
 
-  const catLabels = {
-    servicios_casa: '🏠 Servicios + casa',
-    uber: '🚗 Uber',
-    celular: '📞 Celular',
-    gimnasio: '💪 Gimnasio',
-    streaming: '📺 Streaming',
-    comida_fuera: '🍔 Comida fuera',
-    rappi: '🛵 Rappi',
-    salidas_milena: '💕 Salidas',
-    gasolina: '⛽ Gasolina',
-    mascota: '🐾 Mascota',
-    mascota_extra: '🩺 Mascota extra',
-    compras: '🛍️ Compras',
-    salud: '🏥 Salud',
-    otros: '📋 Otros'
-  };
+  // v77: mapa de categorías real (defaults + personalizadas), reemplaza la lista fija vieja
+  const catMap = getCategoryMapFor(state);
 
   let html = '';
 
@@ -4990,7 +5006,7 @@ function renderMonthComparison() {
 
     html += `<div style="padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 4px;">`;
     html += `<div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">`;
-    html += `<span>${catLabels[cat] || cat}</span>`;
+    html += `<span>${catMap[cat] ? catMap[cat].icon + ' ' + catMap[cat].label : '📋 ' + cat}</span>`;
     html += `<span style="color: ${trendColor};">${trendIcon} ${prev > 0 ? (diff > 0 ? '+' : '') + pct.toFixed(0) + '%' : 'nuevo'}</span>`;
     html += `</div>`;
     html += `<div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">`;
@@ -5004,6 +5020,214 @@ function renderMonthComparison() {
 }
 
 // === 4. GASTOS HORMIGA ===
+// === 5. VISIÓN GENERAL: gráficos Chart.js con ingresos, gastos, ahorro y categorías ===
+// v77: reemplaza la vieja "Tendencias" (barras caseras, solo gastos) por gráficos reales
+// que incluyen ingresos, tasa de ahorro y distribución por categoría — mucho más valor.
+
+// Detecta si el tema activo es oscuro (mismo patrón usado en renderCharts del Resumen)
+function isDarkThemeActive() {
+  const html = document.documentElement;
+  if (html.classList.contains('theme-dark')) return true;
+  if (html.classList.contains('theme-light')) return false;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+// Ingreso total de un mes: recurrentes/snapshot + extras + cashback de transacciones
+function computeMonthIncome(state, month) {
+  let total = 0;
+  if (state.monthlyIncomes && state.monthlyIncomes[month]) {
+    total += state.monthlyIncomes[month].reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  } else if (state.incomes) {
+    // Fallback: plantillas recurrentes activas (aproximación si nunca se generó snapshot para ese mes)
+    total += state.incomes.filter(i => i.frequency === 'monthly').reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  }
+  if (state.extraIncomes && state.extraIncomes[month]) {
+    total += state.extraIncomes[month].reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  }
+  if (state.transactions && state.transactions[month]) {
+    total += state.transactions[month].reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
+  }
+  return total;
+}
+
+// Gasto real de un mes (excluye pagos de tarjeta, que son transferencias internas — v65)
+function computeMonthExpense(state, month) {
+  const txs = (state.transactions && state.transactions[month]) || [];
+  const real = txs.filter(t => {
+    if (t.payCardId) return false;
+    if (t.category === 'pago_tarjeta') return false;
+    if (state.customCategories) {
+      const cat = state.customCategories.find(c => c.id === t.category);
+      if (cat && cat.isPagoTarjeta) return false;
+    }
+    return true;
+  });
+  return real.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+}
+
+// Últimos N meses en formato YYYY-MM, terminando en el mes actual real
+function getLastNMonths(n) {
+  const months = [];
+  const today = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return months;
+}
+
+function renderIncomeExpenseChart() {
+  const canvas = document.getElementById('chart-income-expense');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const state = getStateForNotifications();
+  const months = getLastNMonths(6);
+  const incomeData = months.map(m => Math.round(computeMonthIncome(state, m)));
+  const expenseData = months.map(m => Math.round(computeMonthExpense(state, m)));
+
+  const hasData = incomeData.some(v => v > 0) || expenseData.some(v => v > 0);
+  const wrap = canvas.parentElement;
+  if (!hasData) {
+    wrap.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; height:100%; color: var(--text-tertiary); font-size: 13px; text-align:center; padding: 12px;">Registra ingresos y gastos para ver esta comparación.</div>';
+    return;
+  }
+  wrap.innerHTML = '<canvas id="chart-income-expense"></canvas>';
+
+  const isDark = isDarkThemeActive();
+  const tc = isDark ? '#e8e6df' : '#1a1a18';
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const monthLabels = months.map(m => new Date(m + '-01').toLocaleDateString('es-CO', { month: 'short' }));
+
+  if (window._chartIncomeExpense) window._chartIncomeExpense.destroy();
+  window._chartIncomeExpense = new Chart(document.getElementById('chart-income-expense'), {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: [
+        { label: 'Ingresos', data: incomeData, backgroundColor: '#2f7566', borderRadius: 5 },
+        { label: 'Gastos', data: expenseData, backgroundColor: '#c1584f', borderRadius: 5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: tc, font: { size: 12 }, boxWidth: 12, usePointStyle: true, pointStyle: 'circle' } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y)}` } }
+      },
+      scales: {
+        x: { ticks: { color: tc }, grid: { display: false } },
+        y: { ticks: { color: tc, callback: (v) => fmtMoney(v) }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+function renderSavingsRateChart() {
+  const canvas = document.getElementById('chart-savings-rate');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const state = getStateForNotifications();
+  const months = getLastNMonths(6);
+  const rates = months.map(m => {
+    const inc = computeMonthIncome(state, m);
+    const exp = computeMonthExpense(state, m);
+    if (inc <= 0) return null;
+    return Math.round(((inc - exp) / inc) * 100);
+  });
+
+  const hasData = rates.some(r => r !== null);
+  const wrap = canvas.parentElement;
+  if (!hasData) {
+    wrap.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; height:100%; color: var(--text-tertiary); font-size: 13px; text-align:center; padding: 12px;">Registra ingresos para ver tu tasa de ahorro.</div>';
+    return;
+  }
+  wrap.innerHTML = '<canvas id="chart-savings-rate"></canvas>';
+
+  const isDark = isDarkThemeActive();
+  const tc = isDark ? '#e8e6df' : '#1a1a18';
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const monthLabels = months.map(m => new Date(m + '-01').toLocaleDateString('es-CO', { month: 'short' }));
+
+  if (window._chartSavingsRate) window._chartSavingsRate.destroy();
+  window._chartSavingsRate = new Chart(document.getElementById('chart-savings-rate'), {
+    type: 'line',
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        label: 'Tasa de ahorro',
+        data: rates,
+        borderColor: '#2f7566',
+        backgroundColor: 'rgba(47, 117, 102, 0.15)',
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: '#2f7566',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y}% de ahorro` } }
+      },
+      scales: {
+        x: { ticks: { color: tc }, grid: { display: false } },
+        y: { ticks: { color: tc, callback: (v) => v + '%' }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+function renderCategoryPieChart() {
+  const canvas = document.getElementById('chart-category-pie');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const state = getStateForNotifications();
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const txs = (state.transactions && state.transactions[currentMonth]) || [];
+
+  const byCategory = {};
+  txs.forEach(t => {
+    if (t.payCardId || t.category === 'pago_tarjeta') return; // no son gasto real
+    byCategory[t.category] = (byCategory[t.category] || 0) + (parseFloat(t.amount) || 0);
+  });
+
+  const entries = Object.entries(byCategory).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const wrap = canvas.parentElement;
+  if (entries.length === 0) {
+    wrap.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; height:100%; color: var(--text-tertiary); font-size: 13px; text-align:center; padding: 12px;">Registra gastos este mes para ver tu distribución por categoría.</div>';
+    return;
+  }
+  wrap.innerHTML = '<canvas id="chart-category-pie"></canvas>';
+
+  const catMap = getCategoryMapFor(state);
+  const labels = entries.map(([id]) => catMap[id] ? `${catMap[id].icon} ${catMap[id].label}` : `📋 ${id}`);
+  const values = entries.map(([, v]) => Math.round(v));
+  const palette = ['#2f7566', '#c1584f', '#3d6f8f', '#ba7517', '#7a6bab', '#4a8f6b', '#a8505f', '#5f8ab5', '#8c8577'];
+
+  const isDark = isDarkThemeActive();
+  const tc = isDark ? '#e8e6df' : '#1a1a18';
+
+  if (window._chartCategoryPie) window._chartCategoryPie.destroy();
+  window._chartCategoryPie = new Chart(document.getElementById('chart-category-pie'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: palette.slice(0, values.length), borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: tc, font: { size: 11 }, boxWidth: 10, padding: 8, usePointStyle: true, pointStyle: 'circle' } },
+        tooltip: {
+          callbacks: { label: (ctx) => {
+            const t = values.reduce((a, b) => a + b, 0);
+            return `${ctx.label}: ${fmtMoney(ctx.parsed)} (${((ctx.parsed / t) * 100).toFixed(1)}%)`;
+          }}
+        }
+      }
+    }
+  });
+}
+
 function renderAntExpenses() {
   const container = document.getElementById('ant-expenses-content');
   if (!container) return;
@@ -5027,16 +5251,25 @@ function renderAntExpenses() {
     if (!t.desc || t.amount > 50000) return; // solo gastos pequeños
     // Tomar las primeras 2 palabras como key
     const key = t.desc.toLowerCase().split(/\s+/).slice(0, 2).join(' ').substring(0, 30);
-    if (!groups[key]) groups[key] = { count: 0, total: 0, items: [], category: t.category };
+    if (!groups[key]) groups[key] = { count: 0, total: 0, items: [], category: t.category, dates: [] };
     groups[key].count++;
     groups[key].total += t.amount;
     groups[key].items.push(t);
+    if (t.date) groups[key].dates.push(t.date);
   });
 
   // Filtrar solo los que se repiten 2+ veces
+  // v77: proyección anual basada en el período REAL de datos (antes usaba un factor arbitrario ×2 o ×4
+  // sin relación clara con la frecuencia real). Ahora: gasto total ÷ meses reales que abarca ese patrón × 12.
   const ants = Object.entries(groups)
     .filter(([k, g]) => g.count >= 2)
-    .map(([k, g]) => ({ key: k, ...g, avg: g.total / g.count, projectedYear: (g.total / g.count) * 12 * (g.count > 5 ? 4 : 2) }))
+    .map(([k, g]) => {
+      // Meses distintos en los que aparece este patrón (mínimo 1, para no dividir por 0)
+      const monthsSet = new Set(g.dates.map(d => d.substring(0, 7)));
+      const monthsSpan = Math.max(1, monthsSet.size);
+      const monthlyRate = g.total / monthsSpan;
+      return { key: k, ...g, avg: g.total / g.count, monthsSpan, projectedYear: monthlyRate * 12 };
+    })
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
 
@@ -5060,68 +5293,9 @@ function renderAntExpenses() {
     html += `<div><span style="color: var(--text-tertiary);">Promedio:</span> ${fmtMoney(a.avg)}</div>`;
     html += `<div><span style="color: var(--text-tertiary);">Año:</span> <span style="color: var(--danger-text);">${fmtMoney(a.projectedYear)}</span></div>`;
     html += `</div>`;
+    html += `<div style="font-size: 10px; color: var(--text-tertiary); margin-top: 4px;">Basado en ${a.monthsSpan} mes${a.monthsSpan > 1 ? 'es' : ''} de datos reales</div>`;
     html += `</div>`;
   });
-
-  container.innerHTML = html;
-}
-
-// === 5. TENDENCIAS ===
-function renderTrends() {
-  const container = document.getElementById('trends-content');
-  if (!container) return;
-
-  const state = getStateForNotifications();
-  if (!state.transactions) {
-    container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-tertiary); font-size: 13px;">Sin datos.</div>';
-    return;
-  }
-
-  const months = Object.keys(state.transactions).sort().slice(-6);
-  if (months.length < 2) {
-    container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-tertiary); font-size: 13px;">Necesitas al menos 2 meses de datos.</div>';
-    return;
-  }
-
-  const totals = months.map(m => {
-    const txs = state.transactions[m] || [];
-    // v65: excluir pagos de tarjeta (transferencias internas, no gastos reales)
-    const realExpenses = txs.filter(t => {
-      if (t.payCardId) return false;
-      if (t.category === 'pago_tarjeta') return false;
-      if (state.categories) {
-        const cat = state.categories.find(c => c.id === t.category);
-        if (cat && cat.isPagoTarjeta) return false;
-      }
-      return true;
-    });
-    return { month: m, total: realExpenses.reduce((s, t) => s + (t.amount || 0), 0), count: realExpenses.length };
-  });
-
-  const max = Math.max(...totals.map(t => t.total));
-
-  let html = `<div style="display: flex; align-items: flex-end; gap: 8px; height: 150px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">`;
-  totals.forEach(t => {
-    const h = max > 0 ? (t.total / max) * 100 : 0;
-    const monthShort = new Date(t.month + '-01').toLocaleDateString('es-CO', { month: 'short' });
-    html += `<div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">`;
-    html += `<div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px;">${fmtMoney(t.total)}</div>`;
-    html += `<div style="width: 100%; background: linear-gradient(180deg, #7F77DD, #1D9E75); height: ${h}%; min-height: 4px; border-radius: 6px 6px 0 0;"></div>`;
-    html += `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: capitalize;">${monthShort}</div>`;
-    html += `</div>`;
-  });
-  html += `</div>`;
-
-  // Resumen
-  const avg = totals.reduce((s, t) => s + t.total, 0) / totals.length;
-  html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">`;
-  html += `<div style="padding: 8px; background: var(--bg-secondary); border-radius: 8px;">`;
-  html += `<div style="color: var(--text-secondary); font-size: 11px;">Promedio mensual</div>`;
-  html += `<div style="font-weight: 500;">${fmtMoney(avg)}</div></div>`;
-  html += `<div style="padding: 8px; background: var(--bg-secondary); border-radius: 8px;">`;
-  html += `<div style="color: var(--text-secondary); font-size: 11px;">Meses analizados</div>`;
-  html += `<div style="font-weight: 500;">${totals.length}</div></div>`;
-  html += `</div>`;
 
   container.innerHTML = html;
 }
@@ -5134,7 +5308,9 @@ document.addEventListener('click', (e) => {
       renderFinancialCalendar();
       renderMonthComparison();
       renderAntExpenses();
-      renderTrends();
+      renderIncomeExpenseChart();
+      renderSavingsRateChart();
+      renderCategoryPieChart();
       populateMonthSelector();
     }, 100);
   }
@@ -6392,8 +6568,8 @@ async function buildAnnualPDF(state, year) {
     // Caso 2: categoría con flag isPagoTarjeta o id 'pago_tarjeta'
     if (t.category === 'pago_tarjeta') return true;
     // Caso 3: categoría custom marcada como pago de tarjeta
-    if (state.categories) {
-      const cat = state.categories.find(c => c.id === t.category);
+    if (state.customCategories) {
+      const cat = state.customCategories.find(c => c.id === t.category);
       if (cat && cat.isPagoTarjeta) return true;
     }
     return false;

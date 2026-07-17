@@ -1690,6 +1690,53 @@
   <!-- ============================================ -->
   <div class="fin-section" id="section-analisis">
 
+    <div class="section-group-title">📊 Visión general</div>
+
+    <div class="raised-card">
+      <p class="card-title">📈 Ingresos vs gastos reales</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Últimos 6 meses. No incluye pagos de tarjeta (son transferencias, no gastos).</p>
+      <div class="chart-container" style="height: 220px;"><canvas id="chart-income-expense"></canvas></div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">💹 Tasa de ahorro mensual</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Qué porcentaje de tus ingresos lograste ahorrar cada mes.</p>
+      <div class="chart-container" style="height: 180px;"><canvas id="chart-savings-rate"></canvas></div>
+    </div>
+
+    <div class="section-group-title">🥧 Gastos por categoría</div>
+
+    <div class="raised-card">
+      <p class="card-title">¿En qué se va tu dinero? (mes actual)</p>
+      <div class="chart-container" style="height: 260px;"><canvas id="chart-category-pie"></canvas></div>
+    </div>
+
+    <div class="raised-card">
+      <p class="card-title">📋 Comparativa vs mes anterior</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Cómo cambió cada categoría respecto al mes pasado.</p>
+      <div id="month-comparison-content"></div>
+    </div>
+
+    <div class="section-group-title">🐜 Patrones y hábitos</div>
+
+    <!-- GASTOS HORMIGA -->
+    <div class="raised-card" style="border: 0.5px solid var(--warning-text);">
+      <p class="card-title">🐜 Gastos hormiga - Patrones detectados</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Pequeños gastos frecuentes que suman al año.</p>
+      <div id="ant-expenses-content"></div>
+    </div>
+
+    <div class="section-group-title">📅 Calendario</div>
+
+    <!-- CALENDARIO FINANCIERO -->
+    <div class="raised-card">
+      <p class="card-title">📅 Calendario financiero</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Tus fechas importantes del mes.</p>
+      <div id="financial-calendar"></div>
+    </div>
+
+    <div class="section-group-title">🛠️ Herramientas</div>
+
     <!-- IMPORTAR MOVIMIENTOS -->
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
       <p class="card-title">🏦 Importar movimientos desde tu banco</p>
@@ -1739,7 +1786,7 @@
           </optgroup>
         </select>
         <input type="file" id="bank-import-file" accept=".csv,.xlsx,.xls,.txt,.pdf" style="display: none;" />
-        <button onclick="document.getElementById('bank-import-file').click()" style="padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 14px;">
+        <button onclick="document.getElementById('bank-import-file').click()" style="padding: 14px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 14px;">
           📤 Subir extracto bancario (PDF, CSV, Excel)
         </button>
         <div id="import-status" style="margin-top: 8px; font-size: 12px;"></div>
@@ -1771,47 +1818,20 @@
       </div>
     </div>
 
-    <!-- COMPARATIVA MENSUAL -->
-    <div class="raised-card">
-      <p class="card-title">📊 Comparativa mensual</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Compara tu mes actual con el anterior.</p>
-      <div id="month-comparison-content"></div>
-    </div>
-
-    <!-- CALENDARIO FINANCIERO -->
-    <div class="raised-card">
-      <p class="card-title">📅 Calendario financiero</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Tus fechas importantes del mes.</p>
-      <div id="financial-calendar"></div>
-    </div>
-
-    <!-- GASTOS HORMIGA -->
-    <div class="raised-card" style="border: 0.5px solid var(--warning-text);">
-      <p class="card-title">🐜 Gastos hormiga - Patrones detectados</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Pequeños gastos frecuentes que suman al año.</p>
-      <div id="ant-expenses-content"></div>
-    </div>
-
-    <!-- TENDENCIAS -->
-    <div class="raised-card">
-      <p class="card-title">📈 Tendencias de los últimos meses</p>
-      <div id="trends-content"></div>
-    </div>
-
     <!-- REPORTES PDF MENSUALES -->
-    <div class="raised-card" style="border: 0.5px solid #7F77DD;">
+    <div class="raised-card" style="border: 0.5px solid var(--accent-to);">
       <p class="card-title">📄 Reportes mensuales en PDF</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Genera un PDF profesional con el resumen completo del mes.</p>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px;">
-        <div>
-          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Selecciona el mes a reportar</label>
+        <div class="field-group">
+          <label class="field-label" for="pdf-month-select">Selecciona el mes a reportar</label>
           <select id="pdf-month-select"></select>
         </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-        <button onclick="generateMonthlyPDF()" style="padding: 14px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 13px;">
+      <div class="form-grid-2" style="margin-bottom: 0;">
+        <button onclick="generateMonthlyPDF()" style="padding: 14px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 13px;">
           📄 Generar PDF
         </button>
         <button onclick="generateAnnualPDF()" style="padding: 14px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 13px;">

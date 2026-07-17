@@ -226,6 +226,19 @@
     border-top: none;
     margin-top: 0;
   }
+  /* v77: título de grupo ENTRE cards (no dentro de una), para organizar Análisis en secciones claras */
+  .section-group-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 20px 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-group-title:first-child { margin-top: 0; }
   /* v69: grids reutilizables de 2/3 columnas para agrupar campos relacionados */
   .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
   .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
