@@ -5396,18 +5396,24 @@ async function buildMonthlyPDF(state, monthKey) {
   const monthName = monthDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
   const monthNameCap = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
-  // Colores
-  const primaryColor = [127, 119, 221]; // Morado
-  const successColor = [29, 158, 117]; // Verde
+  // v88: paleta actualizada — navy-teal (antes morado/verde brillante, ya no coincide
+  // con el resto de la app desde el rediseño profesional)
+  const primaryColor = [36, 67, 90]; // Navy (accent-from)
+  const accentColor = [47, 117, 102]; // Teal (accent-to)
+  const successColor = [61, 133, 82];
   const dangerColor = [163, 45, 45];
+  const warningColor = [180, 120, 20];
   const textPrimary = [44, 44, 42];
   const textSecondary = [107, 107, 102];
 
   let y = 0;
 
-  // ===== HEADER (banda superior) =====
+  // ===== HEADER (banda superior con acento) =====
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, 210, 35, 'F');
+  // v88: franja de acento teal en la base del header, simula el degradado navy→teal de la app
+  doc.setFillColor(...accentColor);
+  doc.rect(0, 33, 210, 2, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
@@ -5456,6 +5462,9 @@ async function buildMonthlyPDF(state, monthKey) {
     return true;
   });
   const totalExpenses = realExpenseTx.reduce((s, t) => s + (t.amount || 0), 0);
+  // v88: mapa de categorías real (defaults + personalizadas), compartido por las tablas
+  // de "Gastos por categoría" y "Transacciones del mes" más abajo
+  const catMap = getCategoryMapFor(state);
   const totalCashback = transactions.reduce((s, t) => s + (t.cashback || 0), 0);
   // FIX: usar el ingreso REAL de ESE mes específico (snapshot histórico), no las plantillas
   // recurrentes actuales. Si generas el reporte de un mes pasado con un salario distinto al de
@@ -5473,6 +5482,11 @@ async function buildMonthlyPDF(state, monthKey) {
   const totalIncome = recurrentIncome + totalExtras + totalCashback;
   const margin = totalIncome - totalExpenses;
 
+  // v88: fondo de emergencia — reemplaza la card de "Score crediticio" (esa función se
+  // simplificó en la app a solo un tip, ya no hay forma de registrar históricos desde la UI)
+  const emergencyPocket = pockets.find(p => /emergencia/i.test(p.name));
+  const emergencyMonths = (emergencyPocket && totalExpenses > 0) ? (emergencyPocket.amount / totalExpenses) : null;
+
   // Tarjetas de métricas en grid 2x3
   const cards = [
     { label: 'Patrimonio total', value: fmt(netWorth), color: primaryColor, sub: `${fmt(totalPockets)} - ${fmt(totalDebts)} deudas` },
@@ -5480,7 +5494,7 @@ async function buildMonthlyPDF(state, monthKey) {
     { label: 'Gastos del mes', value: fmt(totalExpenses), color: dangerColor, sub: `${realExpenseTx.length} transacciones (excl. pagos de tarjeta)` },
     { label: 'Ahorro/Margen', value: fmt(margin), color: margin > 0 ? successColor : dangerColor, sub: totalIncome > 0 ? `${((margin/totalIncome)*100).toFixed(1)}% tasa ahorro` : '' },
     { label: 'Cashback ganado', value: fmt(totalCashback), color: successColor, sub: `+${transactions.filter(t => t.cashback > 0).length} compras` },
-    { label: 'Score crediticio', value: state.creditScore?.lastReported || 'N/A', color: primaryColor, sub: state.creditScore?.lastReportedDate || 'Sin reporte' }
+    { label: 'Fondo de emergencia', value: emergencyMonths !== null ? emergencyMonths.toFixed(1) + ' meses' : 'N/A', color: accentColor, sub: emergencyPocket ? fmt(emergencyPocket.amount) : 'Sin bolsillo de emergencia' }
   ];
 
   cards.forEach((c, i) => {
@@ -5514,6 +5528,53 @@ async function buildMonthlyPDF(state, monthKey) {
     }
   });
   y += 70;
+
+  // ===== v88: COMPARACIÓN VS MES ANTERIOR (nueva sección de valor) =====
+  const [prevYear, prevMonthNum] = (() => {
+    const d = new Date(parseInt(year), parseInt(monthNum) - 1 - 1, 1);
+    return [d.getFullYear(), d.getMonth() + 1];
+  })();
+  const prevMonthKey = `${prevYear}-${String(prevMonthNum).padStart(2, '0')}`;
+  const prevTxs = (state.transactions && state.transactions[prevMonthKey]) || [];
+  const prevRealExpenseTx = prevTxs.filter(t => {
+    if (t.payCardId) return false;
+    if (t.category === 'pago_tarjeta') return false;
+    if (state.customCategories) {
+      const cat = state.customCategories.find(c => c.id === t.category);
+      if (cat && cat.isPagoTarjeta) return false;
+    }
+    return true;
+  });
+  const prevExpenses = prevRealExpenseTx.reduce((s, t) => s + (t.amount || 0), 0);
+
+  if (prevExpenses > 0) {
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Comparación vs mes anterior', 14, y);
+    y += 8;
+
+    const changePct = ((totalExpenses - prevExpenses) / prevExpenses) * 100;
+    const changeColor = changePct > 0 ? dangerColor : successColor;
+    const changeLabel = changePct > 0 ? 'más que el mes pasado' : 'menos que el mes pasado';
+
+    doc.setFillColor(248, 248, 248);
+    doc.setDrawColor(220, 220, 220);
+    doc.roundedRect(14, y, 182, 18, 2, 2, 'FD');
+    doc.setFillColor(...changeColor);
+    doc.rect(14, y, 2, 18, 'F');
+
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gastaste ${fmt(totalExpenses)} este mes vs ${fmt(prevExpenses)} el mes anterior`, 20, y + 8);
+    doc.setTextColor(...changeColor);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${changeLabel}`, 20, y + 14);
+
+    y += 26;
+  }
 
   // ===== BOLSILLOS =====
   if (y > 240) { doc.addPage(); y = 20; }
@@ -5589,23 +5650,19 @@ async function buildMonthlyPDF(state, monthKey) {
     doc.text('Gastos por categoría', 14, y);
     y += 4;
 
-    const catLabels = {
-      servicios_casa: 'Servicios + casa', uber: 'Uber', celular: 'Celular',
-      gimnasio: 'Gimnasio', streaming: 'Streaming', comida_fuera: 'Comida fuera',
-      rappi: 'Rappi', salidas_milena: 'Salidas', gasolina: 'Gasolina',
-      mascota: 'Mascota', mascota_extra: 'Mascota extra', compras: 'Compras',
-      salud: 'Salud', otros: 'Otros'
-    };
-
+    // v88 FIX: usar el mapa de categorías REAL (defaults + personalizadas) en vez de la lista
+    // fija vieja que tenía ids que ya no existen (salidas_milena, mascota_extra). También se
+    // excluyen los pagos de tarjeta (son transferencias, no gastos por categoría) para que la
+    // suma de esta tabla cuadre con "Gastos del mes" de arriba.
     const byCategory = {};
-    transactions.forEach(t => {
+    realExpenseTx.forEach(t => {
       byCategory[t.category] = (byCategory[t.category] || 0) + (t.amount || 0);
     });
 
     const catBody = Object.entries(byCategory)
       .sort((a, b) => b[1] - a[1])
       .map(([cat, amount]) => [
-        catLabels[cat] || cat,
+        catMap[cat] ? catMap[cat].label : cat,
         fmt(amount),
         totalExpenses > 0 ? ((amount / totalExpenses) * 100).toFixed(1) + '%' : '0%'
       ]);
@@ -5646,14 +5703,21 @@ async function buildMonthlyPDF(state, monthKey) {
         const bTime = b.createdAt || b.id || 0;
         return bTime - aTime;
       })
-      .map(t => [
-        t.date.substring(5),
-        removeEmojis(t.desc).substring(0, 30),
-        catLabelOf(t.category),
-        PAYMENT_METHODS[t.paymentMethod] || '-',
-        fmt(t.amount),
-        t.cashback > 0 ? '+' + fmt(t.cashback) : '-'
-      ]);
+      .map(t => {
+        const isCardPay = t.payCardId || t.category === 'pago_tarjeta' ||
+          (state.customCategories && state.customCategories.find(c => c.id === t.category && c.isPagoTarjeta));
+        const catLabel = isCardPay
+          ? '🔄 Transferencia'
+          : (catMap[t.category] ? catMap[t.category].label : t.category);
+        return [
+          t.date.substring(5),
+          removeEmojis(t.desc).substring(0, 30),
+          catLabel,
+          PAYMENT_METHODS[t.paymentMethod] || '-',
+          fmt(t.amount),
+          t.cashback > 0 ? '+' + fmt(t.cashback) : '-'
+        ];
+      });
 
     doc.autoTable({
       startY: y + 2,
@@ -5752,16 +5816,8 @@ function removeEmojis(str) {
   return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
 }
 
-function catLabelOf(catId) {
-  const labels = {
-    servicios_casa: 'Servicios', uber: 'Uber', celular: 'Celular',
-    gimnasio: 'Gym', streaming: 'Streaming', comida_fuera: 'Comida',
-    rappi: 'Rappi', salidas_milena: 'Salidas', gasolina: 'Gasolina',
-    mascota: 'Mascota', mascota_extra: 'Mascota+', compras: 'Compras',
-    salud: 'Salud', otros: 'Otros'
-  };
-  return labels[catId] || catId;
-}
+// v88: catLabelOf() se quitó — reemplazada por getCategoryMapFor(state), que usa las
+// categorías reales de la app (incluye personalizadas) en vez de una lista fija desactualizada.
 
 function generateRecommendations(state, monthKey, metrics) {
   const recs = [];
@@ -5874,8 +5930,10 @@ async function buildAnnualPDF(state, year) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  const primaryColor = [127, 119, 221];
-  const successColor = [29, 158, 117];
+  // v88: paleta actualizada — navy-teal, consistente con el resto de la app
+  const primaryColor = [36, 67, 90];
+  const accentColor = [47, 117, 102];
+  const successColor = [61, 133, 82];
   const dangerColor = [163, 45, 45];
   const textPrimary = [44, 44, 42];
   const textSecondary = [107, 107, 102];
@@ -5883,6 +5941,8 @@ async function buildAnnualPDF(state, year) {
   // ===== HEADER =====
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, 210, 35, 'F');
+  doc.setFillColor(...accentColor);
+  doc.rect(0, 33, 210, 2, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
@@ -6018,28 +6078,57 @@ async function buildAnnualPDF(state, year) {
     columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
   });
 
-  // Score crediticio histórico
-  if (state.creditScore && state.creditScore.history && state.creditScore.history.length > 0) {
-    let yScore = doc.lastAutoTable.finalY + 12;
-    if (yScore > 240) { doc.addPage(); yScore = 20; }
+  // v88: nueva sección de valor — mejor y peor mes del año (reemplaza el score histórico
+  // que se quitó, y aporta un insight real y accionable)
+  if (monthsOfYear.length >= 2) {
+    let yInsight = doc.lastAutoTable.finalY + 12;
+    if (yInsight > 250) { doc.addPage(); yInsight = 20; }
 
     doc.setTextColor(...textPrimary);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Histórico Score Crediticio', 14, yScore);
+    doc.text('Meses destacados', 14, yInsight);
+    yInsight += 8;
 
-    const scoreBody = state.creditScore.history
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map(h => [h.date, h.score, h.source || 'DataCrédito']);
+    const monthStats = monthsOfYear.map(m => {
+      const realTx = m.txs.filter(t => {
+        const isCardPay = t.payCardId || t.category === 'pago_tarjeta' ||
+          (state.customCategories && state.customCategories.find(c => c.id === t.category && c.isPagoTarjeta));
+        return !isCardPay;
+      });
+      const expenses = realTx.reduce((s, t) => s + (t.amount || 0), 0);
+      const monthName = new Date(m.key + '-01').toLocaleDateString('es-CO', { month: 'long' });
+      return { key: m.key, name: monthName.charAt(0).toUpperCase() + monthName.slice(1), expenses };
+    });
 
-    doc.autoTable({
-      startY: yScore + 4,
-      head: [['Fecha', 'Puntaje', 'Fuente']],
-      body: scoreBody,
-      headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
-      bodyStyles: { fontSize: 9 },
-      margin: { left: 14, right: 14 },
-      columnStyles: { 1: { halign: 'right' } }
+    const lowestExpense = monthStats.reduce((min, m) => m.expenses < min.expenses ? m : min, monthStats[0]);
+    const highestExpense = monthStats.reduce((max, m) => m.expenses > max.expenses ? m : max, monthStats[0]);
+
+    const insightCards = [
+      { label: '✅ Mes más económico', value: lowestExpense.name, sub: fmt(lowestExpense.expenses), color: successColor },
+      { label: '⚠️ Mes de mayor gasto', value: highestExpense.name, sub: fmt(highestExpense.expenses), color: dangerColor }
+    ];
+
+    insightCards.forEach((c, i) => {
+      const x = 14 + i * 92;
+      doc.setDrawColor(220, 220, 220);
+      doc.setFillColor(250, 250, 250);
+      doc.roundedRect(x, yInsight, 88, 20, 2, 2, 'FD');
+      doc.setFillColor(...c.color);
+      doc.rect(x, yInsight, 2, 20, 'F');
+
+      doc.setTextColor(...textSecondary);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(c.label, x + 5, yInsight + 6);
+      doc.setTextColor(...c.color);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(c.value, x + 5, yInsight + 13);
+      doc.setTextColor(...textSecondary);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(c.sub, x + 5, yInsight + 18);
     });
   }
 
