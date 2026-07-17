@@ -4171,14 +4171,13 @@ function renderFinancialCalendar() {
     state.debts.forEach(d => {
       if (d.cutoffDay && d.cutoffDay <= daysInMonth) {
         if (!events[d.cutoffDay]) events[d.cutoffDay] = [];
-        events[d.cutoffDay].push({ icon: '💳', label: 'Corte ' + d.name, color: '#A32D2D', type: 'auto' });
+        events[d.cutoffDay].push({ icon: '💳', label: 'Corte ' + d.name, type: 'cutoff' });
       }
     });
   }
 
-  // RECORDATORIOS DEL USUARIO (NUEVO)
+  // RECORDATORIOS DEL USUARIO
   if (state.reminders) {
-    const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
     Object.keys(state.reminders).forEach(reminderId => {
       const reminder = state.reminders[reminderId];
       if (!reminder) return;
@@ -4209,7 +4208,6 @@ function renderFinancialCalendar() {
         events[day].push({ 
           icon: reminder.icon || '📌', 
           label: reminder.title, 
-          color: '#7F77DD',
           type: 'reminder',
           reminderId: reminderId,
           amount: reminder.amount
@@ -4218,21 +4216,22 @@ function renderFinancialCalendar() {
     });
   }
 
-  // Fechas que ya tienen transacciones registradas
-  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
-  const txs = (state.transactions && state.transactions[monthKey]) || [];
-  txs.forEach(t => {
-    const day = parseInt(t.date.substring(8, 10));
-    if (!events[day]) events[day] = [];
-    if (!events[day].some(e => e.label === '📝 Gastos registrados')) {
-      events[day].push({ icon: '📝', label: 'Gastos registrados', color: '#854f0b', subtle: true, type: 'auto' });
-    }
-  });
+  // v87: se quitó el tracking de "días con gastos registrados" — además de tener un bug de
+  // deduplicación (comparaba mal el texto, así que agregaba un ícono nuevo POR CADA transacción
+  // del día en vez de uno solo), no aporta información accionable a un calendario financiero.
+  // Este calendario ahora solo muestra lo que de verdad importa: cortes de tarjeta y recordatorios.
 
   let html = `<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
     <div style="font-weight: 500; text-transform: capitalize;">${monthName}</div>
-    <button onclick="openReminderModal()" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">+ Recordatorio</button>
+    <button onclick="openReminderModal()" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">+ Recordatorio</button>
   </div>`;
+
+  // v87: leyenda pequeña para claridad
+  html += `<div style="display: flex; gap: 14px; margin-bottom: 12px; font-size: 11px; color: var(--text-secondary);">
+    <span>💳 Corte de tarjeta</span>
+    <span>📌 Recordatorio</span>
+  </div>`;
+
   html += `<div class="calendar-container" style="position: relative; width: 100%; max-width: 100%; overflow: hidden;">`;
   html += `<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;">`;
   ['L','M','X','J','V','S','D'].forEach(d => {
@@ -4247,53 +4246,42 @@ function renderFinancialCalendar() {
   for (let day = 1; day <= daysInMonth; day++) {
     const isToday = (day === today.getDate());
     const dayEvents = events[day] || [];
-    const hasMajorEvent = dayEvents.some(e => !e.subtle);
+    const hasEvent = dayEvents.length > 0;
     const hasReminder = dayEvents.some(e => e.type === 'reminder');
 
     let bg = 'var(--bg-secondary)';
     let border = '1px solid var(--border)';
     if (isToday) {
-      bg = 'linear-gradient(135deg, var(--accent-from, #7F77DD)22, var(--accent-to, #1D9E75)22)';
-      border = '2px solid var(--info-text)';
+      bg = 'var(--accent-glow)';
+      border = '2px solid var(--accent-to)';
     } else if (hasReminder) {
-      bg = 'rgba(127, 119, 221, 0.1)';
-      border = '1px solid rgba(127, 119, 221, 0.4)';
-    } else if (hasMajorEvent) {
+      bg = 'var(--accent-glow)';
+      border = '1px solid var(--accent-to)';
+    } else if (hasEvent) {
       bg = 'var(--info-bg)';
     }
 
     // Cada día es clickeable
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    html += `<div onclick="openReminderModal('${dateStr}')" style="position: relative; aspect-ratio: 1; padding: 4px; background: ${bg}; border: ${border}; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 2px 8px rgba(127,119,221,0.2)'; this.style.zIndex='5';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.zIndex='1';">`;
+    html += `<div onclick="openReminderModal('${dateStr}')" style="position: relative; aspect-ratio: 1; padding: 4px; background: ${bg}; border: ${border}; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 2px 8px var(--accent-glow)'; this.style.zIndex='5';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.zIndex='1';">`;
     html += `<div style="font-size: 11px; font-weight: ${isToday ? '600' : '400'}; color: ${isToday ? 'var(--info-text)' : 'var(--text-secondary)'};">${day}</div>`;
     if (dayEvents.length > 0) {
-      // Mostrar el primer evento NO sutil con nombre completo (si hay)
-      const mainEvent = dayEvents.find(e => !e.subtle);
-      if (mainEvent) {
-        // Color especial para recordatorios del usuario
-        const isReminder = mainEvent.type === 'reminder';
-        const labelBg = isReminder 
-          ? 'linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75))' 
-          : 'var(--info-bg)';
-        const labelColor = isReminder ? 'white' : 'var(--info-text)';
-        
-        html += `<div style="margin-top: 3px; min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 2px;">`;
-        html += `<div style="font-size: 9px; font-weight: 600; padding: 2px 4px; background: ${labelBg}; color: ${labelColor}; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;" title="${mainEvent.label}">${mainEvent.icon} <span class="reminder-name-mobile">${mainEvent.label.length > 8 ? mainEvent.label.substring(0, 8) + '…' : mainEvent.label}</span></div>`;
-        
-        // Si hay más eventos, mostrar contador
-        const otherEvents = dayEvents.filter(e => e !== mainEvent && !e.subtle);
-        if (otherEvents.length > 0) {
-          html += `<div style="font-size: 9px; color: var(--text-tertiary); padding-left: 4px;">+${otherEvents.length} más</div>`;
-        }
-        html += `</div>`;
-      } else {
-        // Solo eventos sutiles (gastos registrados, etc.)
-        html += `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px; min-width: 0;">`;
-        dayEvents.slice(0, 3).forEach(e => {
-          html += `<span title="${e.label}" style="font-size: 10px; opacity: 0.6;">${e.icon}</span>`;
-        });
-        html += `</div>`;
+      // v87: ya no hay eventos "sutiles" — siempre mostramos el primero con nombre completo
+      const mainEvent = dayEvents[0];
+      const isReminder = mainEvent.type === 'reminder';
+      const labelBg = isReminder
+        ? 'linear-gradient(135deg, var(--accent-from), var(--accent-to))'
+        : 'var(--info-bg)';
+      const labelColor = isReminder ? 'white' : 'var(--info-text)';
+
+      html += `<div style="margin-top: 3px; min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 2px;">`;
+      html += `<div style="font-size: 9px; font-weight: 600; padding: 2px 4px; background: ${labelBg}; color: ${labelColor}; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;" title="${mainEvent.label}">${mainEvent.icon} <span class="reminder-name-mobile">${mainEvent.label.length > 8 ? mainEvent.label.substring(0, 8) + '…' : mainEvent.label}</span></div>`;
+
+      // Si hay más eventos ese día, mostrar contador
+      if (dayEvents.length > 1) {
+        html += `<div style="font-size: 9px; color: var(--text-tertiary); padding-left: 4px;">+${dayEvents.length - 1} más</div>`;
       }
+      html += `</div>`;
     }
     html += `</div>`;
   }
@@ -4305,7 +4293,7 @@ function renderFinancialCalendar() {
   html += `<p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">📋 Eventos importantes del mes</p>`;
   const sortedDays = Object.keys(events).map(Number).sort((a, b) => a - b);
   sortedDays.forEach(d => {
-    events[d].filter(e => !e.subtle).forEach(e => {
+    events[d].forEach(e => {
       const dayDiff = d - today.getDate();
       let dayLabel = '';
       if (dayDiff === 0) dayLabel = '<strong style="color: var(--info-text);">HOY</strong>';
@@ -4315,8 +4303,8 @@ function renderFinancialCalendar() {
 
       // Si es recordatorio del usuario, agregar botones de editar/eliminar
       const isReminder = e.type === 'reminder';
-      const bgColor = isReminder ? 'linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06))' : 'var(--bg-secondary)';
-      const borderLeft = isReminder ? 'border-left: 3px solid var(--accent-from, #7F77DD);' : '';
+      const bgColor = isReminder ? 'var(--accent-glow)' : 'var(--bg-secondary)';
+      const borderLeft = isReminder ? 'border-left: 3px solid var(--accent-to);' : '';
 
       html += `<div style="padding: 10px 12px; background: ${bgColor}; ${borderLeft} border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; gap: 8px;">`;
       html += `<div style="flex: 1; min-width: 0;">`;
