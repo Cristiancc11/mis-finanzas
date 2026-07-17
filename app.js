@@ -6446,7 +6446,7 @@ async function buildAnnualPDF(state, year) {
     function updateCashbackPreview() {
       const isCard = methodSel.value === 'tarjeta';
       const amount = parseFloat(amountInput.value) || 0;
-      const cashbackAmountEl = document.getElementById('tx-cashback-amount');
+      const cashbackPercentEl = document.getElementById('tx-cashback-percent');
       const cashbackFieldGroup = document.getElementById('tx-cashback-field-group');
 
       if (isCard && amount > 0) {
@@ -6490,11 +6490,13 @@ async function buildAnnualPDF(state, year) {
           cashbackInfo.style.display = 'block';
           cashbackInfo.innerHTML = html;
 
-          // v80: auto-rellenar el campo editable de cashback (respeta si el usuario ya lo ajustó a mano)
-          if (cashbackAmountEl && cashbackAmountEl.dataset.userEdited !== 'true') {
-            cashbackAmountEl.value = Math.round(selected.cashback);
+          // v81: auto-rellenar el campo con el % REAL de la tarjeta (no el valor en pesos),
+          // respetando si el usuario ya ajustó el % a mano
+          if (cashbackPercentEl && cashbackPercentEl.dataset.userEdited !== 'true') {
+            cashbackPercentEl.value = selected.cbPercent;
           }
           if (cashbackFieldGroup) cashbackFieldGroup.style.display = 'flex';
+          window.updateCashbackFromPercent();
         } else {
           cashbackInfo.style.display = 'none';
           if (cashbackFieldGroup) cashbackFieldGroup.style.display = 'none';
@@ -6505,6 +6507,18 @@ async function buildAnnualPDF(state, year) {
       }
     }
 
+    // v81: muestra en vivo cuánto dinero representa el % de cashback ingresado, sobre el monto del gasto
+    window.updateCashbackFromPercent = function() {
+      const amountEl = document.getElementById('tx-amount');
+      const percentEl = document.getElementById('tx-cashback-percent');
+      const hintEl = document.getElementById('tx-cashback-computed-hint');
+      if (!amountEl || !percentEl || !hintEl) return;
+      const amount = parseFloat(amountEl.value) || 0;
+      const percent = parseFloat(percentEl.value) || 0;
+      const computed = amount * (percent / 100);
+      hintEl.innerHTML = `= <strong style="color: var(--success-text);">${fmt(computed)}</strong> de cashback sobre ${fmt(amount)}`;
+    };
+
     methodSel.addEventListener('change', updateUI);
     // v80: recalcular cuando el usuario elige manualmente otra tarjeta
     if (cardSel) cardSel.addEventListener('change', updateCashbackPreview);
@@ -6512,6 +6526,8 @@ async function buildAnnualPDF(state, year) {
     amountInput.addEventListener('input', () => {
       // v63: actualizar preview de cuotas si está visible
       if (typeof updateInstallmentPreview === 'function') updateInstallmentPreview();
+      // v81: recalcular el valor en pesos del cashback si cambia el monto del gasto
+      if (typeof window.updateCashbackFromPercent === 'function') window.updateCashbackFromPercent();
     });
     updateUI();
   }
@@ -9363,13 +9379,14 @@ async function buildAnnualPDF(state, year) {
       // El cashback SIEMPRE es del dueño de la tarjeta, sin importar quién lo gastó
       cardIdNum = parseInt(cardId);
       const card = state.debts.find(x => x.id === cardIdNum);
-      // v80 FIX: antes esto SIEMPRE calculaba 1% fijo, ignorando el % de cashback real
+      // v81 FIX: antes esto SIEMPRE calculaba 1% fijo, ignorando el % de cashback real
       // configurado para cada tarjeta (campo "Cashback %" al crearla). Ahora:
-      // 1) si el usuario ajustó manualmente el campo de cashback de esta compra, se respeta ese valor
+      // 1) si el usuario ajustó manualmente el % de cashback de esta compra, se calcula sobre ESE %
       // 2) si no, se calcula con el % real de la tarjeta (o 1% si nunca se configuró)
-      const cashbackFieldEl = document.getElementById('tx-cashback-amount');
-      if (cashbackFieldEl && cashbackFieldEl.value !== '' && cashbackFieldEl.offsetParent !== null) {
-        cashback = parseFloat(cashbackFieldEl.value) || 0;
+      const cashbackPercentEl = document.getElementById('tx-cashback-percent');
+      if (cashbackPercentEl && cashbackPercentEl.value !== '' && cashbackPercentEl.offsetParent !== null) {
+        const enteredPercent = parseFloat(cashbackPercentEl.value) || 0;
+        cashback = totalAmount * (enteredPercent / 100);
       } else if (card) {
         const cbPercent = (card.cashbackPercent === undefined || card.cashbackPercent === null) ? 1 : card.cashbackPercent;
         cashback = totalAmount * (cbPercent / 100);
@@ -9556,11 +9573,11 @@ async function buildAnnualPDF(state, year) {
     if (document.getElementById('tx-pay-card')) document.getElementById('tx-pay-card').value = '';
     document.getElementById('tx-cashback-info').style.display = 'none';
 
-    // v80: resetear el campo editable de cashback para que el próximo gasto se autocalcule de nuevo
-    const cashbackFieldEl = document.getElementById('tx-cashback-amount');
-    if (cashbackFieldEl) {
-      cashbackFieldEl.value = '';
-      delete cashbackFieldEl.dataset.userEdited;
+    // v81: resetear el campo editable de % de cashback para que el próximo gasto se autocalcule de nuevo
+    const cashbackPercentFieldEl = document.getElementById('tx-cashback-percent');
+    if (cashbackPercentFieldEl) {
+      cashbackPercentFieldEl.value = '';
+      delete cashbackPercentFieldEl.dataset.userEdited;
     }
     const cashbackFieldGroupEl = document.getElementById('tx-cashback-field-group');
     if (cashbackFieldGroupEl) cashbackFieldGroupEl.style.display = 'none';
@@ -10142,6 +10159,42 @@ async function buildAnnualPDF(state, year) {
           const brand = safeBrand[d.brand] || { name: 'Tarjeta' };
           const lastDigits = d.lastDigits || (d.id ? d.id.toString().slice(-4) : '0000');
 
+          // v81: listado de gastos del mes, aislado en su propio try-catch — si algún dato puntual
+          // está malformado, esto se degrada solo (mostrando un aviso) en vez de tumbar toda la card.
+          let txListHtml = '';
+          try {
+            if (cardStats.txCount > 0 && Array.isArray(cardStats.transactions)) {
+              const rows = cardStats.transactions.map(t => {
+                const cat = (typeof CATEGORIES !== 'undefined' && CATEGORIES) ? CATEGORIES.find(c => c.id === t.category) : null;
+                const catIcon = cat ? cat.icon : '📋';
+                let ds = '';
+                try { ds = new Date(t.date + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }); } catch(e) { ds = t.date || ''; }
+                const instLabel = (t.installment && t.installment.current && t.installment.total) ? ` · Cuota ${t.installment.current}/${t.installment.total}` : '';
+                const cashbackLine = (t.cashback && t.cashback > 0) ? `<div style="font-size: 10px; color: var(--success-text);">+${fmt(t.cashback)} cashback</div>` : '';
+                return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
+                  <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${catIcon} ${esc(t.desc || 'Gasto')}</div>
+                    <div style="font-size: 10px; color: var(--text-tertiary);">${ds}${instLabel}</div>
+                  </div>
+                  <div style="text-align: right; flex-shrink: 0; margin-left: 8px;">
+                    <div style="font-weight: 600;">${fmt(t.amount)}</div>
+                    ${cashbackLine}
+                  </div>
+                </div>`;
+              }).join('');
+
+              txListHtml = `<details style="margin-top: 6px; font-size: 12px;">
+                <summary style="cursor: pointer; color: var(--text-secondary); padding: 4px 0;">📋 Ver los ${cardStats.txCount} gastos de este mes</summary>
+                <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto;">
+                  ${rows}
+                </div>
+              </details>`;
+            }
+          } catch(e) {
+            console.error('❌ Error armando el listado de gastos de la tarjeta:', d.name, e);
+            txListHtml = `<div style="margin-top: 6px; font-size: 11px; color: var(--text-tertiary);">No se pudo cargar el detalle de gastos de este mes.</div>`;
+          }
+
           // Determinar si necesita pago para mantener utilización ≤3%
           let utilizationAlert = '';
           let installmentsBlock = '';
@@ -10240,26 +10293,7 @@ async function buildAnnualPDF(state, year) {
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: var(--text-secondary);">📊 Compras este mes:</span><span style="font-weight: 500;">${cardStats.txCount} (${fmt(cardStats.totalSpent)})</span></div>
             <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">💰 Cashback ganado:</span><span style="font-weight: 500; color: var(--success-text);">+${fmt(cardStats.totalCashback)}</span></div>
           </div>
-          <details style="margin-top: 6px; font-size: 12px;">
-            <summary style="cursor: pointer; color: var(--text-secondary); padding: 4px 0;">📋 Ver los ${cardStats.txCount} gastos de este mes</summary>
-            <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto;">
-              ${cardStats.transactions.map(t => {
-                const cat = (typeof CATEGORIES !== 'undefined' ? CATEGORIES : []).find(c => c.id === t.category);
-                const catIcon = cat ? cat.icon : '📋';
-                const ds = new Date(t.date + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
-                return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
-                  <div style="min-width: 0; flex: 1;">
-                    <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${catIcon} ${esc(t.desc)}</div>
-                    <div style="font-size: 10px; color: var(--text-tertiary);">${ds}${t.installment ? ` · Cuota ${t.installment.current}/${t.installment.total}` : ''}</div>
-                  </div>
-                  <div style="text-align: right; flex-shrink: 0; margin-left: 8px;">
-                    <div style="font-weight: 600;">${fmt(t.amount)}</div>
-                    ${t.cashback > 0 ? `<div style="font-size: 10px; color: var(--success-text);">+${fmt(t.cashback)} cashback</div>` : ''}
-                  </div>
-                </div>`;
-              }).join('')}
-            </div>
-          </details>` : ''}
+          ${txListHtml}` : ''}
           <div style="display: grid; grid-template-columns: 1fr 100px auto; gap: 8px; margin-top: 10px; align-items: center;">
             <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, 'balance', this.value)" placeholder="Saldo actual" title="Editar saldo rápido" />
             <input type="number" value="${d.cutoffDay || ''}" min="1" max="31" onchange="updateDebt(${d.id}, 'cutoffDay', this.value)" placeholder="Día corte" title="Día del mes que cierra el periodo" />

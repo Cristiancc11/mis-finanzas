@@ -1048,12 +1048,11 @@
 
         <div id="tx-cashback-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: var(--success-bg); color: var(--success-text); border-radius: var(--radius-md); font-size: 12px;"></div>
 
-        <!-- v80: cashback editable por compra — por si esta compra específica tuvo un % distinto
-             al configurado en la tarjeta (promoción, categoría excluida, cashback doble, etc.) -->
+        <!-- v81: cashback ajustable por PORCENTAJE (el sistema calcula el valor sobre el monto del gasto) -->
         <div class="field-group" id="tx-cashback-field-group" style="display: none; margin-top: 8px;">
-          <label class="field-label" for="tx-cashback-amount">💰 Cashback recibido en esta compra</label>
-          <input type="number" id="tx-cashback-amount" min="0" step="1" placeholder="0" oninput="this.dataset.userEdited = 'true'" />
-          <span class="field-hint">Se calcula automático con el % de tu tarjeta, pero puedes ajustarlo si esta compra fue distinta</span>
+          <label class="field-label" for="tx-cashback-percent">💰 % de cashback en esta compra</label>
+          <input type="number" id="tx-cashback-percent" min="0" max="100" step="0.1" placeholder="0" oninput="window.updateCashbackFromPercent(); this.dataset.userEdited = 'true'" />
+          <span class="field-hint" id="tx-cashback-computed-hint">Se calcula automático con el % de tu tarjeta, pero puedes ajustarlo si esta compra fue distinta (promoción, categoría excluida, etc.)</span>
         </div>
 
         <!-- v63: Compra a CUOTAS -->
