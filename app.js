@@ -11382,7 +11382,10 @@ async function buildAnnualPDF(state, year) {
     document.getElementById('edit-tx-amount').value = tx.amount || 0;
     document.getElementById('edit-tx-date').value = tx.date || '';
     document.getElementById('edit-tx-method').value = tx.paymentMethod || 'efectivo';
-    document.getElementById('edit-tx-cashback').value = tx.cashback || 0;
+    // v82: mostrar el % equivalente de cashback (no el valor en pesos guardado)
+    const origCbPercent = (tx.amount > 0) ? ((tx.cashback || 0) / tx.amount) * 100 : 0;
+    document.getElementById('edit-tx-cashback-percent').value = Math.round(origCbPercent * 100) / 100;
+    if (typeof window.updateEditCashbackHint === 'function') window.updateEditCashbackHint();
 
     // TIPO DE GASTO: cargar datos si los tiene
     const sharedTotalInput = document.getElementById('edit-tx-shared-total');
@@ -11432,7 +11435,7 @@ async function buildAnnualPDF(state, year) {
     }
 
     // Listener para preview de cambios en saldos
-    ['edit-tx-amount', 'edit-tx-method', 'edit-tx-card', 'edit-tx-pocket', 'edit-tx-cashback'].forEach(id => {
+    ['edit-tx-amount', 'edit-tx-method', 'edit-tx-card', 'edit-tx-pocket', 'edit-tx-cashback-percent'].forEach(id => {
       const el = document.getElementById(id);
       if (el && !el._v38listener) {
         el.addEventListener('input', updateEditTxChangesPreview);
@@ -11479,6 +11482,18 @@ async function buildAnnualPDF(state, year) {
     if (payCardRow) payCardRow.style.display = isPagoTarjeta ? '' : 'none';
   }
 
+  // v82: muestra en vivo cuánto dinero representa el % de cashback ingresado en el modal de edición
+  window.updateEditCashbackHint = function() {
+    const amountEl = document.getElementById('edit-tx-amount');
+    const percentEl = document.getElementById('edit-tx-cashback-percent');
+    const hintEl = document.getElementById('edit-tx-cashback-hint');
+    if (!amountEl || !percentEl || !hintEl) return;
+    const amount = parseFloat(amountEl.value) || 0;
+    const percent = parseFloat(percentEl.value) || 0;
+    const computed = amount * (percent / 100);
+    hintEl.innerHTML = `= <strong style="color: var(--success-text);">${fmt(computed)}</strong> de cashback sobre ${fmt(amount)}`;
+  };
+
   function updateEditTxChangesPreview() {
     if (!editingTxState.originalTx) return;
     const orig = editingTxState.originalTx;
@@ -11487,7 +11502,10 @@ async function buildAnnualPDF(state, year) {
     const newMethod = document.getElementById('edit-tx-method')?.value || '';
     const newCardId = parseInt(document.getElementById('edit-tx-card')?.value) || null;
     const newPocketId = parseInt(document.getElementById('edit-tx-pocket')?.value) || null;
-    const newCashback = parseFloat(document.getElementById('edit-tx-cashback')?.value) || 0;
+    // v82: el campo ahora guarda un %, calculamos el valor en pesos sobre el monto actual
+    const newCashbackPercent = parseFloat(document.getElementById('edit-tx-cashback-percent')?.value) || 0;
+    const newCashback = newAmount * (newCashbackPercent / 100);
+    window.updateEditCashbackHint();
 
     const changes = [];
 
@@ -11555,7 +11573,9 @@ async function buildAnnualPDF(state, year) {
     const newMethod = document.getElementById('edit-tx-method')?.value || 'efectivo';
     const newCardId = parseInt(document.getElementById('edit-tx-card')?.value) || null;
     const newPocketId = parseInt(document.getElementById('edit-tx-pocket')?.value) || null;
-    const newCashback = parseFloat(document.getElementById('edit-tx-cashback')?.value) || 0;
+    // v82: el campo es un %, el valor real a guardar se calcula sobre el monto (nuevo o editado)
+    const newCashbackPercent = parseFloat(document.getElementById('edit-tx-cashback-percent')?.value) || 0;
+    const newCashback = newAmount * (newCashbackPercent / 100);
     const newPayCardId = parseInt(document.getElementById('edit-tx-pay-card')?.value) || null;
     
     // TIPO DE GASTO
