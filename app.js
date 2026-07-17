@@ -13808,10 +13808,10 @@ async function buildAnnualPDF(state, year) {
     window.updateCurrencyConversion();
   };
 
-  // Al entrar a la pestaña Análisis, cargar/actualizar tasas si están viejas (>1h) o no existen
+  // Al entrar a la pestaña Conversor, cargar/actualizar tasas si están viejas (>1h) o no existen
   document.addEventListener('click', function(e) {
     const tab = e.target.closest('.fin-tab, .side-menu-item');
-    if (tab && tab.dataset && tab.dataset.tab === 'analisis') {
+    if (tab && tab.dataset && tab.dataset.tab === 'conversor') {
       setTimeout(() => window.fetchExchangeRates(false), 50);
     }
   }, true);

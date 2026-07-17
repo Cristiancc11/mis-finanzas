@@ -566,6 +566,11 @@
         <span class="side-menu-item-text">Análisis</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
+      <button class="side-menu-item" data-tab="conversor" onclick="navigateTab('conversor')">
+        <span class="side-menu-item-icon">💱</span>
+        <span class="side-menu-item-text">Conversor</span>
+        <span class="side-menu-item-arrow">›</span>
+      </button>
       <button class="side-menu-item" data-tab="documentos" onclick="navigateTab('documentos')">
         <span class="side-menu-item-icon">📄</span>
         <span class="side-menu-item-text">Documentos</span>
@@ -627,6 +632,7 @@
     <button class="fin-tab" data-tab="mis-deudas"><span class="tab-icon">📝</span><span class="tab-label">Mis Deudas</span></button>
     <button class="fin-tab" data-tab="metas"><span class="tab-icon">🎯</span><span class="tab-label">Metas</span></button>
     <button class="fin-tab" data-tab="analisis"><span class="tab-icon">📊</span><span class="tab-label">Análisis</span></button>
+    <button class="fin-tab" data-tab="conversor"><span class="tab-icon">💱</span><span class="tab-label">Conversor</span></button>
     <button class="fin-tab" data-tab="documentos"><span class="tab-icon">📄</span><span class="tab-label">Docs</span></button>
     <button class="fin-tab" data-tab="perfil"><span class="tab-icon">👤</span><span class="tab-label">Perfil</span></button>
   </div>
@@ -1612,9 +1618,9 @@
   </div>
 
   <!-- ============================================ -->
-  <!-- SECCIÓN ANÁLISIS                              -->
+  <!-- SECCIÓN CONVERSOR DE MONEDA (dedicada, v72)   -->
   <!-- ============================================ -->
-  <div class="fin-section" id="section-analisis">
+  <div class="fin-section" id="section-conversor">
 
     <!-- v71: CONVERSOR DE MONEDA — TRM oficial + tasas de mercado en vivo -->
     <div class="raised-card" id="currency-converter-card">
@@ -1666,6 +1672,12 @@
         Fuente: Superintendencia Financiera de Colombia (TRM) · Investing.com (mercado) vía DolarApi.com
       </p>
     </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SECCIÓN ANÁLISIS                              -->
+  <!-- ============================================ -->
+  <div class="fin-section" id="section-analisis">
 
     <!-- IMPORTAR MOVIMIENTOS -->
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
