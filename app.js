@@ -13631,15 +13631,22 @@ async function buildAnnualPDF(state, year) {
   const FX_STALE_MS = 60 * 60 * 1000; // 1 hora — después de esto se considera "vieja"
 
   const FX_CURRENCY_META = {
-    COP: { flag: '🇨🇴', name: 'Peso Colombiano' },
-    USD: { flag: '🇺🇸', name: 'Dólar' },
-    EUR: { flag: '🇪🇺', name: 'Euro' },
-    BRL: { flag: '🇧🇷', name: 'Real Brasileño' },
-    MXN: { flag: '🇲🇽', name: 'Peso Mexicano' },
-    CLP: { flag: '🇨🇱', name: 'Peso Chileno' },
-    PEN: { flag: '🇵🇪', name: 'Sol Peruano' },
-    ARS: { flag: '🇦🇷', name: 'Peso Argentino' }
+    COP: { iso: 'co', name: 'Peso Colombiano' },
+    USD: { iso: 'us', name: 'Dólar' },
+    EUR: { iso: 'eu', name: 'Euro' },
+    BRL: { iso: 'br', name: 'Real Brasileño' },
+    MXN: { iso: 'mx', name: 'Peso Mexicano' },
+    CLP: { iso: 'cl', name: 'Peso Chileno' },
+    PEN: { iso: 'pe', name: 'Sol Peruano' },
+    ARS: { iso: 'ar', name: 'Peso Argentino' }
   };
+  // Helper para generar la URL de la bandera (flagcdn.com — CDN gratis, funciona en cualquier SO,
+  // a diferencia del emoji de bandera que en Windows se ve como texto "us", "co", etc.)
+  function fxFlagUrl(code, size) {
+    const meta = FX_CURRENCY_META[code];
+    if (!meta) return '';
+    return `https://flagcdn.com/${size || '28x21'}/${meta.iso}.png`;
+  }
 
   function loadFxCache() {
     try {
@@ -13728,9 +13735,12 @@ async function buildAnnualPDF(state, year) {
         const sourceBadge = code === 'USD'
           ? '<span style="font-size: 9px; background: var(--success-bg); color: var(--success-text); padding: 1px 6px; border-radius: 6px; font-weight: 600; margin-left: 4px;">OFICIAL · TRM</span>'
           : '<span style="font-size: 9px; background: var(--info-bg); color: var(--info-text); padding: 1px 6px; border-radius: 6px; font-weight: 600; margin-left: 4px;">MERCADO</span>';
-        return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; font-size: 13px;">
-          <span>${meta.flag} <strong>${code}</strong> <span style="color: var(--text-tertiary); font-size: 11px;">${meta.name}</span>${sourceBadge}</span>
-          <span style="font-weight: 600;">$ ${value.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <img src="${fxFlagUrl(code, '24x18')}" width="24" height="18" alt="${code}" style="border-radius: 3px; box-shadow: 0 0 0 1px var(--border-strong); flex-shrink: 0;" />
+            <strong>${code}</strong> <span style="color: var(--text-tertiary); font-size: 11px;">${meta.name}</span>${sourceBadge}
+          </span>
+          <span style="font-weight: 700; font-size: 14px;">$ ${value.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>`;
       }).join('') : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:12px;">Sin datos disponibles</div>';
     }
@@ -13738,10 +13748,10 @@ async function buildAnnualPDF(state, year) {
     // Poblar selectores (solo la primera vez, para no perder la selección del usuario)
     const allCurrencies = ['COP', 'USD', 'EUR', 'BRL', 'MXN', 'CLP', 'PEN', 'ARS'];
     if (fromSel && fromSel.options.length === 0) {
-      fromSel.innerHTML = allCurrencies.map(c => `<option value="${c}" ${c === 'COP' ? 'selected' : ''}>${FX_CURRENCY_META[c].flag} ${c}</option>`).join('');
+      fromSel.innerHTML = allCurrencies.map(c => `<option value="${c}" ${c === 'COP' ? 'selected' : ''}>${c} — ${FX_CURRENCY_META[c].name}</option>`).join('');
     }
     if (toSel && toSel.options.length === 0) {
-      toSel.innerHTML = allCurrencies.map(c => `<option value="${c}" ${c === 'USD' ? 'selected' : ''}>${FX_CURRENCY_META[c].flag} ${c}</option>`).join('');
+      toSel.innerHTML = allCurrencies.map(c => `<option value="${c}" ${c === 'USD' ? 'selected' : ''}>${c} — ${FX_CURRENCY_META[c].name}</option>`).join('');
     }
 
     window.updateCurrencyConversion();
@@ -13763,11 +13773,17 @@ async function buildAnnualPDF(state, year) {
     const toEl = document.getElementById('fx-to');
     const resultEl = document.getElementById('fx-result');
     const detailEl = document.getElementById('fx-result-detail');
+    const fromFlagEl = document.getElementById('fx-from-flag');
+    const toFlagEl = document.getElementById('fx-to-flag');
     if (!amountEl || !fromEl || !toEl || !resultEl) return;
 
     const amount = parseFloat(amountEl.value) || 0;
     const from = fromEl.value;
     const to = toEl.value;
+
+    // v73: actualizar las banderas junto al selector para que coincidan con la moneda elegida
+    if (fromFlagEl && from) fromFlagEl.src = fxFlagUrl(from, '28x21');
+    if (toFlagEl && to) toFlagEl.src = fxFlagUrl(to, '28x21');
 
     const fromRate = getCopRate(from);
     const toRate = getCopRate(to);
@@ -13775,7 +13791,7 @@ async function buildAnnualPDF(state, year) {
     const fmtNum = (n) => n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     if (fromRate === null || toRate === null) {
-      resultEl.textContent = 'Tasa no disponible';
+      resultEl.innerHTML = '<span style="color: var(--text-tertiary); font-size: 14px;">Tasa no disponible</span>';
       if (detailEl) detailEl.textContent = '';
       return;
     }
@@ -13783,7 +13799,20 @@ async function buildAnnualPDF(state, year) {
     const amountInCop = amount * fromRate;
     const converted = amountInCop / toRate;
 
-    resultEl.textContent = `${fmtNum(amount)} ${from} = ${fmtNum(converted)} ${to}`;
+    // v73: resultado más visual, con bandera + monto de cada lado
+    resultEl.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 17px; font-weight: 600; color: var(--text-secondary);">
+          <img src="${fxFlagUrl(from, '24x18')}" width="24" height="18" style="border-radius: 3px; box-shadow: 0 0 0 1px var(--border-strong);" alt="" />
+          ${fmtNum(amount)} ${from}
+        </span>
+        <span style="font-size: 16px; color: var(--text-tertiary);">=</span>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 700; color: var(--success-text);">
+          <img src="${fxFlagUrl(to, '24x18')}" width="24" height="18" style="border-radius: 3px; box-shadow: 0 0 0 1px var(--border-strong);" alt="" />
+          ${fmtNum(converted)} ${to}
+        </span>
+      </div>
+    `;
 
     if (detailEl) {
       if (from !== 'COP' && to !== 'COP') {

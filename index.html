@@ -1629,39 +1629,50 @@
           <p class="card-title" style="margin-bottom: 2px;">💱 Conversor de moneda</p>
           <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">TRM oficial (Superintendencia Financiera) + tasas de mercado, actualizadas automáticamente</p>
         </div>
-        <button onclick="window.fetchExchangeRates(true)" id="fx-refresh-btn" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--text-secondary);">
+        <button onclick="window.fetchExchangeRates(true)" id="fx-refresh-btn" style="background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--text-secondary); font-weight: 500;">
           🔄 Actualizar
         </button>
       </div>
 
       <!-- TRM oficial destacada -->
-      <div id="fx-trm-display" style="margin-top: 12px; padding: 12px 14px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-left: 3px solid var(--accent-to); border-radius: 10px;">
-        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px;">🏛️ TRM oficial de hoy</div>
-        <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);" id="fx-trm-value">Cargando...</div>
-        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;" id="fx-trm-updated"></div>
+      <div id="fx-trm-display" style="margin-top: 14px; padding: 16px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-left: 3px solid var(--accent-to); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="https://flagcdn.com/32x24/us.png" width="32" height="24" alt="USD" style="border-radius: 4px; box-shadow: 0 0 0 1px var(--border-strong); flex-shrink: 0;" />
+          <div>
+            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;">🏛️ TRM oficial de hoy</div>
+            <div style="font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1.2;" id="fx-trm-value">Cargando...</div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 8px;" id="fx-trm-updated"></div>
       </div>
 
       <!-- Conversor interactivo -->
       <div class="form-section-title">🔁 Convertir</div>
-      <div class="form-grid-3" style="align-items: end;">
+      <div class="field-group" style="margin-bottom: 12px;">
+        <label class="field-label" for="fx-amount">Monto</label>
+        <input type="number" id="fx-amount" inputmode="decimal" placeholder="0" min="0" step="0.01" value="1" oninput="window.updateCurrencyConversion()" style="font-size: 16px; font-weight: 600;" />
+      </div>
+
+      <div class="fx-convert-row">
         <div class="field-group">
-          <label class="field-label" for="fx-amount">Monto</label>
-          <input type="number" id="fx-amount" inputmode="decimal" placeholder="0" min="0" step="0.01" value="1" oninput="window.updateCurrencyConversion()" />
+          <label class="field-label">De</label>
+          <div class="fx-currency-picker">
+            <img id="fx-from-flag" src="https://flagcdn.com/28x21/co.png" width="28" height="21" alt="" />
+            <select id="fx-from" onchange="window.updateCurrencyConversion()"></select>
+          </div>
         </div>
+        <button onclick="window.swapCurrencies()" title="Invertir monedas" class="fx-swap-btn">⇄</button>
         <div class="field-group">
-          <label class="field-label" for="fx-from">De</label>
-          <select id="fx-from" onchange="window.updateCurrencyConversion()"></select>
-        </div>
-        <div class="field-group">
-          <label class="field-label" for="fx-to">A</label>
-          <select id="fx-to" onchange="window.updateCurrencyConversion()"></select>
+          <label class="field-label">A</label>
+          <div class="fx-currency-picker">
+            <img id="fx-to-flag" src="https://flagcdn.com/28x21/us.png" width="28" height="21" alt="" />
+            <select id="fx-to" onchange="window.updateCurrencyConversion()"></select>
+          </div>
         </div>
       </div>
-      <div style="display: flex; justify-content: center; margin: -4px 0 10px;">
-        <button onclick="window.swapCurrencies()" title="Invertir monedas" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 5px 14px; font-size: 13px; cursor: pointer; color: var(--text-secondary);">⇅ Invertir</button>
-      </div>
-      <div id="fx-result" style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; text-align: center; font-size: 20px; font-weight: 700; color: var(--success-text);">—</div>
-      <div id="fx-result-detail" style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 4px;"></div>
+
+      <div id="fx-result" style="margin-top: 12px; padding: 18px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">—</div>
+      <div id="fx-result-detail" style="text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 6px;"></div>
 
       <!-- Tabla de tasas de referencia -->
       <div class="form-section-title">📊 Tasas de referencia (1 unidad → COP)</div>
