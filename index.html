@@ -1670,15 +1670,45 @@
 
   <div class="fin-section" id="section-metas">
     <div class="raised-card">
-      <p class="card-title">Agregar meta</p>
-      <div class="form-row-goal">
-        <input type="text" id="goal-name" placeholder="Meta" />
-        <input type="number" inputmode="decimal" id="goal-target" placeholder="Monto objetivo" min="0" step="0.01" />
-        <input type="number" inputmode="decimal" id="goal-current" placeholder="Ya ahorrado" min="0" step="0.01" value="0" />
-        <button onclick="addGoal()">Agregar</button>
+      <p class="card-title">🎯 Agregar meta</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Define cuánto quieres ahorrar. Vincúlala a un bolsillo real para que el progreso se actualice solo.</p>
+
+      <div class="field-group" style="margin-bottom: 10px;">
+        <label class="field-label" for="goal-name">Nombre de la meta</label>
+        <input type="text" id="goal-name" placeholder="Ej: Vacaciones, Carro, Fondo de emergencia" />
       </div>
+      <div class="field-group" style="margin-bottom: 10px;">
+        <label class="field-label" for="goal-target">Monto objetivo</label>
+        <input type="number" inputmode="decimal" id="goal-target" placeholder="$ 0" min="0" step="0.01" />
+      </div>
+
+      <div class="form-section-title no-border-top">🔗 ¿Cómo quieres trackear el progreso?</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+        <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border: 2px solid var(--accent-to); border-radius: 10px; cursor: pointer; font-size: 12px;">
+          <input type="radio" name="goal-track-mode" id="goal-mode-pocket" value="pocket" checked onchange="toggleGoalTrackMode('pocket')" style="width: auto; min-height: auto; margin: 0;" />
+          <span><strong>Vincular a bolsillo</strong><br><span style="font-size: 10px; color: var(--text-tertiary);">Se actualiza solo</span></span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 12px;">
+          <input type="radio" name="goal-track-mode" id="goal-mode-manual" value="manual" onchange="toggleGoalTrackMode('manual')" style="width: auto; min-height: auto; margin: 0;" />
+          <span><strong>Manual</strong><br><span style="font-size: 10px; color: var(--text-tertiary);">Lo actualizas tú</span></span>
+        </label>
+      </div>
+
+      <div class="field-group" id="goal-pocket-field" style="margin-bottom: 10px;">
+        <label class="field-label" for="goal-pocket">Bolsillo que trackea esta meta</label>
+        <select id="goal-pocket">
+          <option value="">Selecciona un bolsillo</option>
+        </select>
+        <span class="field-hint">💡 El progreso será siempre el saldo real de ese bolsillo</span>
+      </div>
+      <div class="field-group" id="goal-manual-field" style="margin-bottom: 10px; display: none;">
+        <label class="field-label" for="goal-current">Ya ahorrado (manual)</label>
+        <input type="number" inputmode="decimal" id="goal-current" placeholder="$ 0" min="0" step="0.01" value="0" />
+      </div>
+
+      <button onclick="addGoal()" style="width: 100%; margin-top: 6px; padding: 13px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">➕ Agregar meta</button>
     </div>
-    <div class="raised-card"><p class="card-title">Mis metas</p><div id="goal-list"></div></div>
+    <div class="raised-card"><p class="card-title">📋 Mis metas</p><div id="goal-list"></div></div>
   </div>
 
   <!-- ============================================ -->
@@ -2089,7 +2119,7 @@
       <strong class="logo-text" style="font-size: 14px;">FinanzasPro</strong>
       <span style="font-size: 14px;">💎</span>
     </div>
-    <div>Tus datos se guardan en este navegador · Usa "Exportar" como respaldo periódico</div>
+    <div>Tus datos se sincronizan en la nube · Usa "Exportar" como respaldo periódico</div>
   </div>
 </div>
 

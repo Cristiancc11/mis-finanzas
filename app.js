@@ -8748,21 +8748,86 @@ async function buildAnnualPDF(state, year) {
     }
   };
 
+  // v92: alterna entre "vincular a bolsillo" y "manual" en el formulario de agregar meta
+  window.toggleGoalTrackMode = function(mode) {
+    const pocketField = document.getElementById('goal-pocket-field');
+    const manualField = document.getElementById('goal-manual-field');
+    const pocketRadio = document.getElementById('goal-mode-pocket');
+    const manualRadio = document.getElementById('goal-mode-manual');
+    if (pocketField) pocketField.style.display = mode === 'pocket' ? 'flex' : 'none';
+    if (manualField) manualField.style.display = mode === 'manual' ? 'flex' : 'none';
+    // Resaltar la opción activa visualmente
+    if (pocketRadio && pocketRadio.parentElement) {
+      pocketRadio.parentElement.style.borderColor = mode === 'pocket' ? 'var(--accent-to)' : 'var(--border)';
+      pocketRadio.parentElement.style.borderWidth = mode === 'pocket' ? '2px' : '1px';
+    }
+    if (manualRadio && manualRadio.parentElement) {
+      manualRadio.parentElement.style.borderColor = mode === 'manual' ? 'var(--accent-to)' : 'var(--border)';
+      manualRadio.parentElement.style.borderWidth = mode === 'manual' ? '2px' : '1px';
+    }
+  };
+
+  // v92: poblar el selector de bolsillos del formulario de metas
+  function populateGoalPocketSelect() {
+    const sel = document.getElementById('goal-pocket');
+    if (!sel) return;
+    const previousValue = sel.value;
+    sel.innerHTML = '<option value="">Selecciona un bolsillo</option>' +
+      (state.pockets || []).map(p => `<option value="${p.id}">${p.icon || '👛'} ${esc(p.name)} · ${fmt(p.amount)}</option>`).join('');
+    if (previousValue) sel.value = previousValue;
+  }
+
   window.addGoal = function() {
     const n = document.getElementById('goal-name').value.trim();
     const t = parseFloat(document.getElementById('goal-target').value);
-    const c = parseFloat(document.getElementById('goal-current').value) || 0;
-    if (!n || !t || t <= 0) return alert('Completa todo');
-    state.goals.push({ id: Date.now(), name: n, target: t, current: c });
+    if (!n || !t || t <= 0) return alert('Completa el nombre y el monto objetivo');
+
+    const mode = document.getElementById('goal-mode-pocket')?.checked ? 'pocket' : 'manual';
+    const newGoal = { id: Date.now(), name: n, target: t };
+
+    if (mode === 'pocket') {
+      const pocketId = parseInt(document.getElementById('goal-pocket')?.value);
+      if (!pocketId) return alert('Selecciona un bolsillo para vincular, o cambia a modo manual');
+      newGoal.pocketId = pocketId;
+      newGoal.current = 0; // no se usa cuando hay pocketId, pero se deja en 0 por consistencia
+    } else {
+      newGoal.pocketId = null;
+      newGoal.current = parseFloat(document.getElementById('goal-current').value) || 0;
+    }
+
+    state.goals.push(newGoal);
     document.getElementById('goal-name').value = '';
     document.getElementById('goal-target').value = '';
-    document.getElementById('goal-current').value = '0';
+    const currentEl = document.getElementById('goal-current');
+    if (currentEl) currentEl.value = '0';
     saveState(); renderAll();
+
+    if (typeof toastSuccess === 'function') {
+      const trackMsg = mode === 'pocket' ? 'vinculada a un bolsillo — se actualizará sola' : 'con seguimiento manual';
+      toastSuccess('Meta creada', `"${n}" ${trackMsg}`);
+    }
   };
   window.removeGoal = function(id) { state.goals = state.goals.filter(g => g.id !== id); saveState(); renderAll(); };
   window.updateGoal = function(id, c) {
     const g = state.goals.find(x => x.id === id);
     if (g) { g.current = parseFloat(c) || 0; saveState(); renderResumen(); renderGoals(); }
+  };
+
+  // v92: vincular/desvincular una meta existente a un bolsillo
+  window.linkGoalToPocket = function(goalId, pocketId) {
+    const g = state.goals.find(x => x.id === goalId);
+    if (!g) return;
+    if (!pocketId) {
+      g.pocketId = null;
+      saveState(); renderAll();
+      return;
+    }
+    g.pocketId = parseInt(pocketId);
+    saveState(); renderAll();
+    if (typeof toastSuccess === 'function') {
+      const pocket = state.pockets.find(p => p.id === g.pocketId);
+      toastSuccess('Meta vinculada', `"${g.name}" ahora sigue el saldo de ${pocket ? pocket.name : 'el bolsillo'}`);
+    }
   };
 
   window.updateBudget = function(catId, v) {
@@ -10763,6 +10828,11 @@ async function buildAnnualPDF(state, year) {
 
   function renderGoals() {
     const list = document.getElementById('goal-list');
+    if (!list) return;
+
+    // v92: poblar el selector de bolsillos cada vez que se renderiza (refleja bolsillos nuevos/eliminados)
+    populateGoalPocketSelect();
+
     if (state.goals.length === 0) {
       list.innerHTML = `
         <div class="empty-state-fancy">
@@ -10779,22 +10849,57 @@ async function buildAnnualPDF(state, year) {
       `; return;
     }
     list.innerHTML = state.goals.map(g => {
-      const pct = Math.min(100, Math.round((g.current / g.target) * 100));
-      const rem = Math.max(0, g.target - g.current);
+      // v92: si la meta está vinculada a un bolsillo, el progreso se calcula EN VIVO desde
+      // el saldo real de ese bolsillo — ya no depende de un número que hay que actualizar a mano.
+      const linkedPocket = g.pocketId ? state.pockets.find(p => p.id === g.pocketId) : null;
+      const pocketWasDeleted = g.pocketId && !linkedPocket;
+      const current = linkedPocket ? linkedPocket.amount : (g.current || 0);
+
+      const pct = Math.min(100, Math.round((current / g.target) * 100));
+      const rem = Math.max(0, g.target - current);
+
+      // Bloque de seguimiento: vinculado (con link real) / bolsillo eliminado (aviso) / manual (input)
+      let trackingHtml;
+      if (linkedPocket) {
+        trackingHtml = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 8px 10px; background: var(--bg-secondary); border-radius: 8px;">
+            <span style="font-size: 11px; color: var(--text-secondary);">🔗 Vinculada a <strong style="color: var(--text-primary);">${linkedPocket.icon || '👛'} ${esc(linkedPocket.name)}</strong> · se actualiza sola</span>
+            <button onclick="linkGoalToPocket(${g.id}, null)" title="Desvincular y pasar a manual" style="background: transparent; border: 1px solid var(--border); color: var(--text-tertiary); border-radius: 6px; padding: 3px 8px; font-size: 10px; cursor: pointer;">Desvincular</button>
+          </div>`;
+      } else if (pocketWasDeleted) {
+        trackingHtml = `
+          <div style="margin-top: 10px; padding: 8px 10px; background: var(--warning-bg); color: var(--warning-text); border-radius: 8px; font-size: 11px;">
+            ⚠️ El bolsillo vinculado ya no existe. <button onclick="linkGoalToPocket(${g.id}, null)" style="background: transparent; border: 1px solid var(--warning-text); color: var(--warning-text); border-radius: 6px; padding: 2px 8px; font-size: 10px; cursor: pointer; margin-left: 4px;">Pasar a manual</button>
+          </div>`;
+      } else {
+        const pocketOptions = (state.pockets || []).map(p => `<option value="${p.id}">${p.icon || '👛'} ${esc(p.name)}</option>`).join('');
+        trackingHtml = `
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; align-items: center;">
+            <input type="number" value="${current}" min="0" step="0.01" onchange="updateGoal(${g.id}, this.value)" title="Actualizar manualmente" />
+            <span style="font-size: 10px; color: var(--text-tertiary);">manual</span>
+          </div>
+          ${(state.pockets || []).length > 0 ? `
+          <div style="margin-top: 6px;">
+            <select onchange="if(this.value) linkGoalToPocket(${g.id}, this.value)" style="width: 100%; font-size: 11px; height: 32px;">
+              <option value="">🔗 Vincular a un bolsillo...</option>
+              ${pocketOptions}
+            </select>
+          </div>` : ''}`;
+      }
+
       return `<div style="padding: 14px 0; border-bottom: 0.5px solid var(--border);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
           <strong style="font-size: 14px;">${esc(g.name)}</strong>
           <span style="font-size: 12px; color: var(--text-secondary);">${pct}%</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
-          <span>${fmt(g.current)} de ${fmt(g.target)}</span>
+          <span>${fmt(current)} de ${fmt(g.target)}</span>
           <span>Faltan ${fmt(rem)}</span>
         </div>
         <div class="progress-bar"><div class="progress-fill success" style="width: ${pct}%"></div></div>
-        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px;">
-          <input type="number" value="${g.current}" min="0" step="0.01" onchange="updateGoal(${g.id}, this.value)" />
-          <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">actualizar</span>
-          <button class="delete-btn" onclick="removeGoal(${g.id})">×</button>
+        ${trackingHtml}
+        <div style="text-align: right; margin-top: 8px;">
+          <button class="delete-btn" onclick="removeGoal(${g.id})" style="position: static;">× Eliminar meta</button>
         </div>
       </div>`;
     }).join('');
