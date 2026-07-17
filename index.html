@@ -572,11 +572,6 @@
         <span class="side-menu-item-text">Conversor</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
-      <button class="side-menu-item" data-tab="documentos" onclick="navigateTab('documentos')">
-        <span class="side-menu-item-icon">📄</span>
-        <span class="side-menu-item-text">Documentos</span>
-        <span class="side-menu-item-arrow">›</span>
-      </button>
       <button class="side-menu-item" data-tab="perfil" onclick="navigateTab('perfil')">
         <span class="side-menu-item-icon">👤</span>
         <span class="side-menu-item-text">Mi Perfil</span>
@@ -634,7 +629,6 @@
     <button class="fin-tab" data-tab="metas"><span class="tab-icon">🎯</span><span class="tab-label">Metas</span></button>
     <button class="fin-tab" data-tab="analisis"><span class="tab-icon">📊</span><span class="tab-label">Análisis</span></button>
     <button class="fin-tab" data-tab="conversor"><span class="tab-icon">💱</span><span class="tab-label">Conversor</span></button>
-    <button class="fin-tab" data-tab="documentos"><span class="tab-icon">📄</span><span class="tab-label">Docs</span></button>
     <button class="fin-tab" data-tab="perfil"><span class="tab-icon">👤</span><span class="tab-label">Perfil</span></button>
   </div>
 
@@ -1928,57 +1922,6 @@
   <!-- ============================================ -->
   <!-- SECCIÓN DOCUMENTOS                            -->
   <!-- ============================================ -->
-  <div class="fin-section" id="section-documentos">
-    <div class="raised-card">
-      <p class="card-title">📊 Reportes de DataCrédito</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Sube tus reportes para ir registrando tu histórico crediticio.</p>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-        <div>
-          <label style="font-size: 11px; color: var(--text-secondary);">Puntaje de este reporte</label>
-          <input type="number" inputmode="numeric" id="cr-score-upload" placeholder="ej. 691" min="150" max="950" />
-        </div>
-        <div>
-          <label style="font-size: 11px; color: var(--text-secondary);">Fecha del reporte</label>
-          <input type="date" id="cr-date-upload" />
-        </div>
-      </div>
-      <input type="file" id="cr-file-input" accept="image/*,.pdf" style="display: none;" />
-      <button onclick="document.getElementById('cr-file-input').click()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer;">
-        📤 Subir reporte de DataCrédito
-      </button>
-      <div id="cr-upload-status" style="margin-top: 8px; font-size: 12px;"></div>
-    </div>
-
-    <div class="raised-card">
-      <p class="card-title">📁 Mis reportes guardados</p>
-      <div id="credit-reports-list"></div>
-    </div>
-
-    <div class="raised-card">
-      <p class="card-title">📑 Otros documentos financieros</p>
-      <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Guarda contratos, estados de cuenta, comprobantes, etc.</p>
-      <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px;">
-        <select id="other-doc-type">
-          <option value="contract">📜 Contrato</option>
-          <option value="statement">📊 Estado de cuenta</option>
-          <option value="receipt">🧾 Comprobante</option>
-          <option value="other">📄 Otro</option>
-        </select>
-        <input type="text" id="other-doc-desc" placeholder="Descripción (ej. Contrato Lulo Bank 2026)" />
-      </div>
-      <input type="file" id="other-file-input" accept="image/*,.pdf,.doc,.docx" style="display: none;" />
-      <button onclick="document.getElementById('other-file-input').click()" style="width: 100%; padding: 10px; background: var(--bg-secondary); border: 1px dashed var(--border); border-radius: 10px; cursor: pointer; color: var(--text-secondary);">
-        📎 Subir documento
-      </button>
-      <div id="other-upload-status" style="margin-top: 8px; font-size: 12px;"></div>
-    </div>
-
-    <div class="raised-card">
-      <p class="card-title">📚 Mis documentos guardados</p>
-      <div id="other-docs-list"></div>
-    </div>
-  </div>
-
   <!-- ============================================ -->
   <!-- SECCIÓN PERFIL                                -->
   <!-- ============================================ -->
