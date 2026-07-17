@@ -6005,11 +6005,21 @@ async function buildAnnualPDF(state, year) {
   doc.text('Resumen anual', 14, y);
   y += 8;
 
+  // v90: patrimonio neto actual (el reporte mensual ya lo mostraba, el anual no) + tasa de
+  // ahorro anual — completa el panorama financiero del año, no solo flujos de caja
+  const totalPocketsNow = (state.pockets || []).reduce((s, p) => s + (p.amount || 0), 0);
+  const totalDebtsNow = (state.debts || []).reduce((s, d) => s + (d.balance || 0), 0);
+  const netWorthNow = totalPocketsNow - totalDebtsNow;
+  const annualSavings = totalAnnualIncome - totalAnnualExpense;
+  const annualSavingsRate = totalAnnualIncome > 0 ? (annualSavings / totalAnnualIncome) * 100 : 0;
+
   const annualCards = [
-    { label: 'Ingresos del año', value: fmt(totalAnnualIncome), color: successColor },
-    { label: 'Gastos del año', value: fmt(totalAnnualExpense), color: dangerColor },
-    { label: 'Ahorro del año', value: fmt(totalAnnualIncome - totalAnnualExpense), color: primaryColor },
-    { label: 'Cashback ganado', value: fmt(totalAnnualCashback), color: successColor }
+    { label: 'Ingresos del año', value: fmt(totalAnnualIncome), color: successColor, sub: `${monthsOfYear.length} meses con datos` },
+    { label: 'Gastos del año', value: fmt(totalAnnualExpense), color: dangerColor, sub: 'Excl. pagos de tarjeta' },
+    { label: 'Ahorro del año', value: fmt(annualSavings), color: annualSavings >= 0 ? successColor : dangerColor, sub: `${annualSavingsRate.toFixed(1)}% tasa de ahorro` },
+    { label: 'Cashback ganado', value: fmt(totalAnnualCashback), color: successColor, sub: 'De todas tus tarjetas' },
+    { label: 'Patrimonio neto actual', value: fmt(netWorthNow), color: primaryColor, sub: `${fmt(totalPocketsNow)} - ${fmt(totalDebtsNow)} deudas` },
+    { label: 'Promedio mensual gastado', value: fmt(totalAnnualExpense / monthsOfYear.length), color: accentColor, sub: `Sobre ${monthsOfYear.length} meses` }
   ];
 
   annualCards.forEach((c, i) => {
@@ -6026,14 +6036,22 @@ async function buildAnnualPDF(state, year) {
 
     doc.setTextColor(...textSecondary);
     doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
     doc.text(c.label, x + 5, cardY + 6);
 
     doc.setTextColor(...c.color);
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.text(String(c.value), x + 5, cardY + 14);
+    doc.text(String(c.value), x + 5, cardY + 13);
+
+    if (c.sub) {
+      doc.setTextColor(...textSecondary);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(c.sub, x + 5, cardY + 18);
+    }
   });
-  y += 50;
+  y += 74;
 
   // Tabla por mes
   doc.setTextColor(...textPrimary);
@@ -6101,8 +6119,8 @@ async function buildAnnualPDF(state, year) {
     const highestExpense = monthStats.reduce((max, m) => m.expenses > max.expenses ? m : max, monthStats[0]);
 
     const insightCards = [
-      { label: '✅ Mes más económico', value: lowestExpense.name, sub: fmt(lowestExpense.expenses), color: successColor },
-      { label: '⚠️ Mes de mayor gasto', value: highestExpense.name, sub: fmt(highestExpense.expenses), color: dangerColor }
+      { label: 'Mes más económico', value: lowestExpense.name, sub: fmt(lowestExpense.expenses), color: successColor },
+      { label: 'Mes de mayor gasto', value: highestExpense.name, sub: fmt(highestExpense.expenses), color: dangerColor }
     ];
 
     insightCards.forEach((c, i) => {
