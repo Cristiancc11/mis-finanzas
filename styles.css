@@ -4038,8 +4038,8 @@ html.density-comfortable .net-worth-hero-value {
 .privacy-banner {
   margin-top: 20px;
   padding: 16px;
-  background: linear-gradient(135deg, rgba(127, 119, 221, 0.08), rgba(29, 158, 117, 0.06));
-  border: 1px solid rgba(127, 119, 221, 0.2);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 
@@ -4050,7 +4050,7 @@ html.density-comfortable .net-worth-hero-value {
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(127, 119, 221, 0.15);
+  border-bottom: 1px solid var(--border);
 }
 
 .privacy-banner-icon {
@@ -4093,7 +4093,7 @@ html.density-comfortable .net-worth-hero-value {
   width: 16px;
   height: 16px;
   min-width: 16px;
-  background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75));
+  background: var(--accent-to);
   color: white;
   border-radius: 50%;
   font-size: 9px;
@@ -4105,7 +4105,7 @@ html.density-comfortable .net-worth-hero-value {
 .privacy-banner-footer {
   margin: 0;
   padding-top: 10px;
-  border-top: 1px solid rgba(127, 119, 221, 0.15);
+  border-top: 1px solid var(--border);
   font-size: 11px;
   color: var(--text-tertiary);
   text-align: center;
