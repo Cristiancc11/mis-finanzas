@@ -3330,43 +3330,78 @@ styleEl.textContent = `
 document.head.appendChild(styleEl);
 
 // === 3. CATEGORIZACIÓN AUTOMÁTICA INTELIGENTE ===
-const SMART_CATEGORIES = {
-  'uber': 'uber', 'didi': 'uber', 'cabify': 'uber', 'taxi': 'uber',
-  'rappi': 'rappi', 'didi food': 'comida_fuera', 'mcdonalds': 'comida_fuera',
-  'movistar': 'servicios_casa', 'claro': 'servicios_casa', 'tigo': 'celular',
-  'wom': 'celular', 'etb': 'servicios_casa', 'codensa': 'servicios_casa',
-  'enel': 'servicios_casa', 'gas natural': 'servicios_casa', 'vanti': 'servicios_casa',
-  'acueducto': 'servicios_casa', 'epm': 'servicios_casa',
-  'netflix': 'streaming', 'spotify': 'streaming', 'disney': 'streaming',
-  'youtube': 'streaming', 'hbo': 'streaming', 'amazon prime': 'streaming',
-  'gym': 'gimnasio', 'gimnasio': 'gimnasio', 'smart fit': 'gimnasio', 'bodytech': 'gimnasio',
-  'terpel': 'gasolina', 'esso': 'gasolina', 'mobil': 'gasolina', 'shell': 'gasolina',
-  'gasolina': 'gasolina', 'biomax': 'gasolina',
-  // v94 FIX: 'medicamentos' apuntaba a 'mascota' — un error real, medicamentos es de salud
-  // salvo que se especifique que son para una mascota (veterinaria sí se queda en mascota)
-  'farmacia': 'salud', 'cruz verde': 'salud', 'colsubsidio': 'salud', 'eps': 'salud',
-  'medicina': 'salud', 'doctor': 'salud', 'medicamentos': 'salud',
-  'veterinari': 'mascota', 'zlatan': 'mascota', 'mascota': 'mascota',
-  'mercado': 'mercado', 'supermercado': 'mercado', 'exito': 'mercado', 'carulla': 'mercado',
-  'jumbo': 'mercado', 'ara': 'mercado', 'd1': 'mercado', 'olimpica': 'mercado',
-  'cafe': 'comida_fuera', 'restaurante': 'comida_fuera', 'almuerzo': 'comida_fuera',
-  // v94 FIX: 'salidas_milena' ya no existe como categoría (se corrigió a 'salidas' hace
-  // varias rondas) — esto hacía que la sugerencia fallara EN SILENCIO para estas palabras,
-  // porque buscaba una opción en el <select> que ya no existía.
-  'cancha': 'salidas', 'cine': 'salidas', 'concierto': 'salidas', 'bar': 'salidas',
-  // v94 FIX: 'pago tarjeta'/'transferencia' apuntaban a 'otros' en vez de su categoría real
-  'pago tarjeta': 'pago_tarjeta', 'pago de tarjeta': 'pago_tarjeta',
-  'datacredito': 'otros', 'transferencia': 'otros'
+// v95: reescritura completa. Antes el diccionario era muy pequeño (~45 palabras) y no
+// normalizaba tildes, así que "café", "médico", "número" nunca coincidían con "cafe",
+// "medico", etc. — la sugerencia fallaba en silencio para la mayoría de descripciones reales.
+// Ahora: 1) se quitan tildes antes de comparar, 2) el diccionario cubre muchos más comercios
+// y palabras comunes en Colombia, 3) las palabras más largas/específicas se revisan primero
+// para que no gane una coincidencia genérica corta por accidente.
+const SMART_CATEGORIES_BY_CAT = {
+  uber: ['uber', 'didi', 'cabify', 'taxi', 'indriver', 'in driver', 'beat', 'mototaxi'],
+  rappi: ['rappi', 'domicilio', 'domicilios', 'ifood', 'uber eats'],
+  comida_fuera: [
+    'restaurante', 'almuerzo', 'cena', 'desayuno', 'cafe', 'cafeteria',
+    'mcdonalds', 'burger king', 'kfc', 'subway', 'dominos', 'pizza',
+    'crepes', 'waffles', 'presto', 'el corral', 'frisby', 'comida',
+    'panaderia', 'pasteleria', 'juan valdez', 'tostao', 'bar y grill',
+    'brunch', 'sushi', 'hamburguesa', 'perro caliente', 'arepa'
+  ],
+  servicios_casa: [
+    'movistar hogar', 'etb', 'codensa', 'enel', 'gas natural', 'vanti',
+    'acueducto', 'epm', 'energia', 'servicio de agua', 'arrendamiento',
+    'arriendo', 'administracion', 'internet hogar', 'gas domiciliario'
+  ],
+  celular: ['tigo', 'wom', 'movistar', 'claro', 'recarga', 'plan celular', 'plan de datos', 'minutos'],
+  gimnasio: ['gym', 'gimnasio', 'smart fit', 'bodytech', 'spinning', 'crossfit', 'entrenador personal', 'rutina'],
+  streaming: [
+    'netflix', 'spotify', 'disney', 'youtube premium', 'hbo', 'amazon prime',
+    'paramount', 'star plus', 'apple tv', 'deezer', 'crunchyroll'
+  ],
+  gasolina: ['terpel', 'esso', 'mobil', 'shell', 'gasolina', 'biomax', 'primax', 'texaco', 'combustible', 'peaje'],
+  salud: [
+    'farmacia', 'cruz verde', 'colsubsidio', 'eps', 'medicina', 'doctor', 'medico',
+    'medicamentos', 'drogueria', 'consulta medica', 'odontologo', 'dentista',
+    'psicologo', 'terapia', 'laboratorio clinico', 'examenes medicos', 'copago'
+  ],
+  mascota: [
+    'veterinaria', 'veterinario', 'mascota', 'perro', 'gato', 'purina',
+    'dog chow', 'whiskas', 'croquetas', 'zlatan'
+  ],
+  mercado: [
+    'mercado', 'supermercado', 'exito', 'carulla', 'jumbo', 'ara', 'd1',
+    'olimpica', 'alkosto', 'makro', 'surtimax', 'justo y bueno', 'super inter',
+    'tienda de barrio', 'fruver'
+  ],
+  salidas: [
+    'cancha', 'cine', 'concierto', 'bar', 'discoteca', 'rumba', 'fiesta',
+    'parche', 'cerveza', 'cerveceria', 'karaoke', 'bowling', 'billar', 'salida'
+  ],
+  compras: [
+    'ropa', 'zapatos', 'tecnologia', 'computador', 'falabella', 'homecenter',
+    'mercado libre', 'tienda de ropa', 'centro comercial', 'accesorios'
+  ],
+  pago_tarjeta: ['pago tarjeta', 'pago de tarjeta', 'pago tc', 'abono tarjeta', 'pago extracto'],
+  otros: ['datacredito', 'transferencia']
 };
+
+// Quita tildes/diacríticos para que "café" == "cafe", "médico" == "medico", etc.
+function normalizeText(str) {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+// Aplanar a lista de [palabraNormalizada, categoria], ordenada por longitud descendente
+// (así "pago de tarjeta" se revisa antes que "pago", evitando falsos positivos genéricos)
+const SMART_CATEGORIES_FLAT = Object.entries(SMART_CATEGORIES_BY_CAT)
+  .flatMap(([cat, words]) => words.map(w => [normalizeText(w), cat]))
+  .sort((a, b) => b[0].length - a[0].length);
 
 function suggestCategory(description) {
   if (!description || typeof description !== 'string') return null;
-  const desc = description.toLowerCase().trim();
-  // Buscar coincidencia exacta primero
-  for (const keyword in SMART_CATEGORIES) {
-    if (desc.includes(keyword)) {
-      return SMART_CATEGORIES[keyword];
-    }
+  const desc = normalizeText(description);
+  if (!desc) return null;
+  for (const [keyword, cat] of SMART_CATEGORIES_FLAT) {
+    if (desc.includes(keyword)) return cat;
   }
   return null;
 }
@@ -3392,6 +3427,9 @@ function showCategorySuggestion(catId, descInput, catSelect) {
 
   const option = catSelect.querySelector(`option[value="${catId}"]`);
   if (!option) {
+    // v95: si esto aparece en consola, significa que suggestCategory() devolvió un id de
+    // categoría que ya no existe en el <select> — señal de que hay que revisar SMART_CATEGORIES_BY_CAT
+    console.warn(`⚠️ Sugerencia de categoría "${catId}" no existe en el select — revisa SMART_CATEGORIES_BY_CAT`);
     if (hint) hint.remove();
     return;
   }
