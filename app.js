@@ -847,19 +847,30 @@ window.handleForgotPassword = handleForgotPassword;
 // ============================================================
 // QUICK ADD GASTO (FAB - Floating Action Button)
 // ============================================================
-window.openQuickAddGasto = function() {
-  // Cambiar a la pestaña de Presupuesto y hacer focus en el input
-  const tab = document.querySelector('[data-tab="presupuesto"]');
-  if (tab) tab.click();
-
-  // Esperar un momento y hacer scroll + focus
+// v94: modal flotante de "Registrar gasto" — abre/cierra con scroll-lock, como los demás modales
+window.openAddExpenseModal = function() {
+  const overlay = document.getElementById('add-expense-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  if (typeof lockBody === 'function') lockBody();
   setTimeout(() => {
     const input = document.getElementById('tx-desc');
-    if (input) {
-      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => input.focus(), 400);
-    }
-  }, 200);
+    if (input) input.focus();
+  }, 150);
+};
+
+window.closeAddExpenseModal = function() {
+  const overlay = document.getElementById('add-expense-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'none';
+  if (typeof unlockBody === 'function') unlockBody();
+};
+
+window.openQuickAddGasto = function() {
+  // v94: antes esto navegaba a la pestaña de Presupuesto y hacía scroll hasta el formulario
+  // inline. Ahora el formulario es un modal flotante, así que simplemente lo abrimos directo
+  // — funciona sin importar en qué pestaña esté el usuario.
+  window.openAddExpenseModal();
 };
 
 // Detectar si el usuario llegó de un link de recuperación
@@ -3331,12 +3342,21 @@ const SMART_CATEGORIES = {
   'gym': 'gimnasio', 'gimnasio': 'gimnasio', 'smart fit': 'gimnasio', 'bodytech': 'gimnasio',
   'terpel': 'gasolina', 'esso': 'gasolina', 'mobil': 'gasolina', 'shell': 'gasolina',
   'gasolina': 'gasolina', 'biomax': 'gasolina',
+  // v94 FIX: 'medicamentos' apuntaba a 'mascota' — un error real, medicamentos es de salud
+  // salvo que se especifique que son para una mascota (veterinaria sí se queda en mascota)
   'farmacia': 'salud', 'cruz verde': 'salud', 'colsubsidio': 'salud', 'eps': 'salud',
-  'medicina': 'salud', 'doctor': 'salud', 'medicamentos': 'mascota', 'veterinari': 'mascota',
-  'zlatan': 'mascota', 'mascota': 'mascota',
+  'medicina': 'salud', 'doctor': 'salud', 'medicamentos': 'salud',
+  'veterinari': 'mascota', 'zlatan': 'mascota', 'mascota': 'mascota',
+  'mercado': 'mercado', 'supermercado': 'mercado', 'exito': 'mercado', 'carulla': 'mercado',
+  'jumbo': 'mercado', 'ara': 'mercado', 'd1': 'mercado', 'olimpica': 'mercado',
   'cafe': 'comida_fuera', 'restaurante': 'comida_fuera', 'almuerzo': 'comida_fuera',
-  'cancha': 'salidas_milena', 'milena': 'salidas_milena', 'valentina': 'otros',
-  'datacredito': 'otros', 'pago tarjeta': 'otros', 'transferencia': 'otros'
+  // v94 FIX: 'salidas_milena' ya no existe como categoría (se corrigió a 'salidas' hace
+  // varias rondas) — esto hacía que la sugerencia fallara EN SILENCIO para estas palabras,
+  // porque buscaba una opción en el <select> que ya no existía.
+  'cancha': 'salidas', 'cine': 'salidas', 'concierto': 'salidas', 'bar': 'salidas',
+  // v94 FIX: 'pago tarjeta'/'transferencia' apuntaban a 'otros' en vez de su categoría real
+  'pago tarjeta': 'pago_tarjeta', 'pago de tarjeta': 'pago_tarjeta',
+  'datacredito': 'otros', 'transferencia': 'otros'
 };
 
 function suggestCategory(description) {
@@ -9837,8 +9857,13 @@ async function buildAnnualPDF(state, year) {
           'Gasto compartido registrado',
           `Tu parte: ${fmt(myAmount)} · Te deben: ${fmt(owedTotal)}`
         );
+      } else {
+        toastSuccess('Gasto registrado', `${desc} · ${fmt(totalAmount)}`);
       }
     }
+
+    // v94: cerrar el modal automáticamente tras registrar con éxito (si está abierto)
+    if (typeof window.closeAddExpenseModal === 'function') window.closeAddExpenseModal();
   };
 
   window.removeTransaction = async function(m, id) {
