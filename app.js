@@ -1987,10 +1987,10 @@ window.showConfirm = function(opts) {
     const id = 'confirm-modal-' + Date.now();
 
     const colors = {
-      default: { gradient: 'linear-gradient(135deg, #7F77DD, #1D9E75)', shadow: 'rgba(127, 119, 221, 0.3)' },
-      danger: { gradient: 'linear-gradient(135deg, #E24B4A, #A32D2D)', shadow: 'rgba(226, 75, 74, 0.3)' },
-      warning: { gradient: 'linear-gradient(135deg, #BA7517, #E09B3D)', shadow: 'rgba(186, 117, 23, 0.3)' },
-      success: { gradient: 'linear-gradient(135deg, #1D9E75, #34c89c)', shadow: 'rgba(29, 158, 117, 0.3)' }
+      default: { gradient: 'linear-gradient(135deg, var(--accent-from), var(--accent-to))', shadow: 'var(--accent-glow)' },
+      danger: { gradient: 'linear-gradient(135deg, #c1584f, #a32d2d)', shadow: 'rgba(163, 45, 45, 0.3)' },
+      warning: { gradient: 'linear-gradient(135deg, #d69a3d, #b47814)', shadow: 'rgba(180, 120, 20, 0.3)' },
+      success: { gradient: 'linear-gradient(135deg, #4a9b63, #2d6b40)', shadow: 'rgba(61, 133, 82, 0.3)' }
     };
     const c = colors[type] || colors.default;
 
@@ -2298,48 +2298,6 @@ const TUTORIAL_STEPS = [
   },
   {
     icon: '🔐',
-    title: 'Tu privacidad es PRIORIDAD',
-    subtitle: 'Tus datos están 100% seguros',
-    content: `
-      <h3>Tu información es completamente privada</h3>
-      <p>Antes de empezar, queremos que tengas total tranquilidad sobre el manejo de tu información financiera:</p>
-      <div style="display: flex; flex-direction: column; gap: 10px; margin: 14px 0;">
-        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
-          <span style="font-size: 18px;">🔒</span>
-          <div>
-            <strong style="color: var(--text-primary); font-size: 13px;">Solo tú ves tus datos</strong>
-            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Nadie más puede acceder a tu información, ni siquiera nosotros.</p>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
-          <span style="font-size: 18px;">🛡️</span>
-          <div>
-            <strong style="color: var(--text-primary); font-size: 13px;">Cifrado de extremo a extremo</strong>
-            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Tus datos viajan y se guardan cifrados con tecnología bancaria.</p>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
-          <span style="font-size: 18px;">🚫</span>
-          <div>
-            <strong style="color: var(--text-primary); font-size: 13px;">Cero venta de datos</strong>
-            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">No vendemos, compartimos ni cedemos tu info a terceros. Nunca.</p>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--success-text);">
-          <span style="font-size: 18px;">📵</span>
-          <div>
-            <strong style="color: var(--text-primary); font-size: 13px;">Sin anuncios, sin spam</strong>
-            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">No verás publicidad ni te llegarán correos comerciales.</p>
-          </div>
-        </div>
-      </div>
-      <div class="tutorial-tip-box" style="background: var(--success-bg); border-left-color: var(--success-text);">
-        <p style="color: var(--success-text);">🇨🇴 <strong>Cumplimos la Ley 1581 de 2012</strong> (Habeas Data) de protección de datos personales en Colombia.</p>
-      </div>
-    `
-  },
-  {
-    icon: '🔐',
     title: 'Tu privacidad es sagrada',
     subtitle: '100% privado, 100% seguro',
     content: `
@@ -2347,19 +2305,19 @@ const TUTORIAL_STEPS = [
       <p>Antes de empezar, queremos que tengas total tranquilidad sobre tu información:</p>
       <ul style="margin: 12px 0; padding: 0; list-style: none;">
         <li style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;">
-          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">🔒</span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">🔒</span>
           <span><strong>Cifrado de extremo a extremo:</strong> tus datos viajan y se almacenan cifrados.</span>
         </li>
         <li style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;">
-          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">👤</span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">👤</span>
           <span><strong>Solo tú accedes:</strong> nadie más puede ver tu información, ni siquiera nosotros.</span>
         </li>
         <li style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.5;">
-          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">🚫</span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">🚫</span>
           <span><strong>Sin compartir con terceros:</strong> nunca vendemos ni compartimos tus datos.</span>
         </li>
         <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.5;">
-          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">📵</span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; flex-shrink: 0;">📵</span>
           <span><strong>Sin anuncios:</strong> tu app, tu información, sin distracciones.</span>
         </li>
       </ul>
@@ -2432,11 +2390,11 @@ const TUTORIAL_STEPS = [
     subtitle: 'Registra cada gasto al momento',
     content: `
       <h3>Registra tus gastos</h3>
-      <p>Cada vez que gastas algo, ve a <strong>Presupuesto</strong> y regístralo. Solo necesitas:</p>
+      <p>Toca el botón <strong>➕ Registrar gasto</strong> (o el botón flotante) y se abre un formulario rápido. Solo necesitas:</p>
       <ul style="margin: 8px 0 12px 20px; padding: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
         <li>Descripción (ej: "Almuerzo")</li>
         <li>Monto</li>
-        <li>Categoría (te sugerimos automáticamente)</li>
+        <li>Categoría (te la sugerimos automáticamente al escribir)</li>
         <li>Método de pago</li>
       </ul>
       <div class="tutorial-tip-box">
@@ -2490,18 +2448,65 @@ const TUTORIAL_STEPS = [
   {
     icon: '💳',
     title: 'Tarjetas de crédito',
-    subtitle: 'Optimiza tu cashback y score',
+    subtitle: 'Optimiza tu cashback y cupo disponible',
     content: `
       <h3>Maneja tus tarjetas como un pro</h3>
-      <p>Registra tus tarjetas con: cupo, día de corte, tasa y cashback. Te ayudaremos a:</p>
+      <p>Registra tus tarjetas con: cupo, día de corte, tasa y % de cashback. Te ayudaremos a:</p>
       <ul style="margin: 8px 0 12px 20px; padding: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
         <li>Mantener tu utilización <strong>menor al 30%</strong></li>
-        <li>Maximizar cashback en cada compra</li>
-        <li>Recordarte fechas de corte</li>
-        <li>Mejorar tu score crediticio</li>
+        <li>Maximizar el cashback real de cada compra</li>
+        <li>Recordarte fechas de corte con anticipación</li>
+        <li>Trackear compras a cuotas automáticamente</li>
       </ul>
       <div class="tutorial-tip-box">
         <p>💡 <strong>Tip:</strong> Tenemos plantillas pre-cargadas para 30+ tarjetas colombianas (Lulo, Davivienda, Bancolombia, etc.)</p>
+      </div>
+    `
+  },
+  {
+    icon: '🎯',
+    title: 'Metas',
+    subtitle: 'Vincúlalas a un bolsillo real',
+    content: `
+      <h3>Ahorra con un objetivo claro</h3>
+      <p>Crea metas de ahorro: vacaciones, carro, fondo de emergencia. La diferencia clave: puedes <strong>vincular cada meta a un bolsillo real</strong>.</p>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-to);">
+          <span style="font-size: 18px;">🔗</span>
+          <div>
+            <strong style="font-size: 13px;">Vinculada a bolsillo</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">El progreso se calcula solo, en vivo, desde el saldo real de ese bolsillo. No hay que actualizar nada a mano.</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--text-tertiary);">
+          <span style="font-size: 18px;">✍️</span>
+          <div>
+            <strong style="font-size: 13px;">Manual</strong>
+            <p style="margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Si prefieres, actualiza el progreso tú mismo cuando quieras.</p>
+          </div>
+        </div>
+      </div>
+      <div class="tutorial-tip-box">
+        <p>💡 <strong>Tip:</strong> Crea primero el bolsillo (ej. "Vacaciones"), luego la meta vinculada a ese bolsillo — así ahorrar y ver tu progreso es la misma acción.</p>
+      </div>
+    `
+  },
+  {
+    icon: '📊',
+    title: 'Análisis',
+    subtitle: 'Entiende hacia dónde va tu plata',
+    content: `
+      <h3>Gráficos e insights automáticos</h3>
+      <p>La pestaña <strong>Análisis</strong> reúne todo lo que necesitas para entender tus finanzas de un vistazo:</p>
+      <ul style="margin: 8px 0 12px 20px; padding: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+        <li><strong>Ingresos vs gastos</strong> y tu tasa de ahorro, mes a mes</li>
+        <li><strong>Gastos por categoría</strong>, para ver en qué se te va la plata</li>
+        <li><strong>Gastos hormiga</strong>: patrones pequeños y frecuentes que suman al año</li>
+        <li><strong>Calendario financiero</strong> con tus cortes y recordatorios</li>
+        <li><strong>Reportes en PDF</strong> mensuales y anuales, listos para descargar</li>
+      </ul>
+      <div class="tutorial-tip-box">
+        <p>💡 <strong>Tip:</strong> Vuelve aquí cada fin de mes — entre más datos registres, más útiles se vuelven los gráficos.</p>
       </div>
     `
   },
@@ -3237,22 +3242,9 @@ function checkSmartNotifications() {
     }
   }
 
-  // 4. Felicitación por buen score
-  if (state.creditScore && state.creditScore.lastReported >= 670) {
-    const id = 'score_good_' + (state.creditScore.lastReportedDate || '');
-    if (!shownToday.ids.includes(id) && state.creditScore.history && state.creditScore.history.length >= 2) {
-      const sorted = [...state.creditScore.history].sort((a, b) => a.date.localeCompare(b.date));
-      const last = sorted[sorted.length - 1];
-      const prev = sorted[sorted.length - 2];
-      if (last.score > prev.score) {
-        notifications.push({
-          id, type: 'success', icon: '🎉',
-          title: '¡Tu score subió!',
-          msg: `De ${prev.score} a ${last.score} (+${last.score - prev.score} puntos). Sigue así.`
-        });
-      }
-    }
-  }
+  // v97: se quitó la notificación "¡Tu score subió!" — el seguimiento de score crediticio
+  // se simplificó a solo un tip en Resumen (v84) y ya no hay forma de registrar históricos
+  // desde la UI, así que esta notificación ya no tiene sentido mostrarla.
 
   return notifications;
 }
