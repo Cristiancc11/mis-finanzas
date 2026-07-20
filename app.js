@@ -1009,7 +1009,8 @@ function renderProfileStats() {
     bolsillos: 0,
     transactions: 0,
     cashback: 0,
-    score: 'N/A'
+    emergencyMonths: null,
+    emergencyAmount: 0
   };
 
   try {
@@ -1028,8 +1029,25 @@ function renderProfileStats() {
           }
         });
       }
-      if (s.creditScore && s.creditScore.lastReported) {
-        stats.score = s.creditScore.lastReported;
+      // v98: Fondo de emergencia (meses cubiertos) — reemplaza Score crediticio, que se
+      // desactivó de la app (v84) y ya no tiene forma de alimentarse con datos reales
+      const emergencyPocket = (s.pockets || []).find(p => /emergencia/i.test(p.name));
+      if (emergencyPocket) {
+        stats.emergencyAmount = emergencyPocket.amount || 0;
+        const today = new Date();
+        const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        const monthTx = (s.transactions && s.transactions[currentMonthKey]) || [];
+        const realExpenseTx = monthTx.filter(t => {
+          if (t.payCardId) return false;
+          if (t.category === 'pago_tarjeta') return false;
+          if (s.customCategories) {
+            const cat = s.customCategories.find(c => c.id === t.category);
+            if (cat && cat.isPagoTarjeta) return false;
+          }
+          return true;
+        });
+        const monthExpenses = realExpenseTx.reduce((sum, t) => sum + (t.amount || 0), 0);
+        if (monthExpenses > 0) stats.emergencyMonths = stats.emergencyAmount / monthExpenses;
       }
     }
   } catch(e) {}
@@ -1042,8 +1060,8 @@ function renderProfileStats() {
       <div style="font-size: 18px; font-weight: 600; color: var(--success-text);">${fmt(stats.patrimonio)}</div>
     </div>
     <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-      <div style="font-size: 11px; color: var(--text-secondary);">📊 Score crediticio</div>
-      <div style="font-size: 18px; font-weight: 600;">${stats.score}</div>
+      <div style="font-size: 11px; color: var(--text-secondary);">🛟 Fondo de emergencia</div>
+      <div style="font-size: 18px; font-weight: 600;">${stats.emergencyMonths !== null ? stats.emergencyMonths.toFixed(1) + ' meses' : (stats.emergencyAmount > 0 ? fmt(stats.emergencyAmount) : 'N/A')}</div>
     </div>
     <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
       <div style="font-size: 11px; color: var(--text-secondary);">👛 Bolsillos activos</div>
