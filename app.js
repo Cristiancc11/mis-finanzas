@@ -10871,9 +10871,14 @@ async function buildAnnualPDF(state, year) {
     const futureInstallments = Math.max(0, blockedByInstallments - currentMonthInstallmentSum);
     const optimizableBalance = Math.max(0, cardBalance - futureInstallments);
     
-    const needsPayment = cardBalance > targetMaxBalance;
-    // El pago real para llegar a 3% (no puede ser menos que la cuota del mes)
-    let paymentNeeded = needsPayment ? cardBalance - targetMaxBalance : 0;
+    const needsPayment = optimizableBalance > targetMaxBalance;
+    // FIX: el pago recomendado debe calcularse sobre optimizableBalance (el saldo que
+    // SÍ puedes reducir pagando), no sobre cardBalance completo. Antes esto ignoraba que
+    // parte del saldo está bloqueado por cuotas futuras (ej. una compra a cuotas que no se
+    // puede adelantar sin pagar el diferido completo), así que recomendaba pagar de más —
+    // exactamente el monto de las cuotas pendientes que de todos modos seguirán ahí el
+    // próximo mes sin importar cuánto pagues hoy.
+    let paymentNeeded = needsPayment ? optimizableBalance - targetMaxBalance : 0;
     // No tiene sentido recomendar menos que la cuota obligatoria del mes
     if (paymentNeeded < currentMonthInstallmentSum) paymentNeeded = currentMonthInstallmentSum;
     
