@@ -2585,19 +2585,10 @@ button.btn-loading.btn-secondary::after {
     color: rgba(255, 255, 255, 0.75);
   }
 
-  .side-menu-brand-icon {
-    font-size: 14px;
-  }
-
-  .side-menu-brand-text {
-    font-weight: 600;
-    color: white;
-  }
-
-  .side-menu-brand-text .logo-text {
-    background: none;
-    -webkit-text-fill-color: white;
-    color: white;
+  .side-menu-brand-logo {
+    height: 20px;
+    width: auto;
+    max-width: 100%;
   }
 
   /* Navegación */
@@ -6137,15 +6128,11 @@ button[onclick*="deleteReminder"]:active,
   margin-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar-brand-mark {
-  font-size: 20px;
-  line-height: 1;
-}
-.sidebar-brand-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: -0.2px;
+.sidebar-brand-logo {
+  height: 26px;
+  width: auto;
+  max-width: 100%;
+  display: block;
 }
 
 /* v66: bloque de cuenta/logout, siempre visible al fondo del sidebar */
