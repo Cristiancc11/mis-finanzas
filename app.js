@@ -6632,16 +6632,29 @@ async function buildAnnualPDF(state, year) {
 
   // v103: selector TEMPORAL para probar cada plan sin pasarela de pagos real todavía.
   // Cuando se integre el pago de verdad, esto se reemplaza por la lógica de suscripción.
-  window.setDevPlan = function(newPlan) {
+  window.setDevPlan = async function(newPlan) {
     if (!['free', 'normal', 'pro'].includes(newPlan)) return;
     state.plan = newPlan;
-    saveState();
-    // FIX: recargamos la página en vez de solo re-renderizar. Las secciones bloqueadas
-    // (Mis Deudas, Conversor, Calendario, etc.) reemplazan su propio HTML por el aviso de
-    // "mejora tu plan", destruyendo el contenedor original — así que un simple re-render
-    // nunca las reconstruía, aunque subieras de plan. Recargar trae el HTML limpio de nuevo.
-    toastSuccess('Plan cambiado (modo prueba)', `Ahora estás en el plan ${PLAN_LABEL[newPlan]}. Recargando...`);
-    setTimeout(() => location.reload(), 1000);
+
+    // FIX: antes esto llamaba saveState() (que dispara el guardado a la nube con 1.5s de
+    // espera) y recargaba a los 1000ms — la recarga ganaba la carrera, así que al volver a
+    // cargar, la nube todavía tenía el plan VIEJO y lo traía de vuelta, deshaciendo el cambio.
+    // Ahora guardamos directo a Supabase y esperamos de verdad a que termine antes de recargar.
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+    toastSuccess('Plan cambiado (modo prueba)', `Ahora estás en el plan ${PLAN_LABEL[newPlan]}. Guardando...`);
+
+    try {
+      if (currentUser && supabaseClient) {
+        await supabaseClient.from('dashboard_data').upsert({
+          user_id: currentUser.id,
+          data: state
+        }, { onConflict: 'user_id' });
+      }
+    } catch(e) {
+      console.error('Error guardando plan en la nube:', e);
+    }
+
+    location.reload();
   };
 
   function setDefaultDate() {
