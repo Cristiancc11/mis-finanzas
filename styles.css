@@ -6129,10 +6129,9 @@ button[onclick*="deleteReminder"]:active,
   border-bottom: 1px solid var(--border);
 }
 .sidebar-brand-logo {
-  height: 26px;
+  height: 24px;
   width: auto;
   max-width: 100%;
-  display: block;
 }
 
 /* v66: bloque de cuenta/logout, siempre visible al fondo del sidebar */
