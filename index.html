@@ -1273,6 +1273,7 @@
     <div class="raised-card">
       <p class="card-title">➕ Agregar bolsillo</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Crea un bolsillo para organizar tu dinero por bancos, efectivo, ahorros o metas.</p>
+      <div id="pocket-limit-banner"></div>
 
       <!-- Paso 1: Información básica -->
       <div style="display: grid; gap: 10px;">
@@ -1506,6 +1507,7 @@
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
       <p class="card-title">⚡ Agregar tarjeta rápido</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Selecciona tu tarjeta y pre-cargamos los datos. Luego solo ingresas el cupo y el saldo.</p>
+      <div id="debt-limit-banner"></div>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px;">
         <select id="card-template" onchange="applyCardTemplate()">
@@ -1696,6 +1698,7 @@
     <div class="raised-card">
       <p class="card-title">🎯 Agregar meta</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Define cuánto quieres ahorrar. Vincúlala a un bolsillo real para que el progreso se actualice solo.</p>
+      <div id="goal-limit-banner"></div>
 
       <div class="field-group" style="margin-bottom: 10px;">
         <label class="field-label" for="goal-name">Nombre de la meta</label>
@@ -1854,6 +1857,7 @@
     </div>
 
     <div class="section-group-title">🛠️ Herramientas</div>
+    <div id="analisis-tools-wrapper">
 
     <!-- IMPORTAR MOVIMIENTOS -->
     <div class="raised-card" style="border: 0.5px solid var(--info-text);">
@@ -1965,10 +1969,12 @@
           <strong>💳 Tarjetas:</strong> Saldos, utilización, cashback ganado<br>
           <strong>📋 Transacciones:</strong> Listado completo con categorías<br>
           <strong>📊 Análisis:</strong> Gastos por categoría, comparativa<br>
-          <strong>🎯 Score crediticio:</strong> Histórico y proyección<br>
+          <strong>🛟 Fondo de emergencia:</strong> Meses cubiertos<br>
           <strong>💡 Recomendaciones:</strong> Tips personalizados
         </div>
       </details>
+    </div>
+
     </div>
 
   </div>
@@ -2117,6 +2123,36 @@
           <input type="date" id="profile-birth-date" />
         </div>
         <button onclick="saveProfile()" style="padding: 12px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; margin-top: 4px;">💾 Guardar cambios</button>
+      </div>
+    </div>
+
+    <div class="raised-card" id="plan-card" style="border: 1.5px solid var(--accent-to);">
+      <p class="card-title">💎 Mi plan</p>
+      <div id="plan-current-badge" style="margin-bottom: 16px;"></div>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+        <div style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--text-tertiary);">
+          <strong style="font-size: 13px;">🆓 Gratis</strong>
+          <p style="font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.5;">Movimientos ilimitados · hasta 5 bolsillos · 1 tarjeta · 1 meta · historial de 2 meses</p>
+        </div>
+        <div style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--info-text);">
+          <strong style="font-size: 13px;">💳 Normal</strong>
+          <p style="font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.5;">Todo ilimitado · Mis Deudas · Ingresos completos · historial completo · análisis básico</p>
+        </div>
+        <div style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-to);">
+          <strong style="font-size: 13px;">💎 Pro</strong>
+          <p style="font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.5;">Todo lo de Normal + Gastos hormiga · Calendario · Reportes PDF · Conversor · Rendimientos · Estrategia cashback</p>
+        </div>
+      </div>
+
+      <!-- v103: selector TEMPORAL para probar cada plan — reemplazar cuando haya pasarela de pagos real -->
+      <div style="margin-top: 16px; padding: 12px; background: var(--warning-bg); border-radius: 10px; border: 1px dashed var(--warning-text);">
+        <label class="field-label" for="dev-plan-selector" style="color: var(--warning-text);">🧪 Modo prueba — cambiar mi plan (temporal, hasta activar pagos reales)</label>
+        <select id="dev-plan-selector" onchange="window.setDevPlan(this.value)">
+          <option value="free">🆓 Gratis</option>
+          <option value="normal">💳 Normal</option>
+          <option value="pro">💎 Pro</option>
+        </select>
       </div>
     </div>
 

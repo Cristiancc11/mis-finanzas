@@ -5339,6 +5339,12 @@ function renderAntExpenses() {
   const container = document.getElementById('ant-expenses-content');
   if (!container) return;
 
+  // v103: Gastos hormiga es una función Pro
+  if (typeof hasPlanAccess === 'function' && !hasPlanAccess('pro')) {
+    container.innerHTML = renderUpgradePrompt('Gastos hormiga', 'pro', 'Detecta patrones de gastos pequeños y frecuentes que suman al año.');
+    return;
+  }
+
   const state = getStateForNotifications();
   const allTx = [];
   if (state.transactions) {
@@ -5419,6 +5425,13 @@ document.addEventListener('click', (e) => {
       renderSavingsRateChart();
       renderCategoryPieChart();
       populateMonthSelector();
+
+      // v103: Herramientas (Importar movimientos + Reportes PDF) es una función Pro
+      const toolsWrapper = document.getElementById('analisis-tools-wrapper');
+      if (toolsWrapper && typeof hasPlanAccess === 'function' && !hasPlanAccess('pro') && !toolsWrapper.dataset.locked) {
+        toolsWrapper.innerHTML = renderUpgradePrompt('Herramientas de Análisis', 'pro', 'Importa movimientos desde tu banco y genera reportes PDF mensuales o anuales.');
+        toolsWrapper.dataset.locked = 'true';
+      }
     }, 100);
   }
 });
@@ -6379,12 +6392,12 @@ async function buildAnnualPDF(state, year) {
   const EMPTY_STATE = {
     currency: 'COP', interestRate: 0,
     interestBank: 'Sin configurar',
+    // v103: 5 bolsillos por defecto (antes 6) para que calce con el límite del plan gratis
     pockets: [
       { id: 1, name: 'Fondo de Emergencias', amount: 0, icon: '🛟' },
       { id: 2, name: 'Flujo Operativo', amount: 0, icon: '💰' },
       { id: 3, name: 'Ahorro Personal', amount: 0, icon: '🎯' },
       { id: 4, name: 'Gastos Fijos', amount: 0, icon: '🏠' },
-      { id: 5, name: 'Vida Social', amount: 0, icon: '🍻' },
       { id: 9, name: 'Efectivo', amount: 0, icon: '💵', isCash: true }
     ],
     incomes: [
@@ -6401,6 +6414,8 @@ async function buildAnnualPDF(state, year) {
       history: [],
       reportData: null
     },
+    // v103: plan por defecto para cuentas NUEVAS a partir de ahora
+    plan: 'free',
     // Marca para mostrar tutorial de bienvenida
     isNewUser: true
   };
@@ -6513,6 +6528,15 @@ async function buildAnnualPDF(state, year) {
         if (!state.transactions) state.transactions = {};
         if (!state.extraIncomes) state.extraIncomes = {};
         if (!state.monthlyIncomes) state.monthlyIncomes = {};
+
+        // v103: MIGRACIÓN — cuentas que existían ANTES del sistema de planes no tienen
+        // el campo "plan". Las dejamos en Pro (todo desbloqueado) para no afectar a nadie
+        // que ya estuviera usando la app; el plan gratis/normal solo aplica a cuentas
+        // nuevas creadas de ahora en adelante (ver EMPTY_STATE).
+        if (!state.plan) {
+          state.plan = 'pro';
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+        }
         
         // v58: MIGRACIÓN ─ si tiene ingresos viejos pero NO monthlyIncomes para mes actual,
         // copiar plantillas como snapshot del mes actual (preservando historia: no toca meses pasados)
@@ -6548,6 +6572,73 @@ async function buildAnnualPDF(state, year) {
   function saveState() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
   }
+
+  // ============================================================
+  // v103: SISTEMA DE PLANES (Gratis / Normal / Pro)
+  // ============================================================
+  const PLAN_RANK = { free: 0, normal: 1, pro: 2 };
+  const PLAN_LABEL = { free: '🆓 Gratis', normal: '💳 Normal', pro: '💎 Pro' };
+  const FREE_LIMITS = { pockets: 5, debts: 1, goals: 1 };
+
+  function getUserPlan() {
+    return state.plan || 'pro';
+  }
+  window.getUserPlan = getUserPlan;
+
+  function hasPlanAccess(requiredPlan) {
+    return PLAN_RANK[getUserPlan()] >= PLAN_RANK[requiredPlan];
+  }
+  window.hasPlanAccess = hasPlanAccess;
+
+  // Card de "mejora tu plan" reutilizable — se muestra en vez del contenido bloqueado
+  function renderUpgradePrompt(featureName, requiredPlan, description) {
+    const label = PLAN_LABEL[requiredPlan] || PLAN_LABEL.normal;
+    return `
+      <div class="raised-card" style="text-align: center; padding: 32px 20px; border: 1.5px dashed var(--accent-to); background: var(--accent-glow);">
+        <div style="font-size: 34px; margin-bottom: 10px;">🔒</div>
+        <p style="font-weight: 700; font-size: 15px; margin: 0 0 4px;">${esc(featureName)} es una función ${label}</p>
+        <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 18px; max-width: 320px; margin-left: auto; margin-right: auto;">${esc(description || 'Mejora tu plan para desbloquear esta sección.')}</p>
+        <button onclick="document.querySelector('[data-tab=perfil]').click(); setTimeout(() => document.getElementById('plan-card')?.scrollIntoView({behavior:'smooth', block:'center'}), 300);" style="padding: 12px 28px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">Ver planes</button>
+      </div>
+    `;
+  }
+  window.renderUpgradePrompt = renderUpgradePrompt;
+
+  // Aviso compacto de límite alcanzado (para mostrar junto a un formulario, no reemplazarlo)
+  function renderLimitBanner(current, limit, itemName, requiredPlan) {
+    if (current < limit) return '';
+    const label = PLAN_LABEL[requiredPlan] || PLAN_LABEL.normal;
+    return `
+      <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--warning-bg); border-left: 3px solid var(--warning-text); border-radius: 10px; margin-bottom: 12px; font-size: 12px; color: var(--warning-text);">
+        <span style="font-size: 18px;">🔒</span>
+        <span>Llegaste al límite de ${limit} ${esc(itemName)} de tu plan gratis. Mejora a ${label} para agregar más.</span>
+      </div>
+    `;
+  }
+  window.renderLimitBanner = renderLimitBanner;
+
+  // Card "Mi plan" en Perfil — muestra el plan actual y sincroniza el selector de prueba
+  function renderPlanCard() {
+    const badge = document.getElementById('plan-current-badge');
+    const selector = document.getElementById('dev-plan-selector');
+    if (!badge && !selector) return;
+    const plan = getUserPlan();
+    if (badge) {
+      const colors = { free: 'var(--text-tertiary)', normal: 'var(--info-text)', pro: 'var(--accent-to)' };
+      badge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; background:${colors[plan]}22; color:${colors[plan]}; border-radius:20px; font-weight:700; font-size:14px;">${PLAN_LABEL[plan]}</span>`;
+    }
+    if (selector) selector.value = plan;
+  }
+
+  // v103: selector TEMPORAL para probar cada plan sin pasarela de pagos real todavía.
+  // Cuando se integre el pago de verdad, esto se reemplaza por la lógica de suscripción.
+  window.setDevPlan = function(newPlan) {
+    if (!['free', 'normal', 'pro'].includes(newPlan)) return;
+    state.plan = newPlan;
+    saveState();
+    renderAll();
+    toastSuccess('Plan cambiado (modo prueba)', `Ahora estás en el plan ${PLAN_LABEL[newPlan]}`);
+  };
 
   function setDefaultDate() {
     const d = getTodayLocal();
@@ -6948,6 +7039,11 @@ async function buildAnnualPDF(state, year) {
   });
 
   window.addPocket = function() {
+    // v103: límite de bolsillos en plan gratis
+    if (!hasPlanAccess('normal') && state.pockets.length >= FREE_LIMITS.pockets) {
+      toastWarning('Límite de tu plan', `Tu plan gratis permite hasta ${FREE_LIMITS.pockets} bolsillos. Mejora tu plan para agregar más.`);
+      return;
+    }
     const n = document.getElementById('pocket-name').value.trim();
     const a = parseFloat(document.getElementById('pocket-amount').value);
     const i = document.getElementById('pocket-icon').value;
@@ -8608,6 +8704,11 @@ async function buildAnnualPDF(state, year) {
   };
 
   window.addDebt = function() {
+    // v103: límite de tarjetas en plan gratis
+    if (!hasPlanAccess('normal') && state.debts.length >= FREE_LIMITS.debts) {
+      toastWarning('Límite de tu plan', `Tu plan gratis permite hasta ${FREE_LIMITS.debts} tarjeta. Mejora tu plan para agregar más.`);
+      return;
+    }
     const n = document.getElementById('debt-name').value.trim();
     const b = parseFloat(document.getElementById('debt-balance').value);
     const r = parseFloat(document.getElementById('debt-rate').value) || 0;
@@ -8913,6 +9014,11 @@ async function buildAnnualPDF(state, year) {
   }
 
   window.addGoal = function() {
+    // v103: límite de metas en plan gratis
+    if (!hasPlanAccess('normal') && state.goals.length >= FREE_LIMITS.goals) {
+      toastWarning('Límite de tu plan', `Tu plan gratis permite hasta ${FREE_LIMITS.goals} meta. Mejora tu plan para agregar más.`);
+      return;
+    }
     const n = document.getElementById('goal-name').value.trim();
     const t = parseFloat(document.getElementById('goal-target').value);
     if (!n || !t || t <= 0) return alert('Completa el nombre y el monto objetivo');
@@ -10089,7 +10195,13 @@ async function buildAnnualPDF(state, year) {
   function renderPockets() {
     const list = document.getElementById('pocket-list');
     const total = totalPockets();
-    
+
+    // v103: aviso de límite del plan gratis
+    const limitBanner = document.getElementById('pocket-limit-banner');
+    if (limitBanner) {
+      limitBanner.innerHTML = hasPlanAccess('normal') ? '' : renderLimitBanner(state.pockets.length, FREE_LIMITS.pockets, 'bolsillos', 'normal');
+    }
+
     // Calcular totales dinámicamente según los bolsillos del usuario
     const cashTotal = state.pockets.filter(p => p.isCash || p.bank === 'cash').reduce((s, p) => s + p.amount, 0);
     
@@ -10415,7 +10527,13 @@ async function buildAnnualPDF(state, year) {
       console.warn('⚠️ Elemento debt-list no existe en el DOM');
       return;
     }
-    
+
+    // v103: aviso de límite del plan gratis
+    const debtLimitBanner = document.getElementById('debt-limit-banner');
+    if (debtLimitBanner) {
+      debtLimitBanner.innerHTML = hasPlanAccess('normal') ? '' : renderLimitBanner(state.debts.length, FREE_LIMITS.debts, 'tarjeta', 'normal');
+    }
+
     // Asegurar que state.debts es un array
     if (!Array.isArray(state.debts)) {
       console.warn('⚠️ state.debts no es array, inicializando vacío');
@@ -10964,6 +11082,12 @@ async function buildAnnualPDF(state, year) {
 
     // v92: poblar el selector de bolsillos cada vez que se renderiza (refleja bolsillos nuevos/eliminados)
     populateGoalPocketSelect();
+
+    // v103: aviso de límite del plan gratis
+    const goalLimitBanner = document.getElementById('goal-limit-banner');
+    if (goalLimitBanner) {
+      goalLimitBanner.innerHTML = hasPlanAccess('normal') ? '' : renderLimitBanner(state.goals.length, FREE_LIMITS.goals, 'meta', 'normal');
+    }
 
     if (state.goals.length === 0) {
       list.innerHTML = `
@@ -13496,6 +13620,11 @@ async function buildAnnualPDF(state, year) {
   function renderReturns() {
     const c = document.getElementById('returns-content');
     if (!c) return;
+    // v103: Rendimientos de tus ahorros es una función Pro
+    if (!hasPlanAccess('pro')) {
+      c.innerHTML = renderUpgradePrompt('Rendimientos de tus ahorros', 'pro', 'Calcula cuánto generan tus ahorros, incluyendo la retención de la DIAN.');
+      return;
+    }
     const r = (state.interestRate || 0) / 100;
     const p = totalPockets();
     if (r === 0 || p === 0) { c.innerHTML = '<div class="empty-state">Configura tasa</div>'; return; }
@@ -13544,6 +13673,12 @@ async function buildAnnualPDF(state, year) {
   function renderCashbackStrategy() {
     const c = document.getElementById('cashback-strategy');
     if (!c) return;
+
+    // v103: Estrategia cashback + float es una función Pro
+    if (!hasPlanAccess('pro')) {
+      c.innerHTML = renderUpgradePrompt('Estrategia cashback + float', 'pro', 'Descubre cuánto ganas combinando cashback y el float de tus tarjetas.');
+      return;
+    }
 
     // v84 FIX: antes esto asumía que el 85% de tu gasto es con tarjeta (número inventado) y
     // calculaba cashback al 1% fijo para todas tus tarjetas (mismo bug que ya corregimos en
@@ -14103,6 +14238,7 @@ async function buildAnnualPDF(state, year) {
 
   function renderAll() {
     // Cada render en su propio try/catch para que un error no rompa los demás
+    try { renderPlanCard(); } catch(e) { console.error('❌ Error en renderPlanCard:', e); }
     try { renderPockets(); } catch(e) { console.error('❌ Error en renderPockets:', e); }
     try { renderIncomes(); } catch(e) { console.error('❌ Error en renderIncomes:', e); }
     try { renderDebts(); } catch(e) { console.error('❌ Error en renderDebts:', e); }
@@ -14538,6 +14674,13 @@ async function buildAnnualPDF(state, year) {
     const list = document.getElementById('mydebts-list');
     if (!list) return;
 
+    // v103: "Mis Deudas" es una función de plan Normal o superior
+    const section = document.getElementById('section-mis-deudas');
+    if (!hasPlanAccess('normal')) {
+      if (section) section.innerHTML = renderUpgradePrompt('Mis Deudas', 'normal', 'Lleva el control de préstamos personales y lo que le debes a otros.');
+      return;
+    }
+
     // v93: resumen de solo lectura de cuotas activas de tarjeta (dato real, no duplicado)
     try { renderCardInstallmentsSummary(); } catch(e) { console.error('❌ Error en renderCardInstallmentsSummary:', e); }
 
@@ -14959,6 +15102,15 @@ async function buildAnnualPDF(state, year) {
   document.addEventListener('click', function(e) {
     const tab = e.target.closest('.fin-tab, .side-menu-item');
     if (tab && tab.dataset && tab.dataset.tab === 'conversor') {
+      // v103: el Conversor es una función Pro
+      const section = document.getElementById('section-conversor');
+      if (!hasPlanAccess('pro')) {
+        if (section && !section.dataset.locked) {
+          section.innerHTML = renderUpgradePrompt('Conversor de moneda', 'pro', 'Convierte pesos a dólares y otras monedas con la TRM en vivo.');
+          section.dataset.locked = 'true';
+        }
+        return;
+      }
       setTimeout(() => window.fetchExchangeRates(false), 50);
     }
   }, true);
