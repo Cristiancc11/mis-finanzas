@@ -241,8 +241,11 @@ async function handleAuth() {
     showAuthMessage('Completa email y contraseña', 'error');
     return;
   }
-  if (password.length < 6) {
-    showAuthMessage('La contraseña debe tener al menos 6 caracteres', 'error');
+  // FIX SEGURIDAD: el mínimo de 8 caracteres solo aplica al crear una cuenta NUEVA.
+  // Antes esta validación corría también en login con un mínimo de 6 — subirlo ahí
+  // habría bloqueado el acceso a cuentas ya existentes con contraseñas más cortas.
+  if (authMode === 'signup' && password.length < 8) {
+    showAuthMessage('La contraseña debe tener al menos 8 caracteres', 'error');
     return;
   }
 
@@ -299,7 +302,7 @@ async function handleAuth() {
     let msg = e.message || 'Error de autenticación';
     if (msg.includes('Invalid login')) msg = 'Email o contraseña incorrectos';
     if (msg.includes('already registered')) msg = 'Este email ya está registrado. Inicia sesión.';
-    if (msg.includes('weak password')) msg = 'Contraseña débil. Usa al menos 6 caracteres.';
+    if (msg.includes('weak password')) msg = 'Contraseña débil. Usa al menos 8 caracteres.';
     showAuthMessage(msg, 'error');
     submitBtn.disabled = false;
     submitBtn.classList.remove('btn-loading');
@@ -886,15 +889,15 @@ async function checkPasswordRecoveryFlow() {
     // Mostrar modal para nueva contraseña
     const newPassword = await showPrompt({
       title: '🔐 Crear nueva contraseña',
-      message: 'Ingresa tu nueva contraseña (mínimo 6 caracteres)',
+      message: 'Ingresa tu nueva contraseña (mínimo 8 caracteres)',
       placeholder: 'Nueva contraseña',
       inputType: 'password',
       confirmText: 'Cambiar contraseña',
       icon: '🔒'
     });
 
-    if (!newPassword || newPassword.length < 6) {
-      toastWarning('Contraseña muy corta', 'Debe tener al menos 6 caracteres');
+    if (!newPassword || newPassword.length < 8) {
+      toastWarning('Contraseña muy corta', 'Debe tener al menos 8 caracteres');
       return true;
     }
 
@@ -1107,6 +1110,19 @@ async function saveProfile() {
 
 async function uploadAvatar(file) {
   if (!currentUser || !supabaseClient || !file) return;
+
+  // FIX: validar tipo y tamaño ANTES de subir — antes no había ninguna validación,
+  // así que se podía subir cualquier tipo de archivo o de cualquier tamaño.
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (!allowedTypes.includes(file.type)) {
+    alert('Solo se permiten imágenes (JPG, PNG, WEBP o GIF).');
+    return;
+  }
+  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+  if (file.size > MAX_SIZE) {
+    alert('La imagen es muy grande. El máximo permitido es 5 MB.');
+    return;
+  }
 
   try {
     const ext = file.name.split('.').pop();
@@ -1457,7 +1473,7 @@ async function deleteDocument(docId, filePath) {
 async function changePasswordPrompt() {
   const newPass = await showPrompt({
     title: '🔐 Cambiar contraseña',
-    message: 'Ingresa tu nueva contraseña. Debe tener al menos 6 caracteres.',
+    message: 'Ingresa tu nueva contraseña. Debe tener al menos 8 caracteres.',
     placeholder: 'Nueva contraseña',
     inputType: 'password',
     confirmText: 'Cambiar',
@@ -1466,8 +1482,8 @@ async function changePasswordPrompt() {
 
   if (!newPass) return;
 
-  if (newPass.length < 6) {
-    toastWarning('Contraseña muy corta', 'Debe tener al menos 6 caracteres');
+  if (newPass.length < 8) {
+    toastWarning('Contraseña muy corta', 'Debe tener al menos 8 caracteres');
     return;
   }
 
@@ -1500,7 +1516,7 @@ async function changePasswordPrompt() {
 async function deleteAccountPrompt() {
   const confirmed = await showConfirm({
     title: '⚠️ Eliminar cuenta',
-    message: 'Esto eliminará TU CUENTA y TODOS tus datos permanentemente. Esta acción NO se puede deshacer.',
+    message: 'Esto eliminará TODOS tus datos (bolsillos, tarjetas, transacciones, metas, perfil y documentos) de forma permanente. Esta acción NO se puede deshacer.',
     confirmText: 'Sí, eliminar todo',
     cancelText: 'Cancelar',
     type: 'danger',
@@ -1522,7 +1538,42 @@ async function deleteAccountPrompt() {
     return;
   }
 
-  toastInfo('Procesando', 'Para eliminar tu cuenta completamente, contacta a soporte. Por ahora cerraremos tu sesión.', 5000);
+  // FIX: antes esta función solo cerraba sesión y no borraba NADA — contradecía
+  // directamente lo que promete la Política de Privacidad ("puede eliminar su cuenta
+  // y todos sus datos directamente desde la app"). Ahora sí borra los datos reales.
+  toastInfo('Eliminando', 'Borrando tus datos, un momento...', 4000);
+
+  try {
+    const uid = currentUser.id;
+
+    // 1) Borrar archivos del storage (avatar y cualquier documento subido)
+    try {
+      const { data: files } = await supabaseClient.storage.from('user-files').list(uid);
+      if (files && files.length > 0) {
+        const paths = files.map(f => `${uid}/${f.name}`);
+        await supabaseClient.storage.from('user-files').remove(paths);
+      }
+    } catch (e) {
+      console.error('Error borrando archivos del storage:', e);
+    }
+
+    // 2) Borrar filas de las 3 tablas (RLS ya garantiza que solo se borran las propias)
+    await supabaseClient.from('user_documents').delete().eq('user_id', uid);
+    await supabaseClient.from('user_profiles').delete().eq('user_id', uid);
+    await supabaseClient.from('dashboard_data').delete().eq('user_id', uid);
+
+    // 3) Limpiar almacenamiento local del navegador
+    try {
+      localStorage.removeItem(STORAGE_KEY_GLOBAL);
+      localStorage.removeItem(NOTIFICATIONS_KEY);
+    } catch (e) {}
+
+    toastSuccess('Datos eliminados', 'Cerrando tu sesión...', 3000);
+  } catch (e) {
+    console.error('Error eliminando datos de la cuenta:', e);
+    toastError('Error al eliminar', 'Algunos datos no se pudieron borrar. Contacta a soporte para completarlo.');
+  }
+
   setTimeout(async () => {
     await supabaseClient.auth.signOut();
     location.reload();
@@ -3211,7 +3262,7 @@ function checkSmartNotifications() {
       if (!shownToday.ids.includes(id)) {
         notifications.push({
           id, type: 'warning', icon: '⚠️',
-          title: `${d.name}: corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''}`,
+          title: `${escapeHtml(d.name)}: corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''}`,
           msg: `Tu utilización es ${util.toFixed(1)}%. Para mantener score óptimo (3%), paga $${Math.round(payAmount).toLocaleString('es-CO')} antes del corte.`
         });
       }
@@ -3220,7 +3271,7 @@ function checkSmartNotifications() {
       if (!shownToday.ids.includes(id)) {
         notifications.push({
           id, type: 'danger', icon: '🚨',
-          title: `${d.name}: ¡HOY es el corte!`,
+          title: `${escapeHtml(d.name)}: ¡HOY es el corte!`,
           msg: `Saldo: $${Math.round(d.balance).toLocaleString('es-CO')}. ${needsPay ? 'Paga ahora para mantener score' : 'Utilización ya está óptima.'}`
         });
       }
@@ -4565,14 +4616,14 @@ window.openReminderModal = function(dateStr) {
         let cardInfo = '';
         if (isCardPayment) {
           const card = (fullState.debts || []).find(d => d.id === t.payCardId);
-          if (card) cardInfo = ` → ${card.name}`;
+          if (card) cardInfo = ` → ${escapeHtml(card.name)}`;
         }
         
         // Indicar método de pago
         let paymentInfo = '';
         if (t.paymentMethod === 'tarjeta' && t.cardId) {
           const card = (fullState.debts || []).find(d => d.id === t.cardId);
-          if (card) paymentInfo = `💳 ${card.name}`;
+          if (card) paymentInfo = `💳 ${escapeHtml(card.name)}`;
         } else if (t.paymentMethod === 'efectivo') {
           paymentInfo = '💵 Efectivo';
         } else if (t.paymentMethod === 'transferencia') {
@@ -4586,9 +4637,9 @@ window.openReminderModal = function(dateStr) {
         movementsHtml += `
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 4px; border-left: 3px solid var(--danger-text);">
             <div style="flex: 1; min-width: 0; overflow: hidden;">
-              <div style="font-size: 12px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cat.icon} ${t.desc || 'Gasto'}${cardInfo}</div>
+              <div style="font-size: 12px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cat.icon} ${escapeHtml(t.desc || 'Gasto')}${cardInfo}</div>
               <div style="font-size: 10px; color: var(--text-tertiary); display: flex; gap: 8px; flex-wrap: wrap;">
-                <span>${cat.label}</span>
+                <span>${escapeHtml(cat.label)}</span>
                 ${paymentInfo ? `<span>· ${paymentInfo}</span>` : ''}
                 ${t.cashback > 0 ? `<span style="color: var(--success-text);">· +$${Math.round(t.cashback).toLocaleString('es-CO')} cashback</span>` : ''}
               </div>
@@ -4880,7 +4931,7 @@ window.editReminder = function(reminderId) {
       // Cambiar el subtítulo
       const subtitle = document.querySelector('#reminder-modal .tutorial-subtitle');
       if (subtitle) {
-        subtitle.innerHTML = `✏️ Modificando: <strong>${reminder.title}</strong>`;
+        subtitle.innerHTML = `✏️ Modificando: <strong>${escapeHtml(reminder.title)}</strong>`;
       }
       
       // Focus en el title
@@ -6518,19 +6569,19 @@ async function buildAnnualPDF(state, year) {
     const sel = document.getElementById('tx-card');
     if (!sel) return;
     sel.innerHTML = '<option value="">Selecciona tarjeta</option>' +
-      state.debts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      state.debts.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
   }
 
   function populatePocketsSelector() {
     const sel = document.getElementById('tx-pocket');
     if (sel) {
       sel.innerHTML = '<option value="">No descontar de bolsillo</option>' +
-        state.pockets.map(p => `<option value="${p.id}">${p.icon} ${p.name} (${fmt(p.amount)})</option>`).join('');
+        state.pockets.map(p => `<option value="${p.id}">${p.icon} ${esc(p.name)} (${fmt(p.amount)})</option>`).join('');
     }
     const extraSel = document.getElementById('extra-pocket');
     if (extraSel) {
       extraSel.innerHTML = '<option value="">No agregar a bolsillo</option>' +
-        state.pockets.map(p => `<option value="${p.id}">${p.icon} ${p.name} (${fmt(p.amount)})</option>`).join('');
+        state.pockets.map(p => `<option value="${p.id}">${p.icon} ${esc(p.name)} (${fmt(p.amount)})</option>`).join('');
     }
   }
 
@@ -7768,7 +7819,7 @@ async function buildAnnualPDF(state, year) {
           cards.map(c => {
             const balance = c.balance || 0;
             const balanceStr = balance > 0 ? ` · saldo ${fmt(balance)}` : ' · sin deuda';
-            return `<option value="${c.id}">${c.icon || '💳'} ${c.name}${balanceStr}</option>`;
+            return `<option value="${c.id}">${c.icon || '💳'} ${esc(c.name)}${balanceStr}</option>`;
           }).join('');
         if (currentValue) payCardSelect.value = currentValue;
       }
@@ -9236,7 +9287,7 @@ async function buildAnnualPDF(state, year) {
       if (personName) result[personName] = amount;
     });
     
-    console.log('💰 getCustomAmounts(' + listElId + '):', result);
+    // (log de depuración removido antes de producción)
     return result;
   }
   
@@ -9566,7 +9617,7 @@ async function buildAnnualPDF(state, year) {
       const hasCustomValues = Object.values(customCheck).some(v => v > 0);
       const useCustomMode = sharedSplitMode === 'custom' || hasCustomValues;
       
-      console.log('🔍 MODO DETECTADO:', { sharedSplitMode, hasCustomValues, useCustomMode, customCheck });
+      // (log de depuración removido antes de producción)
       
       if (useCustomMode) {
         // Modo personalizado
@@ -9574,13 +9625,7 @@ async function buildAnnualPDF(state, year) {
         owedTotal = sharedWith.reduce((sum, name) => sum + (customAmountsByPerson[name] || 0), 0);
         myAmount = totalAmount - owedTotal;
         
-        console.log('🔍 SHARED CUSTOM:', {
-          totalAmount,
-          sharedWith,
-          customAmountsByPerson,
-          owedTotal,
-          myAmount
-        });
+        // (log de depuración removido antes de producción)
         
         if (myAmount < 0) {
           return alert('Los montos asignados (' + fmt(owedTotal) + ') superan el total (' + fmt(totalAmount) + '). Revisa los valores.');
@@ -9599,14 +9644,7 @@ async function buildAnnualPDF(state, year) {
         const perPerson = Math.round(owedTotal / sharedWith.length);
         sharedWith.forEach(name => { customAmountsByPerson[name] = perPerson; });
         
-        console.log('🔍 SHARED EQUAL:', {
-          totalAmount,
-          sharedWith,
-          customAmountsByPerson,
-          myAmount,
-          owedTotal,
-          sharedSplitMode
-        });
+        // (log de depuración removido antes de producción)
       }
     } else if (isLent) {
       sharedWith = lentNamesRaw.split(',').map(n => n.trim()).filter(n => n.length > 0);
@@ -11050,7 +11088,7 @@ async function buildAnnualPDF(state, year) {
     let html = '';
     sortedCats.forEach(({ cat, bg, sp, av, hasBudget, status, barWidth, barClass }) => {
       html += `<div class="budget-row">
-        <div>${cat.icon} ${cat.label}</div>
+        <div>${cat.icon} ${esc(cat.label)}</div>
         <div>${hasBudget ? fmt(bg) : '<span style="color: var(--text-tertiary); font-style: italic; font-size: 12px;">Sin límite</span>'}</div>
         <div class="budget-bar-cell">
           <span>${fmt(sp)}</span>
@@ -11067,7 +11105,7 @@ async function buildAnnualPDF(state, year) {
     catData.forEach(({ cat, bg, sp, hasBudget, pct, cls }) => {
       editHtml += `<div class="budget-edit-item ${hasBudget ? 'has-budget' : 'no-budget'} ${cls === 'over' ? 'over-budget' : ''}">
         <div class="budget-edit-header">
-          <span class="budget-edit-cat">${cat.icon} ${cat.label}</span>
+          <span class="budget-edit-cat">${cat.icon} ${esc(cat.label)}</span>
           <span class="budget-edit-status">${sp > 0 ? fmt(sp) : '—'}</span>
         </div>
         <div class="budget-edit-input-row">
@@ -12019,7 +12057,7 @@ async function buildAnnualPDF(state, year) {
       const hasCustomValues = Object.values(editCustomCheck).some(v => v > 0);
       const useCustomMode = (editSharedSplitMode === 'custom') || hasCustomValues;
       
-      console.log('🔍 EDIT MODO DETECTADO:', { editSharedSplitMode, hasCustomValues, useCustomMode, editCustomCheck });
+      // (log de depuración removido antes de producción)
       
       if (useCustomMode) {
         // Modo personalizado: usar los valores asignados a cada persona
@@ -12028,7 +12066,7 @@ async function buildAnnualPDF(state, year) {
         newMyAmount = newTotalAmount - newOwedTotal;
         newEditSplitMode = 'custom';
         
-        console.log('🔍 EDIT SHARED CUSTOM:', { newTotalAmount, newSharedWith, newCustomAmountsByPerson, newOwedTotal, newMyAmount });
+        // (log de depuración removido antes de producción)
         
         if (newMyAmount < 0) {
           if (typeof toastError === 'function') toastError('Montos inválidos', 'La suma asignada (' + fmt(newOwedTotal) + ') supera el total (' + fmt(newTotalAmount) + ')');
@@ -12073,7 +12111,7 @@ async function buildAnnualPDF(state, year) {
       const hasCustomValuesLent = Object.values(editCustomCheckLent).some(v => v > 0);
       const useCustomModeLent = (editLentSplitMode === 'custom') || hasCustomValuesLent;
       
-      console.log('🔍 EDIT LENT MODO DETECTADO:', { editLentSplitMode, hasCustomValuesLent, useCustomModeLent, editCustomCheckLent });
+      // (log de depuración removido antes de producción)
       
       if (useCustomModeLent) {
         newCustomAmountsByPerson = editCustomCheckLent;
@@ -12442,7 +12480,7 @@ async function buildAnnualPDF(state, year) {
 
       return `<div class="tx-row" data-tx-id="${t.id}" data-tx-desc="${esc(t.desc).toLowerCase()}" data-tx-category="${t.category}" data-tx-method="${t.paymentMethod || ''}" data-tx-date="${t.date}">
         <div class="tx-date">${ds}</div>
-        <div>${esc(t.desc)}${sharedBadge}${installmentBadge}${transferBadge}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${cat.label} · ${methodStr}${cashbackStr}</span>${sharedDetail}${installmentDetail}${transferDetail}</div>
+        <div>${esc(t.desc)}${sharedBadge}${installmentBadge}${transferBadge}<br><span style="font-size: 11px; color: var(--text-tertiary);">${cat.icon} ${esc(cat.label)} · ${methodStr}${cashbackStr}</span>${sharedDetail}${installmentDetail}${transferDetail}</div>
         <div style="color: ${amountColor}; font-weight: 500;">${fmt(t.amount)}</div>
         <button class="edit-tx-btn" title="Editar" aria-label="Editar movimiento" onclick="window.openEditTxModal('${currentMonth}', ${t.id})">✏️</button>
         <button class="delete-btn" onclick="removeTransaction('${currentMonth}', ${t.id})">×</button>
@@ -13358,24 +13396,24 @@ async function buildAnnualPDF(state, year) {
         const baseId = `cutoff-${d.id}-${daysLeft}`;
 
         if (daysLeft <= 0) {
-          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>${d.name}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener score óptimo (3%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
+          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>${escapeHtml(d.name)}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener score óptimo (3%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
         } 
         else if (daysLeft <= 3) {
           if (needsPayment) {
-            a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el 3%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el 3%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
           } else {
-            a.push({ id: baseId, t: 'info', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤3%). No requiere pago anticipado.` });
+            a.push({ id: baseId, t: 'info', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤3%). No requiere pago anticipado.` });
           }
         }
         else if (daysLeft <= 7) {
           if (needsPayment) {
-            a.push({ id: baseId, t: 'info', x: `🔔 <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener score óptimo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'info', x: `🔔 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener score óptimo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
           } else {
-            a.push({ id: baseId, t: 'success', x: `✅ <strong>${d.name}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para el score.` });
+            a.push({ id: baseId, t: 'success', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para el score.` });
           }
         }
         else if (daysLeft <= 14 && needsPayment) {
-          a.push({ id: baseId, t: 'info', x: `📅 <strong>${d.name}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener el score óptimo.` });
+          a.push({ id: baseId, t: 'info', x: `📅 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener el score óptimo.` });
         }
       }
     });
@@ -13390,9 +13428,9 @@ async function buildAnnualPDF(state, year) {
         const pct = (spent / budget) * 100;
         const baseId = `budget-${cat.id}-${currentMonth}`;
         if (pct >= 100) {
-          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>Excediste presupuesto en ${cat.label}</strong>: gastaste ${fmt(spent)} de ${fmt(budget)} (excedido por ${fmt(spent - budget)}).` });
+          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>Excediste presupuesto en ${escapeHtml(cat.label)}</strong>: gastaste ${fmt(spent)} de ${fmt(budget)} (excedido por ${fmt(spent - budget)}).` });
         } else if (pct >= 80) {
-          a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${cat.label} al ${pct.toFixed(0)}%</strong> del presupuesto. Te quedan ${fmt(budget - spent)} este mes.` });
+          a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${escapeHtml(cat.label)} al ${pct.toFixed(0)}%</strong> del presupuesto. Te quedan ${fmt(budget - spent)} este mes.` });
         }
       }
     });
