@@ -15147,55 +15147,8 @@ async function buildAnnualPDF(state, year) {
     }
   });
 
-  // ============================================================
-  // v56: SIDEBAR TOGGLE — desktop, con persistencia
-  // ============================================================
-  (function setupSidebarToggle() {
-    const SIDEBAR_KEY = 'finanzaspro_sidebar_hidden';
-    
-    // Aplicar preferencia guardada al cargar
-    try {
-      const hidden = localStorage.getItem(SIDEBAR_KEY) === 'true';
-      if (hidden) {
-        document.documentElement.setAttribute('data-sidebar', 'hidden');
-      }
-    } catch(e) {}
-    
-    // Listener del botón
-    function bindToggle() {
-      const btn = document.getElementById('sidebar-toggle');
-      if (!btn) return;
-      
-      // Actualizar texto del botón según estado
-      const updateLabel = () => {
-        const isHidden = document.documentElement.getAttribute('data-sidebar') === 'hidden';
-        const textEl = btn.querySelector('.sidebar-toggle-text');
-        const iconEl = btn.querySelector('.sidebar-toggle-icon');
-        if (textEl) textEl.textContent = isHidden ? 'Mostrar menú' : 'Ocultar menú';
-        if (iconEl) iconEl.textContent = isHidden ? '☰' : '✕';
-        btn.title = isHidden ? 'Mostrar menú lateral' : 'Ocultar menú lateral';
-      };
-      updateLabel();
-      
-      btn.addEventListener('click', () => {
-        const isHidden = document.documentElement.getAttribute('data-sidebar') === 'hidden';
-        if (isHidden) {
-          document.documentElement.removeAttribute('data-sidebar');
-          try { localStorage.setItem(SIDEBAR_KEY, 'false'); } catch(e) {}
-        } else {
-          document.documentElement.setAttribute('data-sidebar', 'hidden');
-          try { localStorage.setItem(SIDEBAR_KEY, 'true'); } catch(e) {}
-        }
-        updateLabel();
-      });
-    }
-    
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bindToggle);
-    } else {
-      bindToggle();
-    }
-  })();
+  // v102: se quitó el sistema de "ocultar sidebar" (botón + lógica) — no aportaba valor
+  // y complicaba el layout sin necesidad real. El sidebar ahora es siempre visible en desktop.
 
   if (typeof Chart !== 'undefined') loadState();
   else window.addEventListener('load', loadState);

@@ -6126,35 +6126,7 @@ button[onclick*="deleteReminder"]:active,
    v56/v66: SIDEBAR LATERAL FIJA DE ALTURA COMPLETA + LAYOUT PROFESIONAL
    ============================================================ */
 
-/* Botón toggle: oculto por defecto, solo aparece en desktop debajo del menú */
-.sidebar-toggle-btn {
-  display: none;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  transition: all 0.15s ease;
-  width: 100%;
-}
-
-.sidebar-toggle-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-}
-
-.sidebar-toggle-icon {
-  font-size: 16px;
-  line-height: 1;
-}
+/* v102: se quitó .sidebar-toggle-btn (botón de ocultar/mostrar menú) — no aportaba valor */
 
 /* v66: marca compacta arriba del sidebar (solo desktop) */
 .sidebar-brand {
@@ -6226,9 +6198,8 @@ button[onclick*="deleteReminder"]:active,
     transition: margin-left 0.25s ease;
   }
 
-  /* Mostrar marca, toggle y bloque de cuenta */
-  .sidebar-brand,
-  .sidebar-toggle-btn {
+  /* Mostrar marca y bloque de cuenta */
+  .sidebar-brand {
     display: flex;
   }
   .sidebar-account {
@@ -6326,40 +6297,8 @@ button[onclick*="deleteReminder"]:active,
   }
 }
 
-/* ============================================================
-   DESKTOP: estado "sidebar oculta" (cuando user da click al toggle)
-   ============================================================ */
-@media (min-width: 1025px) {
-  html[data-sidebar="hidden"] .wrapper {
-    margin-left: 68px !important;
-  }
-
-  html[data-sidebar="hidden"] .sidebar-column {
-    width: 52px;
-    padding: 20px 8px;
-  }
-
-  /* Cuando está oculta: el menú y la marca desaparecen, solo queda el botón + logout compacto */
-  html[data-sidebar="hidden"] .fin-tabs,
-  html[data-sidebar="hidden"] .sidebar-brand-name {
-    display: none !important;
-  }
-
-  html[data-sidebar="hidden"] .sidebar-toggle-btn {
-    padding: 10px;
-    width: 100%;
-  }
-
-  html[data-sidebar="hidden"] .sidebar-toggle-text,
-  html[data-sidebar="hidden"] .sidebar-logout-text {
-    display: none;
-  }
-
-  html[data-sidebar="hidden"] .sidebar-logout-btn {
-    justify-content: center;
-    padding: 10px;
-  }
-}
+/* v102: se quitó el bloque de estilos para el estado "sidebar oculta" — sin el botón
+   toggle, ya no hay forma de activar data-sidebar="hidden", así que este CSS quedaba muerto. */
 
 /* ============================================================
    PANTALLAS MUY GRANDES: el contenido ya se ajusta fluido (ver regla .wrapper arriba),
