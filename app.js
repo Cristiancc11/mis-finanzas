@@ -6636,8 +6636,12 @@ async function buildAnnualPDF(state, year) {
     if (!['free', 'normal', 'pro'].includes(newPlan)) return;
     state.plan = newPlan;
     saveState();
-    renderAll();
-    toastSuccess('Plan cambiado (modo prueba)', `Ahora estás en el plan ${PLAN_LABEL[newPlan]}`);
+    // FIX: recargamos la página en vez de solo re-renderizar. Las secciones bloqueadas
+    // (Mis Deudas, Conversor, Calendario, etc.) reemplazan su propio HTML por el aviso de
+    // "mejora tu plan", destruyendo el contenedor original — así que un simple re-render
+    // nunca las reconstruía, aunque subieras de plan. Recargar trae el HTML limpio de nuevo.
+    toastSuccess('Plan cambiado (modo prueba)', `Ahora estás en el plan ${PLAN_LABEL[newPlan]}. Recargando...`);
+    setTimeout(() => location.reload(), 1000);
   };
 
   function setDefaultDate() {
