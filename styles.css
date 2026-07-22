@@ -563,6 +563,14 @@
   }
   .pocket-card:hover .pocket-edit-btn { opacity: 1; }
   .pocket-edit-btn:hover { transform: scale(1.1); background: var(--bg-primary); }
+  /* v101 FIX: en touch devices no existe ":hover", así que estos botones quedaban
+     invisibles e inalcanzables — no había forma de revelarlos con el dedo. Ahora
+     se muestran siempre en dispositivos táctiles, con un tamaño más cómodo para tocar. */
+  @media (hover: none) {
+    .pocket-delete, .pocket-edit-btn { opacity: 1 !important; }
+    .pocket-edit-btn { width: 30px; height: 30px; font-size: 13px; }
+    .pocket-delete { padding: 5px 10px !important; font-size: 13px !important; }
+  }
   .footer-note { text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 2rem; padding: 1rem; }
   .controls-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .controls-right select { width: auto; min-width: 100px; }
@@ -5765,6 +5773,31 @@ button[onclick*="deleteReminder"]:active,
   border-top: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--bg-secondary);
+}
+
+/* v101: en móvil, el modal se ancla abajo como un "bottom sheet" — patrón nativo,
+   más fácil de alcanzar con el pulgar, y sin desperdiciar espacio en padding lateral */
+@media (max-width: 480px) {
+  .big-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .big-modal-card {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 20px 20px 0 0;
+    animation: none;
+  }
+  .big-modal-header {
+    padding: 16px;
+    border-radius: 20px 20px 0 0;
+  }
+  .big-modal-body {
+    padding: 16px;
+  }
+  .big-modal-footer {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .edit-tx-cancel {
