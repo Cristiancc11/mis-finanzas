@@ -13950,7 +13950,10 @@ async function buildAnnualPDF(state, year) {
     const tc = isDark ? '#e8e6df' : '#1a1a18';      // Texto principal (más oscuro en claro)
     const tcSecondary = isDark ? '#a8a8a0' : '#4a4a45'; // Texto secundario
     const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-    const cl = ['#7F77DD', '#1D9E75', '#D85A30', '#D4537E', '#378ADD', '#639922', '#BA7517', '#888780', '#E24B4A'];
+    // v100: misma paleta profesional (muted) que ya usamos en el gráfico de categorías
+    // de Análisis — antes tenía los colores brillantes de antes del rediseño (morado, verde
+    // neón, naranja fuerte) que ya no coincidían con el resto de la app.
+    const cl = ['#2f7566', '#c1584f', '#3d6f8f', '#ba7517', '#7a6bab', '#4a8f6b', '#a8505f', '#5f8ab5', '#8c8577'];
 
     const sorted = [...state.pockets].sort((a, b) => b.amount - a.amount);
     const lbls = sorted.map(p => p.name);
@@ -14007,7 +14010,7 @@ async function buildAnnualPDF(state, year) {
           labels: ['Ingresos', 'Gastos', 'Margen'],
           datasets: [{
             data: [Math.round(inc), Math.round(exp), Math.round(bal)],
-            backgroundColor: ['#1D9E75', '#E24B4A', bal >= 0 ? '#378ADD' : '#A32D2D'],
+            backgroundColor: ['#2f7566', '#c1584f', bal >= 0 ? '#3d6f8f' : '#c1584f'],
             borderWidth: 0,
             borderRadius: 6
           }]
