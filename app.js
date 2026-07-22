@@ -3251,11 +3251,14 @@ function checkSmartNotifications() {
     }
     const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
 
-    // Calcular utilización
-    const util = d.payment > 0 ? (d.balance / d.payment) * 100 : 0;
-    const targetMax = d.payment * 0.03;
-    const needsPay = d.balance > targetMax;
-    const payAmount = needsPay ? d.balance - targetMax : 0;
+    // FIX: antes esto recalculaba utilización y pago sugerido de forma independiente
+    // usando el saldo TOTAL (d.balance), sin descontar cuotas bloqueadas — la misma copia
+    // del bug que ya corregimos en getCutoffStatus() y en renderAlerts(), pero duplicada
+    // aquí también. Ahora reutilizamos getCutoffStatus() (expuesta globalmente).
+    const status = window.getCutoffStatus ? window.getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id) : null;
+    const util = status ? status.utilization : (d.payment > 0 ? (d.balance / d.payment) * 100 : 0);
+    const needsPay = status ? status.needsPayment : false;
+    const payAmount = status ? status.paymentNeeded : 0;
 
     if (daysLeft >= 1 && daysLeft <= 3 && needsPay) {
       const id = 'cutoff_' + d.id + '_' + daysLeft;
@@ -11092,6 +11095,7 @@ async function buildAnnualPDF(state, year) {
       canReachTarget
     };
   }
+  window.getCutoffStatus = getCutoffStatus;
 
   function renderGoals() {
     const list = document.getElementById('goal-list');
@@ -13515,24 +13519,13 @@ async function buildAnnualPDF(state, year) {
     // 1. ALERTAS DE FECHAS DE CORTE DE TARJETAS (prioridad alta)
     state.debts.forEach(d => {
       if (d.cutoffDay) {
-        const today = new Date();
-        const currentDay = today.getDate();
-        const currentMonthIdx = today.getMonth();
-        const currentYear = today.getFullYear();
-        let nextCutoff;
-        if (currentDay <= d.cutoffDay) {
-          nextCutoff = new Date(currentYear, currentMonthIdx, d.cutoffDay);
-        } else {
-          nextCutoff = new Date(currentYear, currentMonthIdx + 1, d.cutoffDay);
-        }
-        const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
-        const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
-
-        const TARGET_PCT = 3;
-        const targetMaxBalance = d.payment ? (d.payment * TARGET_PCT / 100) : 0;
-        const utilization = d.payment > 0 ? (d.balance / d.payment) * 100 : 0;
-        const needsPayment = d.balance > targetMaxBalance;
-        const paymentNeeded = needsPayment ? d.balance - targetMaxBalance : 0;
+        // FIX: antes esta sección recalculaba utilización y pago sugerido de forma
+        // independiente, usando el saldo TOTAL de la tarjeta (d.balance) sin descontar
+        // las cuotas bloqueadas — el mismo bug que ya habíamos corregido en getCutoffStatus(),
+        // pero duplicado aquí con su propia copia del cálculo que nunca recibió el fix.
+        // Ahora reutilizamos getCutoffStatus(), que sí calcula esto bien.
+        const status = getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id);
+        const { daysLeft, dateStr, utilization, needsPayment, paymentNeeded } = status;
 
         const baseId = `cutoff-${d.id}-${daysLeft}`;
 
