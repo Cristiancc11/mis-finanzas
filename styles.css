@@ -2586,7 +2586,7 @@ button.btn-loading.btn-secondary::after {
   }
 
   .side-menu-brand-logo {
-    height: 20px;
+    height: 28px;
     width: auto;
     max-width: 100%;
   }
@@ -6129,9 +6129,15 @@ button[onclick*="deleteReminder"]:active,
   border-bottom: 1px solid var(--border);
 }
 .sidebar-brand-logo {
-  height: 24px;
+  height: 32px;
   width: auto;
   max-width: 100%;
+}
+
+/* v104: sombra sutil para que el ícono del logo resalte sobre cualquier fondo,
+   claro u oscuro, sin necesidad de versiones de color distintas */
+.app-logo-icon {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.35));
 }
 
 /* v66: bloque de cuenta/logout, siempre visible al fondo del sidebar */
