@@ -369,12 +369,29 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+  /* v104: en el menú móvil, el texto del logo debe ser blanco sólido (no degradado)
+     para mejor contraste contra el fondo oscuro del menú lateral */
+  html.theme-dark .side-menu-brand .logo-text,
+  html:not(.theme-light) .side-menu-brand .logo-text {
+    background: none;
+    -webkit-background-clip: initial;
+    -webkit-text-fill-color: white;
+    background-clip: initial;
+    color: white;
+  }
   @media (prefers-color-scheme: dark) {
     html:not(.theme-light) .logo-text {
       background: linear-gradient(135deg, #9B95E8 0%, #34c89c 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+    }
+    html:not(.theme-light) .side-menu-brand .logo-text {
+      background: none;
+      -webkit-background-clip: initial;
+      -webkit-text-fill-color: white;
+      background-clip: initial;
+      color: white;
     }
   }
 
