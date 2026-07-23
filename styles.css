@@ -239,6 +239,44 @@
     gap: 6px;
   }
   .section-group-title:first-child { margin-top: 0; }
+
+  /* v105: acordeones de Tips financieros */
+  .tip-accordion {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    background: var(--bg-secondary);
+  }
+  .tip-accordion summary {
+    cursor: pointer;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tip-accordion summary::-webkit-details-marker { display: none; }
+  .tip-accordion summary::after {
+    content: '›';
+    font-size: 18px;
+    color: var(--text-tertiary);
+    transform: rotate(90deg);
+    transition: transform 0.2s ease;
+  }
+  .tip-accordion[open] summary::after { transform: rotate(-90deg); }
+  .tip-accordion .tip-body {
+    padding: 0 14px 14px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .tip-accordion .tip-body p { margin: 0 0 8px; }
+  .tip-accordion .tip-body p:last-child { margin-bottom: 0; }
+
   /* v69: grids reutilizables de 2/3 columnas para agrupar campos relacionados */
   .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
   .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }

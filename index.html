@@ -1798,6 +1798,23 @@
         Fuente: Superintendencia Financiera de Colombia (TRM) · Investing.com (mercado) vía DolarApi.com
       </p>
     </div>
+
+    <!-- v105: histórico de TRM + mejor momento para comprar/vender -->
+    <div class="raised-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <p class="card-title" style="margin-bottom: 2px;">📈 Comportamiento del dólar</p>
+          <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">Para ver si es buen momento de comprar o vender</p>
+        </div>
+        <select id="trm-history-range" onchange="window.renderTrmChart()" style="width: auto; height: 34px; font-size: 12px;">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+        </select>
+      </div>
+      <div class="chart-container" style="height: 220px; margin-top: 14px;"><canvas id="trm-history-chart"></canvas></div>
+      <div id="trm-history-insight" style="margin-top: 14px;"></div>
+    </div>
   </div>
 
   <!-- ============================================ -->
@@ -1848,6 +1865,82 @@
       <p class="card-title">📅 Calendario financiero</p>
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Tus fechas importantes del mes.</p>
       <div id="financial-calendar"></div>
+    </div>
+
+    <div class="section-group-title">💡 Tips financieros</div>
+    <div class="raised-card">
+      <p class="card-title" style="margin-bottom: 2px;">💡 Ideas para mejorar tus finanzas</p>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px;">Conceptos clave, explicados simple. Toca cada uno para ver el detalle.</p>
+
+      <details class="tip-accordion" open>
+        <summary>💳 Cómo sacarle provecho al cashback</summary>
+        <div class="tip-body">
+          <p>El cashback solo es "gratis" si pagas el <strong>total</strong> de tu tarjeta cada mes. Si pagas el mínimo, los intereses (típicamente 25-30% E.A. en Colombia) se comen cualquier cashback que hayas ganado, y de sobra.</p>
+          <p>Usa la tarjeta con mayor % de cashback para tus compras recurrentes (mercado, gasolina, servicios), y revisa si tu tarjeta excluye alguna categoría del cashback antes de asumir que todo suma.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>📊 Utilización de tarjetas: por qué importa</summary>
+        <div class="tip-body">
+          <p>La "utilización" es cuánto de tu cupo total estás usando. Las centrales de riesgo (y tu score crediticio) prefieren verla <strong>por debajo del 30%</strong>, e idealmente bajo el 10%.</p>
+          <p>Truco poco conocido: lo que importa es el saldo el día del <strong>corte</strong>, no el día que pagas. Si pagas antes del corte (no solo antes de la fecha límite de pago), el reporte a las centrales sale con menor utilización, aunque sigas usando la tarjeta con normalidad el resto del mes.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>🏦 Tu ahorro también debería ganar rendimientos</summary>
+        <div class="tip-body">
+          <p>Dejar dinero quieto en una cuenta de ahorros tradicional (0% o casi 0%) significa que pierde valor frente a la inflación con el tiempo. Existen cuentas remuneradas y CDTs en Colombia que pagan una tasa por tener tu plata guardada, sin mayor riesgo.</p>
+          <p>Una estrategia simple: tu fondo de emergencia (lo que necesitas de forma inmediata) en un lugar 100% líquido, y el resto de tus ahorros a más largo plazo en algo que pague más.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>🛟 ¿Cuánto fondo de emergencia necesito?</summary>
+        <div class="tip-body">
+          <p>La recomendación general es tener entre <strong>3 y 6 meses</strong> de tus gastos fijos guardados, en un lugar al que puedas acceder rápido si pierdes tu ingreso o tienes un imprevisto grande.</p>
+          <p>Si tu ingreso es variable (freelance, comisiones, independiente), apunta más cerca de 6 meses. Si tienes un ingreso fijo y estable, 3 meses puede ser suficiente.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>📐 La regla 50/30/20 para organizar tu presupuesto</summary>
+        <div class="tip-body">
+          <p>Una forma simple de repartir tu ingreso: <strong>50%</strong> en necesidades (vivienda, mercado, servicios, transporte), <strong>30%</strong> en gustos (salidas, streaming, compras), y <strong>20%</strong> en ahorro o pago de deudas.</p>
+          <p>No es una regla exacta ni obligatoria — es un punto de partida. Si tu ciudad o situación es más cara, ajusta los porcentajes, pero mantén SIEMPRE algo de margen para ahorro, aunque sea pequeño.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>⚠️ Por qué pagar solo el mínimo de la tarjeta es una trampa</summary>
+        <div class="tip-body">
+          <p>Pagar el mínimo mantiene la deuda activa generando intereses mes tras mes. Con tasas de tarjeta de crédito alrededor del 25-30% E.A. en Colombia, una deuda pagada solo con el mínimo puede tardar años en liquidarse y terminar constando 2-3 veces su valor original.</p>
+          <p>Si tienes deuda de tarjeta, prioriza pagar más del mínimo cuanto puedas, empezando por la tarjeta con la tasa más alta.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>🐜 Vigila los gastos hormiga</summary>
+        <div class="tip-body">
+          <p>Los gastos pequeños y frecuentes (café diario, domicilios, suscripciones que no usas) parecen insignificantes uno por uno, pero suman montos grandes al mes sin que te des cuenta. Revisa la sección de "Gastos hormiga" en Análisis para ver los tuyos.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>🎯 Las metas con nombre y plazo se cumplen más</summary>
+        <div class="tip-body">
+          <p>"Ahorrar más" es vago y fácil de posponer. "Ahorrar $3.000.000 para el viaje de diciembre" tiene un objetivo claro y una fecha — es mucho más fácil trackear el progreso y mantenerte motivado.</p>
+          <p>Por eso las metas de esta app se pueden vincular a un bolsillo real: ves tu avance de verdad, no una cifra que actualizas de memoria.</p>
+        </div>
+      </details>
+
+      <details class="tip-accordion">
+        <summary>🔄 Automatiza tu ahorro</summary>
+        <div class="tip-body">
+          <p>Si esperas a "ver qué sobra" a fin de mes para ahorrar, casi nunca sobra nada. Al contrario: programa una transferencia automática a tu bolsillo de ahorro justo el día que te pagan, antes de que ese dinero se mezcle con el resto y lo gastes sin querer.</p>
+        </div>
+      </details>
     </div>
 
     <div class="section-group-title">🛠️ Herramientas</div>

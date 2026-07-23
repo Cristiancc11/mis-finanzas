@@ -14931,11 +14931,70 @@ async function buildAnnualPDF(state, year) {
 
   let fxState = loadFxCache() || { trm: null, rates: {}, fetchedAt: 0 };
 
+  // ============================================================
+  // v105: HISTORIAL DE TRM — para el gráfico de "mejor momento para comprar/vender"
+  // Estrategia de 2 capas para máxima confiabilidad:
+  // 1) Cada vez que la app consulta la TRM del día, se guarda ese punto localmente
+  //    (esto SIEMPRE funciona, ya que reusa la consulta que la app ya hace).
+  // 2) Una vez, se intenta traer el histórico oficial completo (últimos 90 días) desde
+  //    el portal de Datos Abiertos de Colombia (fuente: Superintendencia Financiera).
+  //    Si esa fuente falla (cambia de formato, no responde, etc.), no pasa nada —
+  //    seguimos teniendo el historial acumulado localmente como respaldo garantizado.
+  // ============================================================
+  const TRM_HISTORY_KEY = 'finanzaspro_trm_history';
+
+  function loadTrmHistory() {
+    try { return JSON.parse(localStorage.getItem(TRM_HISTORY_KEY) || '{}'); } catch(e) { return {}; }
+  }
+
+  function saveTrmHistoryPoint(dateStr, value) {
+    if (!dateStr || !value || isNaN(value)) return;
+    const history = loadTrmHistory();
+    history[dateStr] = value;
+    // Mantener máximo ~120 días para no crecer indefinidamente en localStorage
+    const keys = Object.keys(history).sort();
+    if (keys.length > 120) {
+      keys.slice(0, keys.length - 120).forEach(k => delete history[k]);
+    }
+    try { localStorage.setItem(TRM_HISTORY_KEY, JSON.stringify(history)); } catch(e) {}
+  }
+
+  let trmBackfillAttempted = false;
+  async function fetchTrmHistoryBackfill() {
+    if (trmBackfillAttempted) return;
+    trmBackfillAttempted = true;
+    try {
+      const start = new Date();
+      start.setDate(start.getDate() - 90);
+      const startStr = start.toISOString().split('T')[0];
+      const url = `https://www.datos.gov.co/resource/32sa-8pi3.json?$where=vigenciadesde >= '${startStr}'&$order=vigenciadesde ASC&$limit=100`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Fuente histórica no disponible');
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        const history = loadTrmHistory();
+        rows.forEach(row => {
+          const dateStr = (row.vigenciadesde || '').split('T')[0];
+          const value = parseFloat(row.valor);
+          if (dateStr && !isNaN(value)) history[dateStr] = value;
+        });
+        try { localStorage.setItem(TRM_HISTORY_KEY, JSON.stringify(history)); } catch(e) {}
+      }
+    } catch(e) {
+      // Silencioso a propósito: si esta fuente falla, seguimos con el historial
+      // acumulado localmente, que es nuestro respaldo garantizado.
+      console.warn('⚠️ No se pudo traer histórico oficial de TRM (se sigue usando el historial local acumulado):', e.message);
+    }
+    renderTrmChart();
+  }
+
   // Obtiene las tasas más recientes. Usa caché si no ha pasado 1 hora (a menos que forceRefresh=true)
   window.fetchExchangeRates = async function(forceRefresh) {
     const isStale = (Date.now() - (fxState.fetchedAt || 0)) > FX_STALE_MS;
     if (!forceRefresh && !isStale && fxState.trm) {
       renderExchangeRates();
+      renderTrmChart();
+      fetchTrmHistoryBackfill();
       return;
     }
 
@@ -14959,6 +15018,10 @@ async function buildAnnualPDF(state, year) {
         fetchedAt: Date.now()
       };
       saveFxCache(fxState);
+
+      // v105: guardar el punto de HOY en el historial acumulado (para el gráfico)
+      const todayStr = new Date().toISOString().split('T')[0];
+      saveTrmHistoryPoint(todayStr, trmRes.valor);
     } catch (e) {
       console.error('❌ Error obteniendo tasas de cambio:', e);
       if (typeof toastError === 'function') {
@@ -14971,6 +15034,8 @@ async function buildAnnualPDF(state, year) {
 
     if (refreshBtn) { refreshBtn.innerHTML = '🔄 Actualizar'; refreshBtn.disabled = false; }
     renderExchangeRates();
+    renderTrmChart();
+    fetchTrmHistoryBackfill();
   };
 
   function renderExchangeRates() {
@@ -15027,6 +15092,106 @@ async function buildAnnualPDF(state, year) {
 
     window.updateCurrencyConversion();
   }
+
+  // v105: gráfico histórico de la TRM + insight de "mejor momento para comprar/vender"
+  let trmChartInstance = null;
+  function renderTrmChart() {
+    const canvas = document.getElementById('trm-history-chart');
+    const insightEl = document.getElementById('trm-history-insight');
+    if (!canvas) return; // el conversor todavía no está en el DOM
+
+    const rangeSel = document.getElementById('trm-history-range');
+    const days = rangeSel ? parseInt(rangeSel.value) || 30 : 30;
+
+    const history = loadTrmHistory();
+    const sortedDates = Object.keys(history).sort();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const filteredDates = sortedDates.filter(d => d >= cutoffStr);
+
+    if (filteredDates.length < 2) {
+      if (insightEl) {
+        insightEl.innerHTML = `<div class="empty-state">Estamos empezando a guardar el historial de la TRM — vuelve en unos días para ver la tendencia y recibir recomendaciones de cuándo comprar o vender.</div>`;
+      }
+      if (trmChartInstance) { trmChartInstance.destroy(); trmChartInstance = null; }
+      return;
+    }
+
+    const values = filteredDates.map(d => history[d]);
+    const labels = filteredDates.map(d => {
+      const [y, m, day] = d.split('-');
+      return `${day}/${m}`;
+    });
+
+    if (trmChartInstance) trmChartInstance.destroy();
+    trmChartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'TRM (COP por USD)',
+          data: values,
+          borderColor: '#2f7566',
+          backgroundColor: 'rgba(47, 117, 102, 0.12)',
+          borderWidth: 2,
+          pointRadius: filteredDates.length > 45 ? 0 : 2,
+          tension: 0.25,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { ticks: { callback: (v) => '$' + v.toLocaleString('es-CO') } }
+        }
+      }
+    });
+
+    // v105: insight simple — compara la TRM de hoy contra el promedio y el rango del periodo
+    if (insightEl) {
+      const current = values[values.length - 1];
+      const avg = values.reduce((s, v) => s + v, 0) / values.length;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const pctVsAvg = ((current - avg) / avg) * 100;
+
+      let icon, title, text, color;
+      if (pctVsAvg <= -1.5) {
+        icon = '🟢'; title = 'Buen momento para comprar dólares';
+        text = `La TRM de hoy (${fmt(current)}) está ${Math.abs(pctVsAvg).toFixed(1)}% por debajo del promedio de los últimos ${days} días. Si necesitas dólares pronto, este es un precio relativamente bajo.`;
+        color = 'var(--success-text)';
+      } else if (pctVsAvg >= 1.5) {
+        icon = '🔵'; title = 'Buen momento para vender dólares';
+        text = `La TRM de hoy (${fmt(current)}) está ${pctVsAvg.toFixed(1)}% por encima del promedio de los últimos ${days} días. Si tienes dólares para cambiar, este es un precio relativamente alto.`;
+        color = 'var(--info-text)';
+      } else {
+        icon = '⚪'; title = 'La TRM está en su promedio habitual';
+        text = `La TRM de hoy (${fmt(current)}) está cerca del promedio de los últimos ${days} días (${fmt(avg)}). No hay una señal fuerte de que sea un momento especialmente bueno o malo.`;
+        color = 'var(--text-secondary)';
+      }
+
+      insightEl.innerHTML = `
+        <div style="padding: 12px 14px; background: var(--bg-secondary); border-left: 3px solid ${color}; border-radius: 10px; margin-bottom: 10px;">
+          <div style="font-weight: 600; font-size: 13px; color: ${color};">${icon} ${title}</div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5;">${text}</div>
+        </div>
+        <div style="display: flex; gap: 8px; font-size: 11px; color: var(--text-tertiary);">
+          <span>Mínimo: ${fmt(min)}</span>
+          <span>·</span>
+          <span>Máximo: ${fmt(max)}</span>
+          <span>·</span>
+          <span>Promedio: ${fmt(avg)}</span>
+        </div>
+        <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 8px; font-style: italic;">
+          💡 Esto es información histórica, no una predicción. El mercado cambiario puede moverse por muchas razones — úsalo como referencia, no como garantía.
+        </div>
+      `;
+    }
+  }
+  window.renderTrmChart = renderTrmChart;
 
   // Cuántos COP vale 1 unidad de la moneda dada.
   // Para USD usamos la TRM OFICIAL (Superintendencia Financiera) por ser la fuente más confiable,
