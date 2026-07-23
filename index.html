@@ -375,7 +375,8 @@
             </label>
             <div id="tx-installments-interest-field" class="field-group" style="display: none;">
               <label class="field-label">📊 Tasa mensual (%)</label>
-              <input type="number" id="tx-installments-rate" placeholder="Ej: 2.5" min="0" max="20" step="0.01" oninput="updateInstallmentPreview()" />
+              <input type="number" id="tx-installments-rate" placeholder="Ej: 2.5" min="0" max="20" step="0.01" oninput="this.dataset.userEdited = 'true'; updateInstallmentPreview()" />
+              <span class="field-hint" id="tx-installments-rate-hint">Se completa sola según la tasa de tu tarjeta — puedes ajustarla si esta compra tiene una tasa distinta.</span>
             </div>
             <div id="tx-installments-preview" style="font-size: 11px; color: var(--text-secondary); line-height: 1.5; padding: 8px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; display: none;"></div>
           </div>
@@ -1469,6 +1470,21 @@
 
     <!-- v79: insight dinámico, calculado de verdad a partir de tus tarjetas -->
     <div id="card-insight-container"></div>
+
+    <!-- v108: el % objetivo de utilización ahora es configurable — antes estaba fijo en 3%,
+         un valor exigente que no todo el mundo puede lograr según su cupo e ingresos. -->
+    <div class="raised-card" style="border: 0.5px solid var(--info-text);">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+          <p class="card-title" style="margin-bottom: 2px;">🎯 Tu objetivo de utilización</p>
+          <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">Qué tanto de tu cupo quieres mantener libre en cada corte. 3% es lo ideal para el score, pero no todos pueden lograrlo — ajústalo a lo que te funcione a ti.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+          <input type="number" id="target-utilization-input" min="1" max="100" step="1" value="3" style="width: 64px; text-align: center; height: 38px;" onchange="window.setTargetUtilization(this.value)" />
+          <span style="font-size: 14px; color: var(--text-secondary); font-weight: 600;">%</span>
+        </div>
+      </div>
+    </div>
 
     <!-- v79: próximos pagos consolidados, ordenados por urgencia -->
     <div class="raised-card" id="upcoming-payments-card" style="display: none;">

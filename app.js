@@ -3259,6 +3259,7 @@ function checkSmartNotifications() {
     const util = status ? status.utilization : (d.payment > 0 ? (d.balance / d.payment) * 100 : 0);
     const needsPay = status ? status.needsPayment : false;
     const payAmount = status ? status.paymentNeeded : 0;
+    const targetPct = status ? status.targetUtilization : 3;
 
     if (daysLeft >= 1 && daysLeft <= 3 && needsPay) {
       const id = 'cutoff_' + d.id + '_' + daysLeft;
@@ -3266,7 +3267,7 @@ function checkSmartNotifications() {
         notifications.push({
           id, type: 'warning', icon: '⚠️',
           title: `${escapeHtml(d.name)}: corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''}`,
-          msg: `Tu utilización es ${util.toFixed(1)}%. Para mantener score óptimo (3%), paga $${Math.round(payAmount).toLocaleString('es-CO')} antes del corte.`
+          msg: `Tu utilización es ${util.toFixed(1)}%. Para mantener tu objetivo (${targetPct}%), paga $${Math.round(payAmount).toLocaleString('es-CO')} antes del corte.`
         });
       }
     } else if (daysLeft === 0) {
@@ -6588,6 +6589,20 @@ async function buildAnnualPDF(state, year) {
   }
   window.getUserPlan = getUserPlan;
 
+  // v108: el usuario elige su propio % objetivo de utilización (antes fijo en 3%)
+  window.setTargetUtilization = function(value) {
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 1 || num > 100) {
+      toastWarning('Valor inválido', 'Ingresa un porcentaje entre 1 y 100.');
+      renderDebts();
+      return;
+    }
+    state.targetUtilization = num;
+    saveState();
+    renderAll();
+    toastSuccess('Objetivo actualizado', `Ahora tu objetivo de utilización es ${num}%.`);
+  };
+
   function hasPlanAccess(requiredPlan) {
     return PLAN_RANK[getUserPlan()] >= PLAN_RANK[requiredPlan];
   }
@@ -6859,6 +6874,11 @@ async function buildAnnualPDF(state, year) {
     methodSel.addEventListener('change', updateUI);
     // v80: recalcular cuando el usuario elige manualmente otra tarjeta
     if (cardSel) cardSel.addEventListener('change', updateCashbackPreview);
+    // v108: si cambia la tarjeta seleccionada, recalcular la tasa autocompletada de cuotas
+    if (cardSel) cardSel.addEventListener('change', () => {
+      const chk = document.getElementById('tx-installments-has-interest');
+      if (chk && chk.checked) window.toggleInterestField();
+    });
     amountInput.addEventListener('input', updateCashbackPreview);
     amountInput.addEventListener('input', () => {
       // v63: actualizar preview de cuotas si está visible
@@ -7394,10 +7414,32 @@ async function buildAnnualPDF(state, year) {
   };
 
   // Toggle campo de tasa
+  // v108: convierte una tasa efectiva ANUAL (E.A., la que se guarda por tarjeta) a su
+  // equivalente MENSUAL — la fórmula correcta de conversión de tasas compuestas.
+  function annualToMonthlyRate(annualPct) {
+    const annual = (parseFloat(annualPct) || 0) / 100;
+    if (annual <= 0) return 0;
+    const monthly = Math.pow(1 + annual, 1 / 12) - 1;
+    return monthly * 100;
+  }
+  window.annualToMonthlyRate = annualToMonthlyRate;
+
   window.toggleInterestField = function() {
     const chk = document.getElementById('tx-installments-has-interest');
     const field = document.getElementById('tx-installments-interest-field');
     if (field && chk) field.style.display = chk.checked ? 'block' : 'none';
+
+    // v108: autocompletar con la tasa mensual real de la tarjeta seleccionada — así el
+    // usuario ve "más o menos" cuánto pagaría de intereses según SU tarjeta, sin tener
+    // que calcularlo ni saber de memoria la tasa mensual equivalente.
+    if (chk && chk.checked) {
+      const rateInput = document.getElementById('tx-installments-rate');
+      const cardId = document.getElementById('tx-card')?.value;
+      const card = cardId ? state.debts.find(d => String(d.id) === String(cardId)) : null;
+      if (rateInput && !rateInput.dataset.userEdited && card && card.rate) {
+        rateInput.value = Math.round(annualToMonthlyRate(card.rate) * 100) / 100;
+      }
+    }
   };
 
   // Poblar selector de mes inicial (default = mes de la fecha de la compra)
@@ -10039,7 +10081,7 @@ async function buildAnnualPDF(state, year) {
     const instCount = document.getElementById('tx-installments-count'); if (instCount) instCount.value = '';
     const instHasInt = document.getElementById('tx-installments-has-interest');
     if (instHasInt) { instHasInt.checked = false; toggleInterestField(); }
-    const instRate = document.getElementById('tx-installments-rate'); if (instRate) instRate.value = '';
+    const instRate = document.getElementById('tx-installments-rate'); if (instRate) { instRate.value = ''; delete instRate.dataset.userEdited; }
     
     // Reset gasto compartido/prestado
     if (document.getElementById('tx-shared-names')) document.getElementById('tx-shared-names').value = '';
@@ -10548,6 +10590,12 @@ async function buildAnnualPDF(state, year) {
       return;
     }
 
+    // v108: poblar el input del % objetivo de utilización con el valor guardado
+    const targetInput = document.getElementById('target-utilization-input');
+    if (targetInput && document.activeElement !== targetInput) {
+      targetInput.value = (state.targetUtilization !== undefined && state.targetUtilization !== null) ? state.targetUtilization : 3;
+    }
+
     // v103: aviso de límite del plan gratis
     const debtLimitBanner = document.getElementById('debt-limit-banner');
     if (debtLimitBanner) {
@@ -10708,7 +10756,7 @@ async function buildAnnualPDF(state, year) {
             const hasInstallments = cutoffInfo.installmentInfo && cutoffInfo.installmentInfo.hasInstallments;
             
             if (hasInstallments && !cutoffInfo.canReachTarget) {
-              // No es posible llegar al 3% porque hay cuotas futuras bloqueando
+              // No es posible llegar al objetivo porque hay cuotas futuras bloqueando
               utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
                 <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago para minimizar utilización</div>
                 <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
@@ -10720,11 +10768,11 @@ async function buildAnnualPDF(state, year) {
                 <div style="color: var(--text-tertiary); font-size: 10px; margin-top: 4px;">💡 Incluye cuota del mes: ${fmt(cutoffInfo.currentMonthInstallmentSum)}</div>
               </div>`;
             } else {
-              // Caso normal: sí se puede llegar al 3%
+              // Caso normal: sí se puede llegar al objetivo elegido
               utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
-                <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener score óptimo</div>
+                <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener tu objetivo</div>
                 <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
-                <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (3% utilización)</div>
+                <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (${cutoffInfo.targetUtilization}% utilización)</div>
                 <div style="color: var(--success-text); font-weight: 600; margin-top: 4px;">→ Paga <strong>${fmt(recommendedPayment)}</strong> antes del ${cutoffInfo.dateStr}</div>
                 ${hasInstallments ? `<div style="color: var(--text-tertiary); font-size: 10px; margin-top: 4px;">💡 Incluye cuota obligatoria del mes: ${fmt(cutoffInfo.currentMonthInstallmentSum)}</div>` : ''}
               </div>`;
@@ -11026,8 +11074,10 @@ async function buildAnnualPDF(state, year) {
     const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
     const dateStr = nextCutoff.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
 
-    // Calcular utilización actual y cuánto debe pagar para mantener <3%
-    const TARGET_UTILIZATION = 3; // % objetivo para mantener score óptimo
+    // Calcular utilización actual y cuánto debe pagar para mantener el % objetivo
+    // v108: el objetivo ahora lo elige el usuario (antes fijo en 3%, un valor muy exigente
+    // que no todo el mundo puede lograr dado su cupo/ingresos). Se guarda en state.targetUtilization.
+    const TARGET_UTILIZATION = (state.targetUtilization !== undefined && state.targetUtilization !== null) ? state.targetUtilization : 3;
     const targetMaxBalance = cardLimit ? (cardLimit * TARGET_UTILIZATION / 100) : 0;
     const utilization = (cardLimit && cardLimit > 0) ? (cardBalance / cardLimit) * 100 : 0;
     
@@ -11080,6 +11130,7 @@ async function buildAnnualPDF(state, year) {
       dateStr,
       utilization,
       targetMaxBalance,
+      targetUtilization: TARGET_UTILIZATION,
       needsPayment,
       paymentNeeded,
       cardBalance,
@@ -13525,29 +13576,29 @@ async function buildAnnualPDF(state, year) {
         // pero duplicado aquí con su propia copia del cálculo que nunca recibió el fix.
         // Ahora reutilizamos getCutoffStatus(), que sí calcula esto bien.
         const status = getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id);
-        const { daysLeft, dateStr, utilization, needsPayment, paymentNeeded } = status;
+        const { daysLeft, dateStr, utilization, needsPayment, paymentNeeded, targetUtilization } = status;
 
         const baseId = `cutoff-${d.id}-${daysLeft}`;
 
         if (daysLeft <= 0) {
-          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>${escapeHtml(d.name)}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener score óptimo (3%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
+          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>${escapeHtml(d.name)}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener tu objetivo (${targetUtilization}%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
         } 
         else if (daysLeft <= 3) {
           if (needsPayment) {
-            a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el 3%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el ${targetUtilization}%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
           } else {
-            a.push({ id: baseId, t: 'info', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤3%). No requiere pago anticipado.` });
+            a.push({ id: baseId, t: 'info', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤${targetUtilization}%). No requiere pago anticipado.` });
           }
         }
         else if (daysLeft <= 7) {
           if (needsPayment) {
-            a.push({ id: baseId, t: 'info', x: `🔔 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener score óptimo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'info', x: `🔔 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener tu objetivo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
           } else {
-            a.push({ id: baseId, t: 'success', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para el score.` });
+            a.push({ id: baseId, t: 'success', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para tu objetivo.` });
           }
         }
         else if (daysLeft <= 14 && needsPayment) {
-          a.push({ id: baseId, t: 'info', x: `📅 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener el score óptimo.` });
+          a.push({ id: baseId, t: 'info', x: `📅 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener tu objetivo.` });
         }
       }
     });
