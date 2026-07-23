@@ -1059,7 +1059,7 @@ function renderProfileStats() {
 
   container.innerHTML = `
     <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-      <div style="font-size: 11px; color: var(--text-secondary);">💎 Patrimonio total</div>
+      <div style="font-size: 11px; color: var(--text-secondary);">🏦 Patrimonio total</div>
       <div style="font-size: 18px; font-weight: 600; color: var(--success-text);">${fmt(stats.patrimonio)}</div>
     </div>
     <div style="padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
@@ -6580,7 +6580,7 @@ async function buildAnnualPDF(state, year) {
   // v103: SISTEMA DE PLANES (Gratis / Normal / Pro)
   // ============================================================
   const PLAN_RANK = { free: 0, normal: 1, pro: 2 };
-  const PLAN_LABEL = { free: '🆓 Gratis', normal: '💳 Normal', pro: '💎 Pro' };
+  const PLAN_LABEL = { free: '🆓 Gratis', normal: '💳 Normal', pro: '⭐ Pro' };
   const FREE_LIMITS = { pockets: 5, debts: 1, goals: 1 };
 
   function getUserPlan() {
@@ -8181,7 +8181,7 @@ async function buildAnnualPDF(state, year) {
         <div style="background: var(--bg-secondary); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
           <p style="font-size: 13px; font-weight: 500; margin: 0 0 10px;">➕ Crear nuevo método</p>
           <div style="display: grid; grid-template-columns: 60px 1fr; gap: 8px; margin-bottom: 8px;">
-            <input type="text" id="new-method-icon" placeholder="💎" maxlength="2" style="text-align: center; font-size: 18px;" />
+            <input type="text" id="new-method-icon" placeholder="💳" maxlength="2" style="text-align: center; font-size: 18px;" />
             <input type="text" id="new-method-label" placeholder="Nombre (ej: Movii, Yape, Bold)" maxlength="40" />
           </div>
           <button onclick="addCustomPaymentMethod()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #7F77DD, #1D9E75); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 13px;">+ Crear método</button>
@@ -8470,7 +8470,7 @@ async function buildAnnualPDF(state, year) {
         <div class="metric-hero-sub">De tus tarjetas</div>
       </div>
       <div class="metric-hero">
-        <div class="metric-hero-icon purple">💎</div>
+        <div class="metric-hero-icon purple">💰</div>
         <div class="metric-hero-label">Ingreso TOTAL</div>
         <p class="metric-hero-value" style="color: var(--success-text); font-weight: 700;">${fmt(total)}</p>
         <div class="metric-hero-sub">Este mes</div>
