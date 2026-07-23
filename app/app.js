@@ -6650,6 +6650,67 @@ async function buildAnnualPDF(state, year) {
 
   // v103: selector TEMPORAL para probar cada plan sin pasarela de pagos real todavía.
   // Cuando se integre el pago de verdad, esto se reemplaza por la lógica de suscripción.
+  // v109: SUSCRIPCIÓN REAL A PRO — vía Wompi
+  window.subscribeToPro = async function() {
+    try {
+      toastInfo('Preparando tu pago', 'Un momento...', 3000);
+
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const session = sessionData?.session;
+      if (!session) {
+        toastError('Sesión expirada', 'Vuelve a iniciar sesión e intenta de nuevo.');
+        return;
+      }
+
+      // Le pedimos al servidor que prepare el pago (monto + firma) — esto NUNCA
+      // se calcula en el navegador, para que nadie pueda alterar cuánto paga.
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-signature`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo preparar el pago');
+      }
+
+      const { reference, amountInCents, currency, signature, publicKey } = await response.json();
+
+      if (typeof WidgetCheckout === 'undefined') {
+        toastError('Error', 'No se pudo cargar el sistema de pagos. Recarga la página e intenta de nuevo.');
+        return;
+      }
+
+      const checkout = new WidgetCheckout({
+        currency,
+        amountInCents,
+        reference,
+        publicKey,
+        signature: { integrity: signature },
+        redirectUrl: window.location.origin + window.location.pathname,
+      });
+
+      checkout.open(function(result) {
+        const transaction = result.transaction;
+        if (transaction && transaction.status === 'APPROVED') {
+          toastSuccess('¡Pago aprobado! 🎉', 'Activando tu plan Pro...');
+          // El webhook activa el plan del lado del servidor — refrescamos el
+          // estado local después de un momento para darle tiempo a procesar.
+          setTimeout(() => { if (typeof loadFromCloud === 'function') loadFromCloud(); }, 3000);
+        } else if (transaction) {
+          toastWarning('Pago no completado', `Estado: ${transaction.status}. Si crees que es un error, contáctanos.`);
+        } else {
+          toastInfo('Pago cancelado', 'No se realizó ningún cobro.');
+        }
+      });
+    } catch (error) {
+      console.error('Error en subscribeToPro:', error);
+      toastError('Error', 'No se pudo iniciar el pago. Intenta de nuevo en un momento.');
+    }
+  };
+
   window.setDevPlan = async function(newPlan) {
     if (!['free', 'pro'].includes(newPlan)) return;
     state.plan = newPlan;

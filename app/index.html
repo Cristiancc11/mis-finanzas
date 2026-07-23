@@ -48,6 +48,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
 
+<!-- v109: Widget de pagos de Wompi -->
+<script src="https://checkout.wompi.co/widget.js"></script>
 </head>
 <body>
 
@@ -2235,6 +2237,11 @@
           <p style="font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.5;">Todo ilimitado · Mis Deudas · Ingresos completos · historial completo · Análisis completo (gastos hormiga, calendario, reportes PDF) · Conversor · Rendimientos · Estrategia cashback</p>
         </div>
       </div>
+
+      <!-- v109: botón real de pago con Wompi -->
+      <button onclick="window.subscribeToPro()" id="subscribe-pro-btn" style="width: 100%; margin-top: 16px; padding: 14px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer;">
+        💳 Suscribirme a Pro — $9.990/mes
+      </button>
 
       <!-- v103: selector TEMPORAL para probar cada plan — reemplazar cuando haya pasarela de pagos real -->
       <div style="margin-top: 16px; padding: 12px; background: var(--warning-bg); border-radius: 10px; border: 1px dashed var(--warning-text);">
