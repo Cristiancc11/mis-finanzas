@@ -6577,10 +6577,10 @@ async function buildAnnualPDF(state, year) {
   }
 
   // ============================================================
-  // v103: SISTEMA DE PLANES (Gratis / Normal / Pro)
+  // v106: SISTEMA DE PLANES (Gratis / Pro)
   // ============================================================
-  const PLAN_RANK = { free: 0, normal: 1, pro: 2 };
-  const PLAN_LABEL = { free: '🆓 Gratis', normal: '💳 Normal', pro: '⭐ Pro' };
+  const PLAN_RANK = { free: 0, pro: 1 };
+  const PLAN_LABEL = { free: '🆓 Gratis', pro: '⭐ Pro' };
   const FREE_LIMITS = { pockets: 5, debts: 1, goals: 1 };
 
   function getUserPlan() {
@@ -6595,7 +6595,7 @@ async function buildAnnualPDF(state, year) {
 
   // Card de "mejora tu plan" reutilizable — se muestra en vez del contenido bloqueado
   function renderUpgradePrompt(featureName, requiredPlan, description) {
-    const label = PLAN_LABEL[requiredPlan] || PLAN_LABEL.normal;
+    const label = PLAN_LABEL[requiredPlan] || PLAN_LABEL.pro;
     return `
       <div class="raised-card" style="text-align: center; padding: 32px 20px; border: 1.5px dashed var(--accent-to); background: var(--accent-glow);">
         <div style="font-size: 34px; margin-bottom: 10px;">🔒</div>
@@ -6610,7 +6610,7 @@ async function buildAnnualPDF(state, year) {
   // Aviso compacto de límite alcanzado (para mostrar junto a un formulario, no reemplazarlo)
   function renderLimitBanner(current, limit, itemName, requiredPlan) {
     if (current < limit) return '';
-    const label = PLAN_LABEL[requiredPlan] || PLAN_LABEL.normal;
+    const label = PLAN_LABEL[requiredPlan] || PLAN_LABEL.pro;
     return `
       <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--warning-bg); border-left: 3px solid var(--warning-text); border-radius: 10px; margin-bottom: 12px; font-size: 12px; color: var(--warning-text);">
         <span style="font-size: 18px;">🔒</span>
@@ -6636,7 +6636,7 @@ async function buildAnnualPDF(state, year) {
   // v103: selector TEMPORAL para probar cada plan sin pasarela de pagos real todavía.
   // Cuando se integre el pago de verdad, esto se reemplaza por la lógica de suscripción.
   window.setDevPlan = async function(newPlan) {
-    if (!['free', 'normal', 'pro'].includes(newPlan)) return;
+    if (!['free', 'pro'].includes(newPlan)) return;
     state.plan = newPlan;
 
     // FIX: antes esto llamaba saveState() (que dispara el guardado a la nube con 1.5s de
@@ -7060,7 +7060,7 @@ async function buildAnnualPDF(state, year) {
 
   window.addPocket = function() {
     // v103: límite de bolsillos en plan gratis
-    if (!hasPlanAccess('normal') && state.pockets.length >= FREE_LIMITS.pockets) {
+    if (!hasPlanAccess('pro') && state.pockets.length >= FREE_LIMITS.pockets) {
       toastWarning('Límite de tu plan', `Tu plan gratis permite hasta ${FREE_LIMITS.pockets} bolsillos. Mejora tu plan para agregar más.`);
       return;
     }
@@ -8725,7 +8725,7 @@ async function buildAnnualPDF(state, year) {
 
   window.addDebt = function() {
     // v103: límite de tarjetas en plan gratis
-    if (!hasPlanAccess('normal') && state.debts.length >= FREE_LIMITS.debts) {
+    if (!hasPlanAccess('pro') && state.debts.length >= FREE_LIMITS.debts) {
       toastWarning('Límite de tu plan', `Tu plan gratis permite hasta ${FREE_LIMITS.debts} tarjeta. Mejora tu plan para agregar más.`);
       return;
     }
@@ -9035,7 +9035,7 @@ async function buildAnnualPDF(state, year) {
 
   window.addGoal = function() {
     // v103: límite de metas en plan gratis
-    if (!hasPlanAccess('normal') && state.goals.length >= FREE_LIMITS.goals) {
+    if (!hasPlanAccess('pro') && state.goals.length >= FREE_LIMITS.goals) {
       toastWarning('Límite de tu plan', `Tu plan gratis permite hasta ${FREE_LIMITS.goals} meta. Mejora tu plan para agregar más.`);
       return;
     }
@@ -10219,7 +10219,7 @@ async function buildAnnualPDF(state, year) {
     // v103: aviso de límite del plan gratis
     const limitBanner = document.getElementById('pocket-limit-banner');
     if (limitBanner) {
-      limitBanner.innerHTML = hasPlanAccess('normal') ? '' : renderLimitBanner(state.pockets.length, FREE_LIMITS.pockets, 'bolsillos', 'normal');
+      limitBanner.innerHTML = hasPlanAccess('pro') ? '' : renderLimitBanner(state.pockets.length, FREE_LIMITS.pockets, 'bolsillos', 'pro');
     }
 
     // Calcular totales dinámicamente según los bolsillos del usuario
@@ -10551,7 +10551,7 @@ async function buildAnnualPDF(state, year) {
     // v103: aviso de límite del plan gratis
     const debtLimitBanner = document.getElementById('debt-limit-banner');
     if (debtLimitBanner) {
-      debtLimitBanner.innerHTML = hasPlanAccess('normal') ? '' : renderLimitBanner(state.debts.length, FREE_LIMITS.debts, 'tarjeta', 'normal');
+      debtLimitBanner.innerHTML = hasPlanAccess('pro') ? '' : renderLimitBanner(state.debts.length, FREE_LIMITS.debts, 'tarjeta', 'pro');
     }
 
     // Asegurar que state.debts es un array
@@ -11107,7 +11107,7 @@ async function buildAnnualPDF(state, year) {
     // v103: aviso de límite del plan gratis
     const goalLimitBanner = document.getElementById('goal-limit-banner');
     if (goalLimitBanner) {
-      goalLimitBanner.innerHTML = hasPlanAccess('normal') ? '' : renderLimitBanner(state.goals.length, FREE_LIMITS.goals, 'meta', 'normal');
+      goalLimitBanner.innerHTML = hasPlanAccess('pro') ? '' : renderLimitBanner(state.goals.length, FREE_LIMITS.goals, 'meta', 'pro');
     }
 
     if (state.goals.length === 0) {
@@ -14684,10 +14684,10 @@ async function buildAnnualPDF(state, year) {
     const list = document.getElementById('mydebts-list');
     if (!list) return;
 
-    // v103: "Mis Deudas" es una función de plan Normal o superior
+    // v106: "Mis Deudas" es una función de plan Pro
     const section = document.getElementById('section-mis-deudas');
-    if (!hasPlanAccess('normal')) {
-      if (section) section.innerHTML = renderUpgradePrompt('Mis Deudas', 'normal', 'Lleva el control de préstamos personales y lo que le debes a otros.');
+    if (!hasPlanAccess('pro')) {
+      if (section) section.innerHTML = renderUpgradePrompt('Mis Deudas', 'pro', 'Lleva el control de préstamos personales y lo que le debes a otros.');
       return;
     }
 
