@@ -415,15 +415,25 @@ async function loadFromCloud() {
       } else {
         // Usuario nuevo: arrancar con plantilla vacía
         console.log('🆕 Usuario nuevo - cargando plantilla vacía');
-        if (typeof EMPTY_STATE !== 'undefined') {
-          // Marcar como nuevo usuario para que aparezca el tutorial
-          const newUserState = { ...EMPTY_STATE, isNewUser: true };
-          localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(newUserState));
-          await supabaseClient.from('dashboard_data').upsert({
-            user_id: currentUser.id,
-            data: newUserState
-          }, { onConflict: 'user_id' });
-        }
+
+        // FIX: antes, si por cualquier razón EMPTY_STATE no aplicaba bien, se dejaba
+        // lo que ya hubiera en localStorage sin tocar — y como esa clave es COMPARTIDA
+        // por cualquier cuenta que se use en ese mismo navegador, una cuenta nueva podía
+        // heredar el plan Pro (u otros datos) de una sesión anterior en el mismo navegador.
+        // Ahora, para un usuario confirmado como nuevo (la nube no tenía datos suyos),
+        // SIEMPRE se limpia localStorage primero, sin excepción.
+        try { localStorage.removeItem(STORAGE_KEY_GLOBAL); } catch(e) {}
+
+        const baseState = (typeof EMPTY_STATE !== 'undefined') ? EMPTY_STATE : {};
+        // FIX: forzar plan 'free' explícitamente aquí también (no solo confiar en
+        // EMPTY_STATE) — una cuenta nueva NUNCA debe arrancar en Pro.
+        const newUserState = { ...baseState, plan: 'free', isNewUser: true };
+        localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(newUserState));
+        await supabaseClient.from('dashboard_data').upsert({
+          user_id: currentUser.id,
+          data: newUserState
+        }, { onConflict: 'user_id' });
+
         updateSyncIndicator('Cuenta nueva ☁️');
         // Mostrar tutorial moderno después de un momento
         setTimeout(() => {
