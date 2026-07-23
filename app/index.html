@@ -704,7 +704,7 @@
         </div>
       </div>
       <div>
-        <div class="hero-badge">⭐ Pro Edition</div>
+        <div class="hero-badge" id="hero-plan-badge">⭐ Pro Edition</div>
         <h1 class="hero-title"><img class="app-logo-icon" alt="" style="height: 36px; width: auto; vertical-align: middle; margin-right: 8px;" /><span class="logo-text">FinanzasPro</span></h1>
         <p class="hero-subtitle"><span id="hero-user-name">Cristian</span> · <span class="hero-tagline">Tu dinero. Tu control. Tu futuro.</span></p>
       </div>
@@ -2225,7 +2225,8 @@
 
     <div class="raised-card" id="plan-card" style="border: 1.5px solid var(--accent-to);">
       <p class="card-title">⭐ Mi plan</p>
-      <div id="plan-current-badge" style="margin-bottom: 16px;"></div>
+      <div id="plan-current-badge" style="margin-bottom: 8px;"></div>
+      <div id="plan-validity-info" style="display: none; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;"></div>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
         <div style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--text-tertiary);">
@@ -2238,19 +2239,10 @@
         </div>
       </div>
 
-      <!-- v109: botón real de pago con Wompi -->
-      <button onclick="window.subscribeToPro()" id="subscribe-pro-btn" style="width: 100%; margin-top: 16px; padding: 14px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer;">
+      <!-- v110: botón dinámico — "Suscribirme" si es Gratis, "Cancelar suscripción" si ya es Pro -->
+      <button onclick="window.handlePlanButtonClick()" id="subscribe-pro-btn" style="width: 100%; margin-top: 16px; padding: 14px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer;">
         💳 Suscribirme a Pro — $9.990/mes
       </button>
-
-      <!-- v103: selector TEMPORAL para probar cada plan — reemplazar cuando haya pasarela de pagos real -->
-      <div style="margin-top: 16px; padding: 12px; background: var(--warning-bg); border-radius: 10px; border: 1px dashed var(--warning-text);">
-        <label class="field-label" for="dev-plan-selector" style="color: var(--warning-text);">🧪 Modo prueba — cambiar mi plan (temporal, hasta activar pagos reales)</label>
-        <select id="dev-plan-selector" onchange="window.setDevPlan(this.value)">
-          <option value="free">🆓 Gratis</option>
-          <option value="pro">⭐ Pro</option>
-        </select>
-      </div>
     </div>
 
     <div class="raised-card">
@@ -2285,6 +2277,33 @@
 </button>
 
 <!-- App.js - cache busting automático -->
+<!-- v110: Modal de celebración cuando se aprueba un pago -->
+<div id="pro-celebration-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: linear-gradient(160deg, var(--accent-from), var(--accent-to)); border-radius: 24px; max-width: 440px; width: 100%; padding: 40px 32px; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.5); animation: proCelebrationPop 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
+    <div style="font-size: 64px; margin-bottom: 8px;">🎉</div>
+    <h2 style="color: white; font-size: 26px; font-weight: 800; margin: 0 0 10px;">¡Ya eres Pro!</h2>
+    <p style="color: rgba(255,255,255,0.85); font-size: 14.5px; line-height: 1.6; margin: 0 0 24px;">Tu pago fue aprobado. Ya tienes acceso completo a todas las funciones de FinanzasPro.</p>
+    <div style="background: rgba(255,255,255,0.12); border-radius: 14px; padding: 18px; text-align: left; margin-bottom: 26px;">
+      <div style="color: white; font-size: 13px; font-weight: 600; margin-bottom: 10px;">Ahora tienes acceso a:</div>
+      <div style="color: rgba(255,255,255,0.9); font-size: 12.5px; line-height: 2;">
+        ✓ Bolsillos, tarjetas y metas ilimitadas<br>
+        ✓ Mis Deudas e ingresos completos<br>
+        ✓ Análisis completo + gastos hormiga + calendario<br>
+        ✓ Reportes PDF, Conversor y estrategia de cashback
+      </div>
+    </div>
+    <button onclick="document.getElementById('pro-celebration-overlay').style.display='none';" style="width: 100%; padding: 14px; background: white; color: var(--accent-from); border: none; border-radius: 12px; font-weight: 700; font-size: 15px; cursor: pointer;">
+      Empezar a explorar 🚀
+    </button>
+  </div>
+</div>
+<style>
+@keyframes proCelebrationPop {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+</style>
+
 <script>document.write('<script src="app.js?v=' + Date.now() + '"><\/script>');</script>
 
 <script>

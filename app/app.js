@@ -6638,15 +6638,97 @@ async function buildAnnualPDF(state, year) {
   // Card "Mi plan" en Perfil — muestra el plan actual y sincroniza el selector de prueba
   function renderPlanCard() {
     const badge = document.getElementById('plan-current-badge');
-    const selector = document.getElementById('dev-plan-selector');
-    if (!badge && !selector) return;
+    const heroBadge = document.getElementById('hero-plan-badge');
+    const validityInfo = document.getElementById('plan-validity-info');
+    const btn = document.getElementById('subscribe-pro-btn');
+    if (!badge && !heroBadge && !btn) return;
+
+    // v110: si el plan Pro ya venció (pasó proValidUntil) y estaba cancelado, bajar a gratis
+    if (state.plan === 'pro' && state.proValidUntil && state.subscriptionCancelled) {
+      const validUntil = new Date(state.proValidUntil);
+      if (validUntil < new Date()) {
+        state.plan = 'free';
+        saveState();
+      }
+    }
+
     const plan = getUserPlan();
+    const colors = { free: 'var(--text-tertiary)', pro: 'var(--accent-to)' };
+
     if (badge) {
-      const colors = { free: 'var(--text-tertiary)', normal: 'var(--info-text)', pro: 'var(--accent-to)' };
       badge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; background:${colors[plan]}22; color:${colors[plan]}; border-radius:20px; font-weight:700; font-size:14px;">${PLAN_LABEL[plan]}</span>`;
     }
-    if (selector) selector.value = plan;
+
+    // v110: badge dinámico arriba, junto al nombre (antes decía siempre "Pro Edition" fijo)
+    if (heroBadge) {
+      heroBadge.textContent = plan === 'pro' ? '⭐ Pro' : '🆓 Gratis';
+    }
+
+    // v110: mostrar cuándo vence / si está cancelada
+    if (validityInfo) {
+      if (plan === 'pro' && state.proValidUntil) {
+        const validUntil = new Date(state.proValidUntil);
+        const validUntilStr = validUntil.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+        if (state.subscriptionCancelled) {
+          validityInfo.style.display = 'block';
+          validityInfo.innerHTML = `⚠️ Tu suscripción fue cancelada. Sigues teniendo Pro hasta el <strong>${validUntilStr}</strong>.`;
+        } else {
+          validityInfo.style.display = 'block';
+          validityInfo.innerHTML = `✓ Tu plan Pro se renueva el <strong>${validUntilStr}</strong>.`;
+        }
+      } else {
+        validityInfo.style.display = 'none';
+      }
+    }
+
+    // v110: el botón cambia según el plan — "Suscribirme" si es gratis, "Cancelar" si ya es Pro
+    if (btn) {
+      if (plan === 'pro') {
+        btn.textContent = '❌ Cancelar suscripción';
+        btn.style.background = 'var(--bg-secondary)';
+        btn.style.color = 'var(--danger-text)';
+        btn.style.border = '1px solid var(--danger-text)';
+      } else {
+        btn.textContent = '💳 Suscribirme a Pro — $9.990/mes';
+        btn.style.background = 'linear-gradient(135deg, var(--accent-from), var(--accent-to))';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+      }
+    }
   }
+
+  // v110: decide si suscribir o cancelar, según el plan actual
+  window.handlePlanButtonClick = function() {
+    if (getUserPlan() === 'pro') {
+      window.cancelSubscription();
+    } else {
+      window.subscribeToPro();
+    }
+  };
+
+  // v110: cancelar la suscripción — las funciones Pro siguen activas hasta que termine
+  // el período que ya se pagó, no se corta el acceso de inmediato.
+  window.cancelSubscription = async function() {
+    const validUntilStr = state.proValidUntil
+      ? new Date(state.proValidUntil).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'el final de tu período actual';
+
+    const confirmed = await showConfirm({
+      title: '¿Cancelar tu suscripción Pro?',
+      message: `Vas a dejar de pagar $9.990/mes. Tus funciones Pro seguirán activas hasta el ${validUntilStr} — después de esa fecha, tu cuenta pasará automáticamente al plan Gratis. No se te cobrará de nuevo.`,
+      confirmText: 'Sí, cancelar',
+      cancelText: 'No, mantener mi suscripción',
+      type: 'danger',
+      icon: '⚠️',
+    });
+
+    if (!confirmed) return;
+
+    state.subscriptionCancelled = true;
+    saveState();
+    renderPlanCard();
+    toastSuccess('Suscripción cancelada', `Seguirás teniendo Pro hasta el ${validUntilStr}. No se te cobrará de nuevo.`);
+  };
 
   // v103: selector TEMPORAL para probar cada plan sin pasarela de pagos real todavía.
   // Cuando se integre el pago de verdad, esto se reemplaza por la lógica de suscripción.
@@ -6695,7 +6777,9 @@ async function buildAnnualPDF(state, year) {
       checkout.open(function(result) {
         const transaction = result.transaction;
         if (transaction && transaction.status === 'APPROVED') {
-          toastSuccess('¡Pago aprobado! 🎉', 'Activando tu plan Pro...');
+          // v110: modal grande de celebración en vez de un toast chiquito
+          const overlay = document.getElementById('pro-celebration-overlay');
+          if (overlay) overlay.style.display = 'flex';
           // El webhook activa el plan del lado del servidor — refrescamos el
           // estado local después de un momento para darle tiempo a procesar.
           setTimeout(() => { if (typeof loadFromCloud === 'function') loadFromCloud(); }, 3000);
