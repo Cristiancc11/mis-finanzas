@@ -67,6 +67,8 @@
   .nav-links { display: flex; align-items: center; gap: 34px; }
   .nav-links a { color: rgba(255,255,255,0.72); font-size: 15px; font-weight: 500; text-decoration: none; }
   .nav-links a:hover { color: #fff; }
+  .nav-login { font-weight: 600 !important; color: #fff !important; }
+  .nav-login:hover { text-decoration: underline; }
   .nav-cta {
     background: linear-gradient(135deg, var(--teal), var(--mint));
     color: #06231b !important; padding: 10px 22px; border-radius: 30px;
@@ -96,6 +98,9 @@
     font-size: 18px; line-height: 1.65; color: rgba(255,255,255,0.72); max-width: 480px; margin-bottom: 34px;
   }
   .cta-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .hero-login-hint { margin: 14px 0 0; font-size: 14px; color: rgba(255,255,255,0.6); }
+  .hero-login-hint a { color: var(--mint); font-weight: 600; text-decoration: none; }
+  .hero-login-hint a:hover { text-decoration: underline; }
   .btn-primary {
     background: linear-gradient(135deg, var(--teal), var(--mint));
     color: #06231b; padding: 16px 30px; border-radius: 30px; font-weight: 700; font-size: 15.5px;
@@ -248,6 +253,7 @@
       <a href="#funciones">Funciones</a>
       <a href="#precios">Precios</a>
       <a href="#preguntas">Preguntas</a>
+      <a href="/app" class="nav-login">Iniciar sesión</a>
       <a href="/app" class="nav-cta">Empezar gratis</a>
     </div>
   </div>
@@ -264,6 +270,7 @@
         <a href="/app" class="btn-primary">Empezar gratis →</a>
         <a href="#funciones" class="btn-ghost">Ver cómo funciona</a>
       </div>
+      <p class="hero-login-hint">¿Ya tienes cuenta? <a href="/app">Inicia sesión aquí</a></p>
       <div class="hero-trust">
         <span>🔒 Tus datos cifrados</span>
         <span>🇨🇴 Ley 1581 · Habeas Data</span>
