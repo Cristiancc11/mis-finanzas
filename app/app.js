@@ -371,7 +371,10 @@ async function handleLogout() {
   try {
     await supabaseClient.auth.signOut();
     currentUser = null;
-    location.reload();
+    // v112: antes hacía location.reload(), que recargaba /app y mostraba
+    // la pantalla de login vieja de la app. Ahora se manda a la landing,
+    // que tiene el nuevo modal de inicio de sesión.
+    window.location.href = '/';
   } catch (e) {
     console.error('Logout error:', e);
     toastError('Error al cerrar sesión', 'Intenta de nuevo');
@@ -1586,7 +1589,8 @@ async function deleteAccountPrompt() {
 
   setTimeout(async () => {
     await supabaseClient.auth.signOut();
-    location.reload();
+    // v112: mismo cambio que en handleLogout — mandar a la landing en vez de recargar /app
+    window.location.href = '/';
   }, 2000);
 }
 
@@ -6698,13 +6702,11 @@ async function buildAnnualPDF(state, year) {
         btn.style.background = 'var(--bg-secondary)';
         btn.style.color = 'var(--danger-text)';
         btn.style.border = '1px solid var(--danger-text)';
-        btn.classList.remove('is-upsell-cta'); // v111: sin brillo cuando el botón es para cancelar
       } else {
         btn.textContent = '💳 Suscribirme a Pro — $9.990/mes';
         btn.style.background = 'linear-gradient(135deg, var(--accent-from), var(--accent-to))';
         btn.style.color = 'white';
         btn.style.border = 'none';
-        btn.classList.add('is-upsell-cta'); // v111: activa el brillo/pulso del CTA (ver styles.css)
       }
     }
   }
