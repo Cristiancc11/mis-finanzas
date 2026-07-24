@@ -102,64 +102,79 @@
   .hero-login-hint a { color: var(--mint); font-weight: 600; text-decoration: none; }
   .hero-login-hint a:hover { text-decoration: underline; }
 
-  /* ===== LOGIN MODAL ===== */
-  .login-modal-overlay {
+  /* ===== AUTH MODAL ===== */
+  @keyframes authOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes authCardIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .auth-modal-overlay {
     display: none; position: fixed; inset: 0; z-index: 1000;
     background: rgba(13, 26, 29, 0.72); backdrop-filter: blur(4px);
     align-items: center; justify-content: center; padding: 20px;
+    animation: authOverlayIn 0.2s ease;
   }
-  .login-modal-card {
+  .auth-modal-card {
     background: var(--paper-2); color: var(--ink); border-radius: var(--radius);
-    width: 100%; max-width: 380px; padding: 32px 28px 28px;
+    width: 100%; max-width: 400px; padding: 30px 28px 28px;
     position: relative; box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    animation: authCardIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .login-modal-close {
+  .auth-modal-close {
     position: absolute; top: 14px; right: 14px; width: 30px; height: 30px;
     border-radius: 50%; border: none; background: var(--paper); color: var(--ink-soft);
-    font-size: 18px; line-height: 1; cursor: pointer;
+    font-size: 18px; line-height: 1; cursor: pointer; transition: background 0.15s;
   }
-  .login-modal-close:hover { background: var(--line); }
-  .login-modal-card h3 { margin: 0 0 6px; font-size: 22px; }
-  .login-modal-sub { margin: 0 0 20px; font-size: 14px; color: var(--ink-soft); }
-  .login-google-btn {
+  .auth-modal-close:hover { background: var(--line); }
+  .auth-modal-tabs {
+    display: flex; gap: 4px; background: var(--paper); border-radius: 12px; padding: 4px;
+    margin: 6px 0 18px;
+  }
+  .auth-tab {
+    flex: 1; border: none; background: transparent; padding: 9px 0; border-radius: 9px;
+    font-size: 14px; font-weight: 600; color: var(--ink-softer); cursor: pointer;
+    font-family: inherit; transition: all 0.15s;
+  }
+  .auth-tab.active { background: var(--paper-2); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .auth-modal-sub { margin: 0 0 20px; font-size: 14px; color: var(--ink-soft); }
+  .auth-google-btn {
     width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
     padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper-2);
-    color: var(--ink); font-weight: 600; font-size: 14.5px; cursor: pointer;
+    color: var(--ink); font-weight: 600; font-size: 14.5px; cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
   }
-  .login-google-btn:hover { background: var(--paper); }
-  .login-google-btn:disabled { opacity: 0.6; cursor: wait; }
+  .auth-google-btn:hover { background: var(--paper); }
+  .auth-google-btn:disabled { opacity: 0.6; cursor: wait; }
   .google-g {
     display: inline-flex; align-items: center; justify-content: center;
     width: 20px; height: 20px; border-radius: 50%; background: #fff;
     border: 1px solid var(--line); font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 12px;
     color: #4285F4;
   }
-  .login-modal-divider {
+  .auth-modal-divider {
     display: flex; align-items: center; gap: 12px; margin: 20px 0 16px;
     font-size: 12.5px; color: var(--ink-softer);
   }
-  .login-modal-divider::before, .login-modal-divider::after {
+  .auth-modal-divider::before, .auth-modal-divider::after {
     content: ''; flex: 1; height: 1px; background: var(--line);
   }
-  #login-modal-form label {
+  #auth-modal-form label {
     display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 14px;
   }
-  #login-modal-form input {
+  #auth-modal-form input {
     width: 100%; margin-top: 6px; padding: 11px 14px; border-radius: 10px;
     border: 1px solid var(--line); font-size: 14.5px; font-family: inherit; color: var(--ink);
     background: var(--paper-2);
   }
-  #login-modal-form input:focus { outline: 2px solid var(--mint); outline-offset: 1px; }
-  .login-modal-message {
+  #auth-modal-form input:focus { outline: 2px solid var(--mint); outline-offset: 1px; }
+  .auth-field-hint { display: block; margin-top: 5px; font-size: 11.5px; color: var(--ink-softer); font-weight: 500; }
+  .auth-modal-message {
     font-size: 13px; color: var(--danger); background: rgba(193, 88, 79, 0.1);
     border-radius: 8px; padding: 9px 12px; margin: -2px 0 14px;
   }
-  .login-modal-submit {
+  .auth-modal-submit {
     width: 100%; justify-content: center; border: none; cursor: pointer; font-family: inherit;
   }
-  .login-modal-footer { margin: 18px 0 0; text-align: center; font-size: 13.5px; color: var(--ink-soft); }
-  .login-modal-footer a { color: var(--teal); font-weight: 600; text-decoration: none; }
-  .login-modal-footer a:hover { text-decoration: underline; }
+  .auth-modal-footer { margin: 18px 0 0; text-align: center; font-size: 13.5px; color: var(--ink-soft); }
+  .auth-modal-footer a { color: var(--teal); font-weight: 600; text-decoration: none; }
+  .auth-modal-footer a:hover { text-decoration: underline; }
   .btn-primary {
     background: linear-gradient(135deg, var(--teal), var(--mint));
     color: #06231b; padding: 16px 30px; border-radius: 30px; font-weight: 700; font-size: 15.5px;
@@ -312,8 +327,8 @@
       <a href="#funciones">Funciones</a>
       <a href="#precios">Precios</a>
       <a href="#preguntas">Preguntas</a>
-      <a href="/app" class="nav-login" onclick="openLoginModal(event)">Iniciar sesión</a>
-      <a href="/app" class="nav-cta">Empezar gratis</a>
+      <a href="/app" class="nav-login" onclick="openAuthModal(event, 'login')">Iniciar sesión</a>
+      <a href="/app" class="nav-cta" onclick="openAuthModal(event, 'signup')">Empezar gratis</a>
     </div>
   </div>
 </nav>
@@ -326,10 +341,10 @@
       <h1>Tu plata, con la inteligencia que <em>ningún banco</em> te da</h1>
       <p class="lede">La mayoría de apps de finanzas solo anotan lo que gastas. FinanzasPro además te dice cuándo pagar tu tarjeta para no perder score, qué tanto cashback estás dejando sobre la mesa, y si tu ahorro está donde debería estar generando algo.</p>
       <div class="cta-row">
-        <a href="/app" class="btn-primary">Empezar gratis →</a>
+        <a href="/app" class="btn-primary" onclick="openAuthModal(event, 'signup')">Empezar gratis →</a>
         <a href="#funciones" class="btn-ghost">Ver cómo funciona</a>
       </div>
-      <p class="hero-login-hint">¿Ya tienes cuenta? <a href="/app" onclick="openLoginModal(event)">Inicia sesión aquí</a></p>
+      <p class="hero-login-hint">¿Ya tienes cuenta? <a href="/app" onclick="openAuthModal(event, 'login')">Inicia sesión aquí</a></p>
       <div class="hero-trust">
         <span>🔒 Tus datos cifrados</span>
         <span>🇨🇴 Ley 1581 · Habeas Data</span>
@@ -472,7 +487,7 @@
           <li>1 meta de ahorro</li>
           <li>Historial de 2 meses</li>
         </ul>
-        <a href="/app" class="price-cta">Crear cuenta gratis</a>
+        <a href="/app" class="price-cta" onclick="openAuthModal(event, 'signup')">Crear cuenta gratis</a>
       </div>
       <div class="price-card featured">
         <div class="price-badge">Recomendado</div>
@@ -487,7 +502,7 @@
           <li>Reportes PDF mensuales y anuales</li>
           <li>Conversor con historial + estrategia de cashback</li>
         </ul>
-        <a href="/app" class="price-cta">Empezar prueba Pro</a>
+        <a href="/app" class="price-cta" onclick="openAuthModal(event, 'signup')">Empezar prueba Pro</a>
       </div>
     </div>
   </div>
@@ -529,7 +544,7 @@
   <div class="wrap">
     <h2>Empieza a entender tu plata hoy</h2>
     <p>Gratis, sin tarjeta de crédito, listo en menos de dos minutos.</p>
-    <a href="/app" class="btn-primary">Crear mi cuenta gratis →</a>
+    <a href="/app" class="btn-primary" onclick="openAuthModal(event, 'signup')">Crear mi cuenta gratis →</a>
   </div>
 </section>
 
@@ -554,32 +569,38 @@
   </div>
 </footer>
 
-<!-- ============ LOGIN MODAL ============ -->
-<div id="login-modal" class="login-modal-overlay" onclick="if (event.target === this) closeLoginModal();">
-  <div class="login-modal-card">
-    <button type="button" class="login-modal-close" onclick="closeLoginModal()" aria-label="Cerrar">×</button>
-    <h3>Inicia sesión</h3>
-    <p class="login-modal-sub">Entra directo a tu cuenta de FinanzasPro.</p>
+<!-- ============ AUTH MODAL ============ -->
+<div id="auth-modal" class="auth-modal-overlay" onclick="if (event.target === this) closeAuthModal();">
+  <div class="auth-modal-card">
+    <button type="button" class="auth-modal-close" onclick="closeAuthModal()" aria-label="Cerrar">×</button>
 
-    <button type="button" class="login-google-btn" id="login-google-btn" onclick="handleLandingGoogleSignIn()">
+    <div class="auth-modal-tabs">
+      <button type="button" id="auth-tab-login" class="auth-tab active" onclick="switchAuthModalTab('login')">Iniciar sesión</button>
+      <button type="button" id="auth-tab-signup" class="auth-tab" onclick="switchAuthModalTab('signup')">Crear cuenta</button>
+    </div>
+
+    <p class="auth-modal-sub" id="auth-modal-sub">Entra directo a tu cuenta de FinanzasPro.</p>
+
+    <button type="button" class="auth-google-btn" id="auth-google-btn" onclick="handleLandingGoogleSignIn()">
       <span class="google-g">G</span>
       Continuar con Google
     </button>
 
-    <div class="login-modal-divider"><span>o con tu email</span></div>
+    <div class="auth-modal-divider"><span>o con tu email</span></div>
 
-    <form id="login-modal-form" onsubmit="event.preventDefault(); handleLandingLogin();">
+    <form id="auth-modal-form" onsubmit="event.preventDefault(); handleAuthSubmit();">
       <label>Email
-        <input type="email" id="login-modal-email" placeholder="tucorreo@ejemplo.com" autocomplete="email" required />
+        <input type="email" id="auth-modal-email" placeholder="tucorreo@ejemplo.com" autocomplete="email" required />
       </label>
       <label>Contraseña
-        <input type="password" id="login-modal-password" placeholder="••••••••" autocomplete="current-password" required />
+        <input type="password" id="auth-modal-password" placeholder="••••••••" autocomplete="current-password" required />
+        <span class="auth-field-hint" id="auth-password-hint" style="display:none;">Mínimo 8 caracteres</span>
       </label>
-      <div id="login-modal-message" class="login-modal-message" style="display:none;"></div>
-      <button type="submit" class="btn-primary login-modal-submit" id="login-modal-submit">Iniciar sesión →</button>
+      <div id="auth-modal-message" class="auth-modal-message" style="display:none;"></div>
+      <button type="submit" class="btn-primary auth-modal-submit" id="auth-modal-submit">Iniciar sesión →</button>
     </form>
 
-    <p class="login-modal-footer">¿No tienes cuenta? <a href="/app">Empieza gratis</a></p>
+    <p class="auth-modal-footer" id="auth-modal-footer">¿No tienes cuenta? <a href="#" onclick="event.preventDefault(); switchAuthModalTab('signup');">Crea una aquí</a></p>
   </div>
 </div>
 
@@ -591,6 +612,7 @@
   const LANDING_SUPABASE_URL = 'https://safxdvagmrkpkyzpghtt.supabase.co';
   const LANDING_SUPABASE_KEY = 'sb_publishable_sc5mjkLrctQfU4AEz3rfAg_Q8SFLJpY';
   let landingSupabase = null;
+  let authModalMode = 'login';
 
   function getLandingSupabase() {
     if (!landingSupabase) {
@@ -599,60 +621,108 @@
     return landingSupabase;
   }
 
-  function openLoginModal(e) {
+  // mode: 'login' o 'signup' — así CUALQUIER botón de la página (Iniciar sesión
+  // o Empezar gratis) abre este mismo modal en la pestaña correcta, y nadie
+  // termina en la pantalla vieja de /app sin querer.
+  function openAuthModal(e, mode) {
     if (e) e.preventDefault();
-    document.getElementById('login-modal').style.display = 'flex';
+    switchAuthModalTab(mode || 'login');
+    document.getElementById('auth-modal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    showLoginModalMessage('');
-    document.getElementById('login-modal-email').focus();
+    document.getElementById('auth-modal-email').focus();
   }
 
-  function closeLoginModal() {
-    document.getElementById('login-modal').style.display = 'none';
+  function closeAuthModal() {
+    document.getElementById('auth-modal').style.display = 'none';
     document.body.style.overflow = '';
   }
 
-  function showLoginModalMessage(msg) {
-    const el = document.getElementById('login-modal-message');
+  function switchAuthModalTab(mode) {
+    authModalMode = mode;
+    const loginTab = document.getElementById('auth-tab-login');
+    const signupTab = document.getElementById('auth-tab-signup');
+    const submitBtn = document.getElementById('auth-modal-submit');
+    const sub = document.getElementById('auth-modal-sub');
+    const footer = document.getElementById('auth-modal-footer');
+    const pwHint = document.getElementById('auth-password-hint');
+
+    if (mode === 'login') {
+      loginTab.classList.add('active');
+      signupTab.classList.remove('active');
+      submitBtn.textContent = 'Iniciar sesión →';
+      sub.textContent = 'Entra directo a tu cuenta de FinanzasPro.';
+      footer.innerHTML = '¿No tienes cuenta? <a href="#" onclick="event.preventDefault(); switchAuthModalTab(\'signup\');">Crea una aquí</a>';
+      pwHint.style.display = 'none';
+    } else {
+      signupTab.classList.add('active');
+      loginTab.classList.remove('active');
+      submitBtn.textContent = 'Crear cuenta →';
+      sub.textContent = 'Crea tu cuenta gratis en menos de un minuto.';
+      footer.innerHTML = '¿Ya tienes cuenta? <a href="#" onclick="event.preventDefault(); switchAuthModalTab(\'login\');">Inicia sesión</a>';
+      pwHint.style.display = 'block';
+    }
+    showAuthModalMessage('');
+  }
+
+  function showAuthModalMessage(msg) {
+    const el = document.getElementById('auth-modal-message');
     if (!msg) { el.style.display = 'none'; return; }
     el.textContent = msg;
     el.style.display = 'block';
   }
 
-  async function handleLandingLogin() {
-    const email = document.getElementById('login-modal-email').value.trim();
-    const password = document.getElementById('login-modal-password').value;
-    const btn = document.getElementById('login-modal-submit');
+  async function handleAuthSubmit() {
+    const email = document.getElementById('auth-modal-email').value.trim();
+    const password = document.getElementById('auth-modal-password').value;
+    const btn = document.getElementById('auth-modal-submit');
 
     if (!email || !password) {
-      showLoginModalMessage('Completa email y contraseña');
+      showAuthModalMessage('Completa email y contraseña');
+      return;
+    }
+    if (authModalMode === 'signup' && password.length < 8) {
+      showAuthModalMessage('La contraseña debe tener al menos 8 caracteres');
       return;
     }
 
     btn.disabled = true;
     const originalText = btn.textContent;
-    btn.textContent = 'Entrando...';
-    showLoginModalMessage('');
+    btn.textContent = 'Cargando...';
+    showAuthModalMessage('');
 
     try {
       const supabase = getLandingSupabase();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      let result;
+      if (authModalMode === 'login') {
+        result = await supabase.auth.signInWithPassword({ email, password });
+      } else {
+        result = await supabase.auth.signUp({ email, password });
+      }
+      if (result.error) throw result.error;
+
+      if (authModalMode === 'signup') {
+        btn.textContent = 'Creando cuenta...';
+        // Auto-login después de crear la cuenta, igual que hace /app
+        const loginResult = await supabase.auth.signInWithPassword({ email, password });
+        if (loginResult.error) throw loginResult.error;
+      }
       // Sesión guardada en localStorage — /app la va a reconocer sola al cargar
       window.location.href = '/app';
     } catch (err) {
       let msg = err.message || 'Error de autenticación';
       if (msg.includes('Invalid login')) msg = 'Email o contraseña incorrectos';
-      showLoginModalMessage(msg);
+      if (msg.includes('already registered')) msg = 'Este email ya está registrado. Inicia sesión.';
+      if (msg.includes('weak password')) msg = 'Contraseña débil. Usa al menos 8 caracteres.';
+      showAuthModalMessage(msg);
       btn.disabled = false;
       btn.textContent = originalText;
     }
   }
 
   async function handleLandingGoogleSignIn() {
-    const btn = document.getElementById('login-google-btn');
+    const btn = document.getElementById('auth-google-btn');
     if (btn) { btn.disabled = true; }
-    showLoginModalMessage('');
+    showAuthModalMessage('');
 
     try {
       const supabase = getLandingSupabase();
@@ -666,13 +736,13 @@
       if (error) throw error;
       // El navegador redirige a Google; si algo falla antes de salir, reactivamos el botón
     } catch (err) {
-      showLoginModalMessage(err.message || 'No se pudo conectar con Google');
+      showAuthModalMessage(err.message || 'No se pudo conectar con Google');
       if (btn) { btn.disabled = false; }
     }
   }
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeLoginModal();
+    if (e.key === 'Escape') closeAuthModal();
   });
 </script>
 
