@@ -101,6 +101,65 @@
   .hero-login-hint { margin: 14px 0 0; font-size: 14px; color: rgba(255,255,255,0.6); }
   .hero-login-hint a { color: var(--mint); font-weight: 600; text-decoration: none; }
   .hero-login-hint a:hover { text-decoration: underline; }
+
+  /* ===== LOGIN MODAL ===== */
+  .login-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(13, 26, 29, 0.72); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .login-modal-card {
+    background: var(--paper-2); color: var(--ink); border-radius: var(--radius);
+    width: 100%; max-width: 380px; padding: 32px 28px 28px;
+    position: relative; box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+  }
+  .login-modal-close {
+    position: absolute; top: 14px; right: 14px; width: 30px; height: 30px;
+    border-radius: 50%; border: none; background: var(--paper); color: var(--ink-soft);
+    font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .login-modal-close:hover { background: var(--line); }
+  .login-modal-card h3 { margin: 0 0 6px; font-size: 22px; }
+  .login-modal-sub { margin: 0 0 20px; font-size: 14px; color: var(--ink-soft); }
+  .login-google-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper-2);
+    color: var(--ink); font-weight: 600; font-size: 14.5px; cursor: pointer;
+  }
+  .login-google-btn:hover { background: var(--paper); }
+  .login-google-btn:disabled { opacity: 0.6; cursor: wait; }
+  .google-g {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%; background: #fff;
+    border: 1px solid var(--line); font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 12px;
+    color: #4285F4;
+  }
+  .login-modal-divider {
+    display: flex; align-items: center; gap: 12px; margin: 20px 0 16px;
+    font-size: 12.5px; color: var(--ink-softer);
+  }
+  .login-modal-divider::before, .login-modal-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--line);
+  }
+  #login-modal-form label {
+    display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 14px;
+  }
+  #login-modal-form input {
+    width: 100%; margin-top: 6px; padding: 11px 14px; border-radius: 10px;
+    border: 1px solid var(--line); font-size: 14.5px; font-family: inherit; color: var(--ink);
+    background: var(--paper-2);
+  }
+  #login-modal-form input:focus { outline: 2px solid var(--mint); outline-offset: 1px; }
+  .login-modal-message {
+    font-size: 13px; color: var(--danger); background: rgba(193, 88, 79, 0.1);
+    border-radius: 8px; padding: 9px 12px; margin: -2px 0 14px;
+  }
+  .login-modal-submit {
+    width: 100%; justify-content: center; border: none; cursor: pointer; font-family: inherit;
+  }
+  .login-modal-footer { margin: 18px 0 0; text-align: center; font-size: 13.5px; color: var(--ink-soft); }
+  .login-modal-footer a { color: var(--teal); font-weight: 600; text-decoration: none; }
+  .login-modal-footer a:hover { text-decoration: underline; }
   .btn-primary {
     background: linear-gradient(135deg, var(--teal), var(--mint));
     color: #06231b; padding: 16px 30px; border-radius: 30px; font-weight: 700; font-size: 15.5px;
@@ -253,7 +312,7 @@
       <a href="#funciones">Funciones</a>
       <a href="#precios">Precios</a>
       <a href="#preguntas">Preguntas</a>
-      <a href="/app" class="nav-login">Iniciar sesión</a>
+      <a href="/app" class="nav-login" onclick="openLoginModal(event)">Iniciar sesión</a>
       <a href="/app" class="nav-cta">Empezar gratis</a>
     </div>
   </div>
@@ -270,7 +329,7 @@
         <a href="/app" class="btn-primary">Empezar gratis →</a>
         <a href="#funciones" class="btn-ghost">Ver cómo funciona</a>
       </div>
-      <p class="hero-login-hint">¿Ya tienes cuenta? <a href="/app">Inicia sesión aquí</a></p>
+      <p class="hero-login-hint">¿Ya tienes cuenta? <a href="/app" onclick="openLoginModal(event)">Inicia sesión aquí</a></p>
       <div class="hero-trust">
         <span>🔒 Tus datos cifrados</span>
         <span>🇨🇴 Ley 1581 · Habeas Data</span>
@@ -494,6 +553,128 @@
     </div>
   </div>
 </footer>
+
+<!-- ============ LOGIN MODAL ============ -->
+<div id="login-modal" class="login-modal-overlay" onclick="if (event.target === this) closeLoginModal();">
+  <div class="login-modal-card">
+    <button type="button" class="login-modal-close" onclick="closeLoginModal()" aria-label="Cerrar">×</button>
+    <h3>Inicia sesión</h3>
+    <p class="login-modal-sub">Entra directo a tu cuenta de FinanzasPro.</p>
+
+    <button type="button" class="login-google-btn" id="login-google-btn" onclick="handleLandingGoogleSignIn()">
+      <span class="google-g">G</span>
+      Continuar con Google
+    </button>
+
+    <div class="login-modal-divider"><span>o con tu email</span></div>
+
+    <form id="login-modal-form" onsubmit="event.preventDefault(); handleLandingLogin();">
+      <label>Email
+        <input type="email" id="login-modal-email" placeholder="tucorreo@ejemplo.com" autocomplete="email" required />
+      </label>
+      <label>Contraseña
+        <input type="password" id="login-modal-password" placeholder="••••••••" autocomplete="current-password" required />
+      </label>
+      <div id="login-modal-message" class="login-modal-message" style="display:none;"></div>
+      <button type="submit" class="btn-primary login-modal-submit" id="login-modal-submit">Iniciar sesión →</button>
+    </form>
+
+    <p class="login-modal-footer">¿No tienes cuenta? <a href="/app">Empieza gratis</a></p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
+<script>
+  // Mismo proyecto y llave que usa la app en /app — así la sesión que se guarda
+  // aquí en localStorage la reconoce automáticamente /app al cargar, sin pedir
+  // el login de nuevo.
+  const LANDING_SUPABASE_URL = 'https://safxdvagmrkpkyzpghtt.supabase.co';
+  const LANDING_SUPABASE_KEY = 'sb_publishable_sc5mjkLrctQfU4AEz3rfAg_Q8SFLJpY';
+  let landingSupabase = null;
+
+  function getLandingSupabase() {
+    if (!landingSupabase) {
+      landingSupabase = window.supabase.createClient(LANDING_SUPABASE_URL, LANDING_SUPABASE_KEY);
+    }
+    return landingSupabase;
+  }
+
+  function openLoginModal(e) {
+    if (e) e.preventDefault();
+    document.getElementById('login-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    showLoginModalMessage('');
+    document.getElementById('login-modal-email').focus();
+  }
+
+  function closeLoginModal() {
+    document.getElementById('login-modal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function showLoginModalMessage(msg) {
+    const el = document.getElementById('login-modal-message');
+    if (!msg) { el.style.display = 'none'; return; }
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  async function handleLandingLogin() {
+    const email = document.getElementById('login-modal-email').value.trim();
+    const password = document.getElementById('login-modal-password').value;
+    const btn = document.getElementById('login-modal-submit');
+
+    if (!email || !password) {
+      showLoginModalMessage('Completa email y contraseña');
+      return;
+    }
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Entrando...';
+    showLoginModalMessage('');
+
+    try {
+      const supabase = getLandingSupabase();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // Sesión guardada en localStorage — /app la va a reconocer sola al cargar
+      window.location.href = '/app';
+    } catch (err) {
+      let msg = err.message || 'Error de autenticación';
+      if (msg.includes('Invalid login')) msg = 'Email o contraseña incorrectos';
+      showLoginModalMessage(msg);
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
+  async function handleLandingGoogleSignIn() {
+    const btn = document.getElementById('login-google-btn');
+    if (btn) { btn.disabled = true; }
+    showLoginModalMessage('');
+
+    try {
+      const supabase = getLandingSupabase();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/app',
+          queryParams: { access_type: 'offline', prompt: 'consent' }
+        }
+      });
+      if (error) throw error;
+      // El navegador redirige a Google; si algo falla antes de salir, reactivamos el botón
+    } catch (err) {
+      showLoginModalMessage(err.message || 'No se pudo conectar con Google');
+      if (btn) { btn.disabled = false; }
+    }
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeLoginModal();
+  });
+</script>
 
 </body>
 </html>
