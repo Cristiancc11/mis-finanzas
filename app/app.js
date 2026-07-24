@@ -6754,9 +6754,10 @@ async function buildAnnualPDF(state, year) {
         return;
       }
 
-      // Le pedimos al servidor que prepare el pago (monto + firma) — esto NUNCA
-      // se calcula en el navegador, para que nadie pueda alterar cuánto paga.
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-signature`, {
+      // v111: le pedimos al servidor que genere un link de pago único para
+      // este usuario (en vez de armar el widget con una firma calculada
+      // en el navegador) — más simple y sin margen para errores de firma.
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment-link`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -6768,42 +6769,50 @@ async function buildAnnualPDF(state, year) {
         throw new Error('No se pudo preparar el pago');
       }
 
-      const { reference, amountInCents, currency, signature, publicKey } = await response.json();
+      const { paymentUrl } = await response.json();
+      if (!paymentUrl) throw new Error('No se recibió el link de pago');
 
-      if (typeof WidgetCheckout === 'undefined') {
-        toastError('Error', 'No se pudo cargar el sistema de pagos. Recarga la página e intenta de nuevo.');
-        return;
-      }
+      // Abrir el link de pago en una pestaña nueva — así el usuario no pierde
+      // su sesión de la app mientras paga.
+      window.open(paymentUrl, '_blank');
 
-      const checkout = new WidgetCheckout({
-        currency,
-        amountInCents,
-        reference,
-        publicKey,
-        signature: { integrity: signature },
-        redirectUrl: window.location.origin + window.location.pathname,
-      });
-
-      checkout.open(function(result) {
-        const transaction = result.transaction;
-        if (transaction && transaction.status === 'APPROVED') {
-          // v110: modal grande de celebración en vez de un toast chiquito
-          const overlay = document.getElementById('pro-celebration-overlay');
-          if (overlay) overlay.style.display = 'flex';
-          // El webhook activa el plan del lado del servidor — refrescamos el
-          // estado local después de un momento para darle tiempo a procesar.
-          setTimeout(() => { if (typeof loadFromCloud === 'function') loadFromCloud(); }, 3000);
-        } else if (transaction) {
-          toastWarning('Pago no completado', `Estado: ${transaction.status}. Si crees que es un error, contáctanos.`);
-        } else {
-          toastInfo('Pago cancelado', 'No se realizó ningún cobro.');
-        }
-      });
+      showPendingPaymentBanner();
     } catch (error) {
       console.error('Error en subscribeToPro:', error);
       toastError('Error', 'No se pudo iniciar el pago. Intenta de nuevo en un momento.');
     }
   };
+
+  // v111: aviso persistente mientras el usuario paga en la otra pestaña, con
+  // un botón para verificar manualmente (el webhook activa el plan solo, pero
+  // esto le da control al usuario si no quiere esperar el refresco automático).
+  function showPendingPaymentBanner() {
+    let banner = document.getElementById('pending-payment-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'pending-payment-banner';
+      banner.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:9999; background:var(--accent-to); color:white; padding:14px 20px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.3); display:flex; align-items:center; gap:14px; font-size:14px; max-width:90vw;';
+      banner.innerHTML = `
+        <span>💳 Completa tu pago en la otra pestaña...</span>
+        <button id="check-payment-btn" style="background:white; color:var(--accent-to); border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer; white-space:nowrap;">Ya pagué ✓</button>
+        <button id="dismiss-payment-banner" style="background:transparent; color:white; border:none; font-size:18px; cursor:pointer; padding:0 4px;">✕</button>
+      `;
+      document.body.appendChild(banner);
+      document.getElementById('check-payment-btn').onclick = async function() {
+        this.textContent = 'Verificando...';
+        await loadFromCloud();
+        if (getUserPlan() === 'pro') {
+          banner.remove();
+          const overlay = document.getElementById('pro-celebration-overlay');
+          if (overlay) overlay.style.display = 'flex';
+        } else {
+          this.textContent = 'Ya pagué ✓';
+          toastInfo('Todavía no vemos el pago', 'Puede tardar unos segundos más en confirmarse. Intenta de nuevo en un momento.');
+        }
+      };
+      document.getElementById('dismiss-payment-banner').onclick = function() { banner.remove(); };
+    }
+  }
 
   window.setDevPlan = async function(newPlan) {
     if (!['free', 'pro'].includes(newPlan)) return;
