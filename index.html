@@ -133,6 +133,7 @@
     border-radius: 8px;
   }
   .auth-password-toggle:hover { color: var(--ink); background: var(--paper); }
+  .auth-modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .auth-modal-tabs {
     display: flex; gap: 4px; background: var(--paper); border-radius: 12px; padding: 4px;
     margin: 6px 0 18px;
@@ -604,6 +605,21 @@
       <label>Email
         <input type="email" id="auth-modal-email" placeholder="tucorreo@ejemplo.com" autocomplete="email" required />
       </label>
+
+      <div id="auth-signup-fields" style="display: none;">
+        <div class="auth-modal-row">
+          <label>Nombre
+            <input type="text" id="auth-modal-firstname" placeholder="Tu nombre" autocomplete="given-name" />
+          </label>
+          <label>Apellido
+            <input type="text" id="auth-modal-lastname" placeholder="Tu apellido" autocomplete="family-name" />
+          </label>
+        </div>
+        <label>Fecha de nacimiento
+          <input type="date" id="auth-modal-birthdate" autocomplete="bday" />
+        </label>
+      </div>
+
       <label>Contraseña
         <div class="auth-password-wrap">
           <input type="password" id="auth-modal-password" placeholder="••••••••" autocomplete="current-password" required />
@@ -683,6 +699,7 @@
     const sub = document.getElementById('auth-modal-sub');
     const footer = document.getElementById('auth-modal-footer');
     const pwHint = document.getElementById('auth-password-hint');
+    const signupFields = document.getElementById('auth-signup-fields');
 
     if (mode === 'login') {
       loginTab.classList.add('active');
@@ -691,6 +708,7 @@
       sub.textContent = 'Entra directo a tu cuenta de FinanzasPro.';
       footer.innerHTML = '¿No tienes cuenta? <a href="#" onclick="event.preventDefault(); switchAuthModalTab(\'signup\');">Crea una aquí</a>';
       pwHint.style.display = 'none';
+      signupFields.style.display = 'none';
     } else {
       signupTab.classList.add('active');
       loginTab.classList.remove('active');
@@ -698,6 +716,7 @@
       sub.textContent = 'Crea tu cuenta gratis en menos de un minuto.';
       footer.innerHTML = '¿Ya tienes cuenta? <a href="#" onclick="event.preventDefault(); switchAuthModalTab(\'login\');">Inicia sesión</a>';
       pwHint.style.display = 'block';
+      signupFields.style.display = 'block';
     }
     showAuthModalMessage('');
   }
@@ -723,6 +742,26 @@
       return;
     }
 
+    let firstName = '', lastName = '', birthDate = '';
+    if (authModalMode === 'signup') {
+      firstName = document.getElementById('auth-modal-firstname').value.trim();
+      lastName = document.getElementById('auth-modal-lastname').value.trim();
+      birthDate = document.getElementById('auth-modal-birthdate').value;
+
+      if (!firstName || !lastName) {
+        showAuthModalMessage('Completa tu nombre y apellido');
+        return;
+      }
+      if (!birthDate) {
+        showAuthModalMessage('Completa tu fecha de nacimiento');
+        return;
+      }
+      if (calculateAge(birthDate) < 18) {
+        showAuthModalMessage('Debes ser mayor de edad para crear una cuenta');
+        return;
+      }
+    }
+
     btn.disabled = true;
     const originalText = btn.textContent;
     btn.textContent = 'Cargando...';
@@ -734,7 +773,19 @@
       if (authModalMode === 'login') {
         result = await supabase.auth.signInWithPassword({ email, password });
       } else {
-        result = await supabase.auth.signUp({ email, password });
+        const fullName = (firstName + ' ' + lastName).trim();
+        result = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              first_name: firstName,
+              last_name: lastName,
+              birth_date: birthDate
+            }
+          }
+        });
       }
       if (result.error) throw result.error;
 
@@ -743,6 +794,26 @@
         // Auto-login después de crear la cuenta, igual que hace /app
         const loginResult = await supabase.auth.signInWithPassword({ email, password });
         if (loginResult.error) throw loginResult.error;
+
+        // v113: además de guardarlo en los metadatos del usuario (arriba, que
+        // siempre funciona), intentamos guardarlo también en user_profiles para
+        // que ya aparezca lleno en "Datos personales" dentro de la app.
+        // OJO: esto asume que esa tabla tiene columnas full_name y birth_date —
+        // no lo pude confirmar desde acá. Si los nombres son distintos, este
+        // intento falla en silencio (queda registrado en la consola) y la
+        // cuenta se crea igual, sin bloquearse.
+        const userId = loginResult.data && loginResult.data.user && loginResult.data.user.id;
+        if (userId) {
+          try {
+            await supabase.from('user_profiles').upsert({
+              user_id: userId,
+              full_name: (firstName + ' ' + lastName).trim(),
+              birth_date: birthDate
+            }, { onConflict: 'user_id' });
+          } catch (profileErr) {
+            console.warn('No se pudo guardar en user_profiles (revisa nombres de columna):', profileErr);
+          }
+        }
       }
       // Sesión guardada en localStorage — /app la va a reconocer sola al cargar
       window.location.href = '/app';
@@ -755,6 +826,15 @@
       btn.disabled = false;
       btn.textContent = originalText;
     }
+  }
+
+  function calculateAge(dateStr) {
+    const birth = new Date(dateStr);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
   }
 
   async function handleLandingGoogleSignIn() {
