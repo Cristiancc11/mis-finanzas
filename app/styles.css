@@ -3454,6 +3454,168 @@ html.color-mono {
   --accent-glow: rgba(82, 82, 82, 0.3);
 }
 
+/* ============================================
+   v111: PLAN PRO — tarjeta "Mi plan" más llamativa
+   Usa las mismas variables de tema de arriba, así que
+   se ve bien en los 8 temas de color y en modo oscuro.
+   ============================================ */
+.plan-tiers {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.plan-tier {
+  position: relative;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--text-tertiary);
+}
+
+.plan-tier--free {
+  opacity: 0.78;
+}
+
+.plan-tier--pro {
+  border-left: 3px solid var(--accent-to);
+  background: linear-gradient(160deg, var(--accent-glow, rgba(127, 119, 221, 0.3)), var(--bg-secondary) 60%);
+  overflow: hidden;
+}
+
+.plan-tier-ribbon {
+  position: absolute;
+  top: 0;
+  right: 14px;
+  padding: 3px 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: white;
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+  border-radius: 0 0 6px 6px;
+}
+
+.plan-tier-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.plan-tier-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-tier-price {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-to);
+  white-space: nowrap;
+}
+
+.plan-tier-price small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.plan-tier-perday {
+  margin: 2px 0 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.plan-tier-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+}
+
+.plan-tier-list li {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding-left: 18px;
+  position: relative;
+}
+
+.plan-tier-list li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: var(--text-tertiary);
+}
+
+.plan-tier-list--check li {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.plan-tier-list--check li::before {
+  content: '✓';
+  color: var(--accent-to);
+  font-weight: 700;
+}
+
+@keyframes planCtaGlow {
+  0%, 100% { box-shadow: 0 4px 14px var(--accent-glow, rgba(127, 119, 221, 0.35)); }
+  50% { box-shadow: 0 6px 26px var(--accent-glow, rgba(127, 119, 221, 0.6)); }
+}
+
+/* Solo brilla cuando el botón dice "Suscribirme" — ver la clase is-upsell-cta
+   que agrega/quita app.js en renderPlanCard(). El botón de "Cancelar" no la lleva. */
+#subscribe-pro-btn.is-upsell-cta {
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.2px;
+  animation: planCtaGlow 2.6s ease-in-out infinite;
+  transition: transform 0.18s ease;
+}
+
+#subscribe-pro-btn.is-upsell-cta:hover {
+  transform: translateY(-2px) scale(1.015);
+}
+
+#subscribe-pro-btn.is-upsell-cta::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+#subscribe-pro-btn.is-upsell-cta:hover::after {
+  left: 130%;
+}
+
+.plan-cta-trust {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #subscribe-pro-btn.is-upsell-cta {
+    animation: none;
+  }
+  #subscribe-pro-btn.is-upsell-cta::after {
+    display: none;
+  }
+}
+
 /* Aplicar tema a elementos que usan los colores */
 .hero-section,
 [style*="linear-gradient(135deg, #7F77DD, #1D9E75)"]:not(.no-theme),

@@ -2228,21 +2228,44 @@
       <div id="plan-current-badge" style="margin-bottom: 8px;"></div>
       <div id="plan-validity-info" style="display: none; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;"></div>
 
-      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-        <div style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--text-tertiary);">
-          <strong style="font-size: 13px;">🆓 Gratis</strong>
-          <p style="font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.5;">Movimientos ilimitados · hasta 5 bolsillos · 1 tarjeta · 1 meta · historial de 2 meses</p>
+      <div class="plan-tiers">
+        <div class="plan-tier plan-tier--free">
+          <div class="plan-tier-head">
+            <span class="plan-tier-name">🆓 Gratis</span>
+            <span class="plan-tier-price">$0</span>
+          </div>
+          <ul class="plan-tier-list">
+            <li>Movimientos ilimitados</li>
+            <li>Hasta 5 bolsillos · 1 tarjeta · 1 meta</li>
+            <li>Historial de 2 meses</li>
+          </ul>
         </div>
-        <div style="padding: 14px; background: var(--bg-secondary); border-radius: 10px; border-left: 3px solid var(--accent-to);">
-          <strong style="font-size: 13px;">⭐ Pro</strong>
-          <p style="font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.5;">Todo ilimitado · Mis Deudas · Ingresos completos · historial completo · Análisis completo (gastos hormiga, calendario, reportes PDF) · Conversor · Rendimientos · Estrategia cashback</p>
+
+        <div class="plan-tier plan-tier--pro">
+          <span class="plan-tier-ribbon">Recomendado</span>
+          <div class="plan-tier-head">
+            <span class="plan-tier-name">⭐ Pro</span>
+            <span class="plan-tier-price">$9.990<small>/mes</small></span>
+          </div>
+          <p class="plan-tier-perday">Menos de $340 al día — como un tinto.</p>
+          <ul class="plan-tier-list plan-tier-list--check">
+            <li>Bolsillos, tarjetas y metas ilimitadas</li>
+            <li>Mis Deudas + ingresos completos</li>
+            <li>Historial completo, sin límite</li>
+            <li>Gastos hormiga, calendario y reportes en PDF</li>
+            <li>Conversor de divisas y rendimientos</li>
+            <li>Estrategia de cashback personalizada</li>
+          </ul>
         </div>
       </div>
 
-      <!-- v110: botón dinámico — "Suscribirme" si es Gratis, "Cancelar suscripción" si ya es Pro -->
+      <!-- v111: botón dinámico — "Suscribirme" si es Gratis, "Cancelar suscripción" si ya es Pro.
+           JS sigue controlando texto/color/fondo en renderPlanCard(); lo único nuevo es que
+           JS también agrega/quita la clase is-upsell-cta (ver app.js) para el brillo del CTA. -->
       <button onclick="window.handlePlanButtonClick()" id="subscribe-pro-btn" style="width: 100%; margin-top: 16px; padding: 14px; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer;">
         💳 Suscribirme a Pro — $9.990/mes
       </button>
+      <p class="plan-cta-trust">🔒 Pago seguro con Wompi · Cancela cuando quieras</p>
     </div>
 
     <div class="raised-card">

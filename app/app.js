@@ -6698,11 +6698,13 @@ async function buildAnnualPDF(state, year) {
         btn.style.background = 'var(--bg-secondary)';
         btn.style.color = 'var(--danger-text)';
         btn.style.border = '1px solid var(--danger-text)';
+        btn.classList.remove('is-upsell-cta'); // v111: sin brillo cuando el botón es para cancelar
       } else {
         btn.textContent = '💳 Suscribirme a Pro — $9.990/mes';
         btn.style.background = 'linear-gradient(135deg, var(--accent-from), var(--accent-to))';
         btn.style.color = 'white';
         btn.style.border = 'none';
+        btn.classList.add('is-upsell-cta'); // v111: activa el brillo/pulso del CTA (ver styles.css)
       }
     }
   }
