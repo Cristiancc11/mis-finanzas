@@ -3530,6 +3530,12 @@ window.acceptCategorySuggestion = function(catId) {
   const catSelect = document.getElementById('tx-category');
   if (catSelect) {
     catSelect.value = catId;
+    // v113: catSelect.value = ... NO dispara el evento 'change' del <select>,
+    // así que updatePayCardVisibility() (que solo estaba enganchado a 'change')
+    // nunca se ejecutaba acá. Por eso, al aceptar la sugerencia de "Pago de
+    // tarjeta de crédito", el selector de "¿qué tarjeta estás pagando?" no
+    // aparecía. Se llama directo para cubrir este camino también.
+    if (typeof updatePayCardVisibility === 'function') updatePayCardVisibility();
     const hint = document.getElementById('category-suggestion-hint');
     if (hint) hint.remove();
   }
