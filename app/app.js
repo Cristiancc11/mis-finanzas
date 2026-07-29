@@ -8160,6 +8160,13 @@ async function buildAnnualPDF(state, year) {
       payCardSelect.value = '';
     }
   }
+  // v114: acceptCategorySuggestion() vive FUERA de este IIFE (más arriba en el
+  // archivo), así que no tenía forma de ver updatePayCardVisibility() aunque
+  // esta función existiera — por eso el fix de v113 no funcionaba: el
+  // "typeof updatePayCardVisibility === 'function'" daba false en silencio,
+  // sin lanzar ningún error, porque el nombre simplemente no existía en ese
+  // scope. Exponiéndola en window queda visible desde cualquier parte del archivo.
+  window.updatePayCardVisibility = updatePayCardVisibility;
 
   window.openCategoriesManager = function() {
     let modal = document.getElementById('categories-modal');
