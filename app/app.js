@@ -3272,8 +3272,12 @@ function checkSmartNotifications() {
     const status = window.getCutoffStatus ? window.getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id) : null;
     const util = status ? status.utilization : (d.payment > 0 ? (d.balance / d.payment) * 100 : 0);
     const needsPay = status ? status.needsPayment : false;
-    const payAmount = status ? status.paymentNeeded : 0;
-    const targetPct = status ? status.targetUtilization : 3;
+    // v115: antes usaba status.paymentNeeded directo, que ignora el caso en que las
+    // cuotas futuras bloquean más cupo del que el objetivo permite (ver el mismo
+    // fix en renderAlerts). Ahora usa recommendedPayment/recommendedUtilization,
+    // que sí manejan ese caso — mismo número que se ve en la tarjeta y en las alertas.
+    const payAmount = status ? status.recommendedPayment : 0;
+    const targetPct = status ? (status.canReachTarget ? status.targetUtilization : status.recommendedUtilization) : 3;
 
     if (daysLeft >= 1 && daysLeft <= 3 && needsPay) {
       const id = 'cutoff_' + d.id + '_' + daysLeft;
@@ -3281,7 +3285,7 @@ function checkSmartNotifications() {
         notifications.push({
           id, type: 'warning', icon: '⚠️',
           title: `${escapeHtml(d.name)}: corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''}`,
-          msg: `Tu utilización es ${util.toFixed(1)}%. Para mantener tu objetivo (${targetPct}%), paga $${Math.round(payAmount).toLocaleString('es-CO')} antes del corte.`
+          msg: `Tu utilización es ${util.toFixed(1)}%. ${status && !status.canReachTarget ? 'Mínimo posible' : 'Para mantener tu objetivo'} (${targetPct.toFixed ? targetPct.toFixed(1) : targetPct}%), paga $${Math.round(payAmount).toLocaleString('es-CO')} antes del corte.`
         });
       }
     } else if (daysLeft === 0) {
@@ -3290,7 +3294,7 @@ function checkSmartNotifications() {
         notifications.push({
           id, type: 'danger', icon: '🚨',
           title: `${escapeHtml(d.name)}: ¡HOY es el corte!`,
-          msg: `Saldo: $${Math.round(d.balance).toLocaleString('es-CO')}. ${needsPay ? 'Paga ahora para mantener score' : 'Utilización ya está óptima.'}`
+          msg: `Saldo: $${Math.round(d.balance).toLocaleString('es-CO')}. ${needsPay ? `Paga $${Math.round(payAmount).toLocaleString('es-CO')} para mantener score` : 'Utilización ya está óptima.'}`
         });
       }
     }
@@ -11120,7 +11124,13 @@ async function buildAnnualPDF(state, year) {
 
     let html = '';
     if (urgentCard) {
-      html = `<div class="alert alert-danger"><strong>⚠️ Acción requerida:</strong> "${esc(urgentCard.debt.name)}" corta ${urgentCard.info.daysLeft <= 0 ? 'HOY' : 'mañana'} y todavía necesitas pagar <strong>${fmt(urgentCard.info.paymentNeeded)}</strong> para mantener tu utilización óptima.</div>`;
+      // v115: mismo fix que en renderAlerts — usar recommendedPayment (que sí
+      // contempla cuotas futuras bloqueando cupo) en vez de paymentNeeded a secas.
+      const info = urgentCard.info;
+      const reachMsg = info.canReachTarget
+        ? 'para mantener tu utilización óptima'
+        : `para bajar al mínimo posible este ciclo (${info.recommendedUtilization.toFixed(1)}%)`;
+      html = `<div class="alert alert-danger"><strong>⚠️ Acción requerida:</strong> "${esc(urgentCard.debt.name)}" corta ${info.daysLeft <= 0 ? 'HOY' : 'mañana'} y todavía necesitas pagar <strong>${fmt(info.recommendedPayment)}</strong> ${reachMsg}.</div>`;
     } else if (overallUtil === 0) {
       html = `<div class="alert alert-success"><strong>✅ Excelente:</strong> No tienes saldo pendiente en ninguna tarjeta.</div>`;
     } else if (overallUtil <= 30) {
@@ -11155,7 +11165,7 @@ async function buildAnnualPDF(state, year) {
       else if (info.daysLeft <= 7) urgencyColor = 'var(--info-text)';
 
       const paymentNote = info.needsPayment
-        ? `Paga <strong style="color: var(--success-text);">${fmt(info.paymentNeeded)}</strong> para utilización óptima`
+        ? `Paga <strong style="color: var(--success-text);">${fmt(info.recommendedPayment)}</strong> ${info.canReachTarget ? 'para utilización óptima' : `para bajar al mínimo posible (${info.recommendedUtilization.toFixed(1)}%)`}`
         : `✅ Utilización óptima, sin pago anticipado necesario`;
 
       return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-left: 3px solid ${urgencyColor}; border-radius: 10px; margin-bottom: 6px;">
@@ -11294,6 +11304,16 @@ async function buildAnnualPDF(state, year) {
     const minPossibleUtilization = cardLimit > 0 ? (minPossibleBalance / cardLimit) * 100 : 0;
     const canReachTarget = minPossibleBalance <= targetMaxBalance;
 
+    // v115: valores "unificados" — cuando NO se puede llegar al objetivo elegido
+    // (hay cuotas futuras bloqueando más cupo del que el objetivo permitiría),
+    // lo correcto es recomendar pagar TODO lo optimizable (para llegar al mínimo
+    // posible), no una resta parcial contra el objetivo inalcanzable. Antes cada
+    // pantalla (alertas, notificaciones, banner del dashboard) hacía su propia
+    // cuenta sin este chequeo, y solo la tarjeta lo tenía bien — por eso salían
+    // números distintos en cada lado para la misma tarjeta.
+    const recommendedPayment = needsPayment ? (canReachTarget ? paymentNeeded : optimizableBalance) : 0;
+    const recommendedUtilization = canReachTarget ? TARGET_UTILIZATION : minPossibleUtilization;
+
     let baseInfo;
     if (daysLeft <= 0) {
       baseInfo = { icon: '🚨', text: `¡HOY es el corte (${dateStr})!`, bg: 'var(--danger-bg)', color: 'var(--danger-text)', priority: 'high' };
@@ -11324,7 +11344,9 @@ async function buildAnnualPDF(state, year) {
       optimizableBalance,
       minPossibleBalance,
       minPossibleUtilization,
-      canReachTarget
+      canReachTarget,
+      recommendedPayment,
+      recommendedUtilization
     };
   }
   window.getCutoffStatus = getCutoffStatus;
@@ -13757,29 +13779,39 @@ async function buildAnnualPDF(state, year) {
         // pero duplicado aquí con su propia copia del cálculo que nunca recibió el fix.
         // Ahora reutilizamos getCutoffStatus(), que sí calcula esto bien.
         const status = getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id);
-        const { daysLeft, dateStr, utilization, needsPayment, paymentNeeded, targetUtilization } = status;
+        const { daysLeft, dateStr, utilization, needsPayment, targetUtilization, canReachTarget, recommendedPayment, recommendedUtilization, futureInstallments } = status;
 
         const baseId = `cutoff-${d.id}-${daysLeft}`;
 
+        // v115: mensaje de "cuánto pagar" unificado — si las cuotas futuras bloquean
+        // más cupo del que el objetivo permitiría, no tiene sentido seguir diciendo
+        // "para mantener tu objetivo (3%)" con un monto que en realidad no llega ahí.
+        // En ese caso se recomienda pagar TODO lo optimizable y se informa cuál es
+        // el mínimo real alcanzable — el mismo número y razonamiento que ya usa la
+        // tarjeta en "Pago para minimizar utilización".
+        const payMsg = canReachTarget
+          ? `Para mantener tu objetivo (${targetUtilization}%), paga <strong>${fmt(recommendedPayment)}</strong>`
+          : `Tienes ${fmt(futureInstallments)} en cuotas bloqueando cupo — el mínimo posible este ciclo es ${recommendedUtilization.toFixed(1)}%. Paga <strong>${fmt(recommendedPayment)}</strong> para llegar ahí`;
+
         if (daysLeft <= 0) {
-          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>${escapeHtml(d.name)}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `Para mantener tu objetivo (${targetUtilization}%), paga al menos <strong>${fmt(paymentNeeded)}</strong> antes del cierre.` : 'Tu utilización ya está óptima.'}` });
+          a.push({ id: baseId, t: 'danger', x: `🚨 <strong>${escapeHtml(d.name)}</strong>: ¡HOY es el corte! Saldo: ${fmt(d.balance)} (${utilization.toFixed(1)}% utilización). ${needsPayment ? `${payMsg} antes del cierre.` : 'Tu utilización ya está óptima.'}` });
         } 
         else if (daysLeft <= 3) {
           if (needsPayment) {
-            a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. Para mantener el ${targetUtilization}%, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'warning', x: `⚠️ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Tu utilización es <strong>${utilization.toFixed(1)}%</strong>. ${payMsg} antes del corte.` });
           } else {
             a.push({ id: baseId, t: 'info', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} día${daysLeft > 1 ? 's' : ''} (${dateStr}). Utilización óptima en ${utilization.toFixed(1)}% (≤${targetUtilization}%). No requiere pago anticipado.` });
           }
         }
         else if (daysLeft <= 7) {
           if (needsPayment) {
-            a.push({ id: baseId, t: 'info', x: `🔔 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). Para mantener tu objetivo, paga <strong>${fmt(paymentNeeded)}</strong> antes del corte.` });
+            a.push({ id: baseId, t: 'info', x: `🔔 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Saldo actual: ${fmt(d.balance)} (${utilization.toFixed(1)}%). ${payMsg} antes del corte.` });
           } else {
             a.push({ id: baseId, t: 'success', x: `✅ <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días (${dateStr}). Utilización en ${utilization.toFixed(1)}% — perfecto para tu objetivo.` });
           }
         }
         else if (daysLeft <= 14 && needsPayment) {
-          a.push({ id: baseId, t: 'info', x: `📅 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — considera abonar ${fmt(paymentNeeded)} antes del ${dateStr} para mantener tu objetivo.` });
+          a.push({ id: baseId, t: 'info', x: `📅 <strong>${escapeHtml(d.name)}</strong>: Corte en ${daysLeft} días. Tu utilización es ${utilization.toFixed(1)}% — ${payMsg} antes del ${dateStr}.` });
         }
       }
     });
