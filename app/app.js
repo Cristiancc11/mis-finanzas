@@ -11181,10 +11181,27 @@ async function buildAnnualPDF(state, year) {
     }).join('');
   }
 
+  // v116: helper compartido — el monto que REALMENTE impactó la tarjeta es el total
+  // de la compra (t.totalAmount), no "mi parte" (t.amount). Para un gasto compartido
+  // o prestado, t.amount guarda solo lo que a ti te toca pagar de tu bolsillo, pero
+  // la tarjeta fue cargada por el total — por eso las estadísticas de "gastado en
+  // esta tarjeta" quedaban por debajo de lo real.
+  // OJO: las compras a cuotas TAMBIÉN usan totalAmount (para el precio original
+  // completo), pero ahí t.amount ya es la cuota correcta de ESTE mes — si usáramos
+  // totalAmount ahí, contaríamos el precio completo cada mes durante toda la
+  // financiación. Por eso installment tiene prioridad y usa amount siempre.
+  function getTxCardImpact(t) {
+    if (t.installment) return parseFloat(t.amount) || 0;
+    if ((t.isShared || t.isLent) && t.totalAmount !== undefined && t.totalAmount !== null) {
+      return t.totalAmount;
+    }
+    return parseFloat(t.amount) || 0;
+  }
+
   function getCardMonthStats(cardId) {
     const txs = state.transactions[currentMonth] || [];
     const cardTxs = txs.filter(t => t.cardId === cardId);
-    const totalSpent = cardTxs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    const totalSpent = cardTxs.reduce((s, t) => s + getTxCardImpact(t), 0);
     const totalCashback = cardTxs.reduce((s, t) => s + (parseFloat(t.cashback) || 0), 0);
     // v80: lista ordenada por fecha (más reciente primero), para mostrar el detalle de gastos por tarjeta
     const sortedTxs = [...cardTxs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -13966,7 +13983,7 @@ async function buildAnnualPDF(state, year) {
 
     (state.debts || []).forEach(d => {
       const cardTxs = txs.filter(t => t.cardId === d.id);
-      const cardSpent = cardTxs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+      const cardSpent = cardTxs.reduce((s, t) => s + getTxCardImpact(t), 0);
       gastoTarjetasTotal += cardSpent;
 
       const cbPercent = (d.cashbackPercent === undefined || d.cashbackPercent === null) ? 1 : d.cashbackPercent;
