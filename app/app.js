@@ -1,7 +1,5 @@
 
-  if (window.pdfjsLib) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
+  // pdf.js, XLSX y jsPDF se cargan bajo demanda desde lazy-libs.js (window.FP.ensure*)
 
 
 // ============================================================
@@ -1369,8 +1367,8 @@ function renderDocuments() {
             <div style="font-size: 12px;">${icon} ${category}</div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 4px;">
-            <button onclick="viewDocument('${doc.file_path}')" style="padding: 6px 12px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">👁️ Ver</button>
-            <button onclick="deleteDocument('${doc.id}', '${doc.file_path}')" style="padding: 6px 12px; font-size: 11px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 6px; cursor: pointer;">🗑️</button>
+            <button onclick="viewDocument(${jsq(doc.file_path)})" style="padding: 6px 12px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">👁️ Ver</button>
+            <button onclick="deleteDocument('${doc.id}', ${jsq(doc.file_path)})" style="padding: 6px 12px; font-size: 11px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 6px; cursor: pointer;">🗑️</button>
           </div>
         </div>
       </div>`;
@@ -1400,8 +1398,8 @@ function renderDocuments() {
           <div style="font-size: 11px; color: var(--text-tertiary);">${escapeHTML(doc.file_name)} · ${sizeKB} KB · ${new Date(doc.uploaded_at).toLocaleDateString('es-CO')}</div>
         </div>
         <div style="display: flex; gap: 4px;">
-          <button onclick="viewDocument('${doc.file_path}')" style="padding: 6px 10px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">👁️</button>
-          <button onclick="deleteDocument('${doc.id}', '${doc.file_path}')" style="padding: 6px 10px; font-size: 11px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 6px; cursor: pointer;">🗑️</button>
+          <button onclick="viewDocument(${jsq(doc.file_path)})" style="padding: 6px 10px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">👁️</button>
+          <button onclick="deleteDocument('${doc.id}', ${jsq(doc.file_path)})" style="padding: 6px 10px; font-size: 11px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 6px; cursor: pointer;">🗑️</button>
         </div>
       </div>`;
     });
@@ -1411,7 +1409,7 @@ function renderDocuments() {
 
 function escapeHTML(s) {
   if (typeof s !== 'string') return '';
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function generateCreditTip(score) {
@@ -1721,6 +1719,13 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// Helper: valor seguro para usar como argumento dentro de un handler inline de HTML (se usa como ${jsq(valor)}).
+// Serializa como literal JS (JSON) y luego escapa para atributo HTML. OJO: esc()/escapeHtml() solas NO
+// bastan dentro de onclick, porque el navegador decodifica &#39; a ' antes de ejecutar el JS.
+function jsq(v) {
+  return escapeHtml(JSON.stringify(String(v == null ? '' : v)));
 }
 
 // Atajos cómodos
@@ -3526,7 +3531,7 @@ function showCategorySuggestion(catId, descInput, catSelect) {
 
   hint.innerHTML = `
     <span>💡 Sugerencia: <strong>${option.textContent}</strong></span>
-    <button onclick="acceptCategorySuggestion('${catId}')" style="padding: 2px 8px; font-size: 10px; background: var(--info-text); color: white; border: none; border-radius: 4px; cursor: pointer;">Usar</button>
+    <button onclick="acceptCategorySuggestion(${jsq(catId)})" style="padding: 2px 8px; font-size: 10px; background: var(--info-text); color: white; border: none; border-radius: 4px; cursor: pointer;">Usar</button>
   `;
 }
 
@@ -3668,10 +3673,8 @@ function setupBankImport() {
       let movements = [];
 
       if (ext === 'pdf') {
-        if (!window.pdfjsLib) {
-          throw new Error('PDF.js no se cargó. Refresca la página e inténtalo de nuevo.');
-        }
         status.innerHTML = '⏳ Leyendo PDF...';
+        await FP.ensurePdfJs();
         const text = await extractTextFromPDF(file);
         movements = parsePDFText(text, bank);
       } else if (ext === 'csv' || ext === 'txt') {
@@ -3679,6 +3682,7 @@ function setupBankImport() {
         const rows = parseCSV(text);
         movements = parseMovementsByBank(rows, bank);
       } else if (ext === 'xlsx' || ext === 'xls') {
+        await FP.ensureXLSX();
         const data = await file.arrayBuffer();
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
@@ -3710,7 +3714,7 @@ function setupBankImport() {
 
 async function extractTextFromPDF(file) {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, standardFontDataUrl: FP.pdfjsBase + 'standard_fonts/', wasmUrl: FP.pdfjsBase + 'wasm/' }).promise;
   let fullText = '';
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -5513,8 +5517,8 @@ window.generateMonthlyPDF = async function() {
     return;
   }
 
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert('La librería de PDF no se ha cargado. Refresca la página.');
+  try { await FP.ensureJsPDF(); } catch (e) {
+    alert('No se pudo cargar la librería de PDF. Revisa tu conexión e inténtalo de nuevo.');
     return;
   }
 
@@ -5530,8 +5534,8 @@ window.generateMonthlyPDF = async function() {
 };
 
 window.generateAnnualPDF = async function() {
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert('La librería de PDF no se ha cargado. Refresca la página.');
+  try { await FP.ensureJsPDF(); } catch (e) {
+    alert('No se pudo cargar la librería de PDF. Revisa tu conexión e inténtalo de nuevo.');
     return;
   }
 
@@ -9696,8 +9700,7 @@ async function buildAnnualPDF(state, year) {
     wrapper.style.display = 'block';
     container.innerHTML = people.slice(0, 10).map(person => {
       const safeName = esc(person.name);
-      const safeNameEscaped = person.name.replace(/'/g, "\\'");
-      return `<button type="button" onclick="window.addPersonToInput('${targetInputId}', '${safeNameEscaped}')" 
+      return `<button type="button" onclick="window.addPersonToInput(${jsq(targetInputId)}, ${jsq(person.name)})" 
         style="background: var(--bg-secondary); border: 1px solid var(--border); padding: 5px 10px; border-radius: 16px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s;"
         onmouseover="this.style.borderColor='var(--accent-from, #7F77DD)'; this.style.background='var(--bg-primary)';"
         onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--bg-secondary)';"
@@ -11711,7 +11714,7 @@ async function buildAnnualPDF(state, year) {
     if (f.categories && f.categories.length > 0) {
       f.categories.forEach(catId => {
         const cat = (typeof CATEGORIES !== 'undefined' ? CATEGORIES : []).find(c => c.id === catId) || { icon: '📋', label: catId };
-        chips.push(`<span class="tx-chip teal" onclick="removeTxFilterChip('category', '${esc(catId)}')">${cat.icon} ${esc(cat.label)} <span class="tx-chip-x">✕</span></span>`);
+        chips.push(`<span class="tx-chip teal" onclick="removeTxFilterChip('category', ${jsq(catId)})">${cat.icon} ${esc(cat.label)} <span class="tx-chip-x">✕</span></span>`);
       });
     }
     if (f.cardId !== '' && f.cardId != null) {
@@ -13083,7 +13086,7 @@ async function buildAnnualPDF(state, year) {
       
       html += `
         <div style="background: var(--bg-secondary); border-radius: 10px; padding: 12px; margin-bottom: 8px; border-left: 3px solid var(--success-text);">
-          <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleDebtPersonExpand('${esc(person.displayName.toLowerCase())}')">
+          <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleDebtPersonExpand(${jsq(person.displayName.toLowerCase())})">
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 16px;">👤</span>
@@ -13104,10 +13107,10 @@ async function buildAnnualPDF(state, year) {
               <div style="margin-top: 10px; padding: 10px; background: linear-gradient(135deg, rgba(29, 158, 117, 0.10), rgba(127, 119, 221, 0.08)); border-radius: 8px; border: 1px dashed rgba(29, 158, 117, 0.4); text-align: center;">
                 <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">💡 ¿${esc(person.displayName)} te pagó?</div>
                 <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;">
-                  <button onclick="event.stopPropagation(); openPersonPartialPaymentModal('${esc(person.displayName.toLowerCase())}')" style="background: var(--bg-primary); color: var(--accent-from, #7F77DD); border: 1px solid var(--accent-from, #7F77DD); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; flex: 1; min-width: 140px;">
+                  <button onclick="event.stopPropagation(); openPersonPartialPaymentModal(${jsq(person.displayName.toLowerCase())})" style="background: var(--bg-primary); color: var(--accent-from, #7F77DD); border: 1px solid var(--accent-from, #7F77DD); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; flex: 1; min-width: 140px;">
                     💰 Abono parcial
                   </button>
-                  <button onclick="event.stopPropagation(); markAllDebtsAsPaid('${esc(person.displayName.toLowerCase())}')" style="background: linear-gradient(135deg, var(--success-text), var(--accent-from, #7F77DD)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 158, 117, 0.3); flex: 1; min-width: 140px;">
+                  <button onclick="event.stopPropagation(); markAllDebtsAsPaid(${jsq(person.displayName.toLowerCase())})" style="background: linear-gradient(135deg, var(--success-text), var(--accent-from, #7F77DD)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 158, 117, 0.3); flex: 1; min-width: 140px;">
                     ✓✓ Pagar TODO (${fmt(person.total)})
                   </button>
                 </div>
@@ -13377,7 +13380,7 @@ async function buildAnnualPDF(state, year) {
         </div>
         <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
           <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
-          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmPersonPartialPayment('${esc(personNameLower)}')">💰 Registrar abono</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmPersonPartialPayment(${jsq(personNameLower)})">💰 Registrar abono</button>
         </div>
       </div>
     `;
@@ -13552,7 +13555,7 @@ async function buildAnnualPDF(state, year) {
         </div>
         <div class="tutorial-footer" style="padding: 12px 20px 20px; gap: 8px;">
           <button class="tutorial-btn tutorial-btn-secondary" onclick="closeMarkPaidModal()">Cancelar</button>
-          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmMarkAllPaid('${personNameLower}')">✓✓ Confirmar pago total</button>
+          <button class="tutorial-btn tutorial-btn-primary" onclick="confirmMarkAllPaid(${jsq(personNameLower)})">✓✓ Confirmar pago total</button>
         </div>
       </div>
     `;
@@ -15716,7 +15719,7 @@ async function buildAnnualPDF(state, year) {
                     <span class="reminder-alert-date">${dateStr}${recurringBadge}${amountStr}</span>
                   </div>
                 </div>
-                <button class="reminder-alert-dismiss" onclick="dismissReminderAlert('${esc(a.occurrenceKey)}')" title="Descartar alerta">×</button>
+                <button class="reminder-alert-dismiss" onclick="dismissReminderAlert(${jsq(a.occurrenceKey)})" title="Descartar alerta">×</button>
               </div>
             `;
           }).join('')}

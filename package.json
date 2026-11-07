@@ -1,0 +1,27 @@
+{
+  "name": "finanzaspro",
+  "version": "2.0.0",
+  "private": true,
+  "description": "FinanzasPro — dashboard financiero personal (finanzaspro.com.co)",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/preview.mjs",
+    "check": "node --check app/app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.110.7",
+    "chart.js": "^4.6.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
+    "pdfjs-dist": "^6.5.438",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jsdom": "^31.0.0"
+  }
+}
