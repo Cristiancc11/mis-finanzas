@@ -69,6 +69,13 @@ emit(await min('app/theme.css', 'css'), 'theme.css', 'theme', 'css');
 // lazy-libs.js contiene rutas /vendor/... que hay que reescribir ANTES de calcular su hash
 emit(rewrite(await min('app/lazy-libs.js', 'js')), 'lazy-libs.js', 'lazy-libs', 'js');
 emit(await min('app/ui-polish.js', 'js'), 'ui-polish.js', 'ui-polish', 'js');
+// Núcleo de cálculos (src/core): se carga antes que app.js y queda como window.FPCore
+const coreBundle = await esbuild({
+  entryPoints: [path.join(ROOT, 'src/core/global.ts')], bundle: true, write: false, minify: true,
+  format: 'iife', target: 'es2020', legalComments: 'none', logLevel: 'warning',
+});
+emit(coreBundle.outputFiles[0].text, 'core.js', 'core', 'js');
+
 // Islas React (TypeScript): React + componentes en un solo archivo minificado, con hash
 const islands = await esbuild({
   entryPoints: [path.join(ROOT, 'src/react/main.tsx')], bundle: true, write: false, minify: true,
@@ -83,7 +90,7 @@ for (const f of ['index.html', 'contacto.html', 'privacidad.html', 'terminos.htm
   let html = read(path.join(ROOT, f)).toString('utf8');
   if (f === 'app/index.html') html = scaleFonts(html);
   html = rewrite(html)
-    .replace(/(href|src)="(styles\.css|theme\.css|app\.js|lazy-libs\.js|ui-polish\.js|islands\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
+    .replace(/(href|src)="(styles\.css|theme\.css|app\.js|lazy-libs\.js|ui-polish\.js|islands\.js|core\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
   mkdir(path.dirname(path.join(DIST, f)));
   fs.writeFileSync(path.join(DIST, f), html);
 }
