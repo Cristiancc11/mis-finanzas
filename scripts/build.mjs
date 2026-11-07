@@ -56,6 +56,7 @@ const min = async (file, loader) => (await transform(read(path.join(ROOT, file))
 const rewrite = (text) => Object.entries(logical).reduce((t, [k, v]) => t.split(k).join(v), text);
 
 emit(await min('app/styles.css', 'css'), 'styles.css', 'styles', 'css');
+emit(await min('app/theme.css', 'css'), 'theme.css', 'theme', 'css');
 // lazy-libs.js contiene rutas /vendor/... que hay que reescribir ANTES de calcular su hash
 emit(rewrite(await min('app/lazy-libs.js', 'js')), 'lazy-libs.js', 'lazy-libs', 'js');
 emit(await min('app/app.js', 'js'), 'app.js', 'app', 'js');
@@ -64,7 +65,7 @@ emit(await min('app/app.js', 'js'), 'app.js', 'app', 'js');
 for (const f of ['index.html', 'contacto.html', 'privacidad.html', 'terminos.html', 'app/index.html']) {
   let html = read(path.join(ROOT, f)).toString('utf8');
   html = rewrite(html)
-    .replace(/(href|src)="(styles\.css|app\.js|lazy-libs\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
+    .replace(/(href|src)="(styles\.css|theme\.css|app\.js|lazy-libs\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
   mkdir(path.dirname(path.join(DIST, f)));
   fs.writeFileSync(path.join(DIST, f), html);
 }

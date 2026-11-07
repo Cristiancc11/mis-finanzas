@@ -1,6 +1,6 @@
 // Servidor local mínimo para probar dist/ (npm run build && npm run preview) -> http://localhost:4173
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.txt': 'text/plain', '.xml': 'application/xml', '.json': 'application/json', '.pfb': 'application/octet-stream', '.ttf': 'font/ttf' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.txt': 'text/plain', '.xml': 'application/xml', '.json': 'application/json', '.pfb': 'application/octet-stream', '.ttf': 'font/ttf', '.woff2': 'font/woff2' };
 const root = path.resolve('dist');
 http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
