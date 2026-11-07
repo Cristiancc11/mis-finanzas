@@ -10151,11 +10151,13 @@ async function buildAnnualPDF(state, year) {
       // Calcular cuota mensual
       const cuotaAmount = calculateInstallmentAmount(totalAmount, installmentCount, interestRate);
       const cuotaRounded = Math.round(cuotaAmount);
+      // v117: montos por cuota (enteros) que suman EXACTO lo comprado: la última cuota absorbe el redondeo
+      const cuotaAmounts = window.FPCore ? window.FPCore.installmentAmounts(totalAmount, installmentCount, interestRate) : Array(installmentCount).fill(cuotaRounded);
       const groupId = txId; // ID del grupo de cuotas (el de la primera tx)
       
       // Ajustar la transacción inicial: su monto debe ser la cuota, no el total
       // Pero ojo: el cupo ya se ocupó con el TOTAL en card.balance += totalAmount (correcto)
-      newTx.amount = cuotaRounded;
+      newTx.amount = cuotaAmounts[0];
       newTx.totalAmount = totalAmount;
       newTx.cashback = cashback / installmentCount; // El cashback proporcional por cuota
       newTx.installment = {
@@ -10187,7 +10189,7 @@ async function buildAnnualPDF(state, year) {
           id: Date.now() + i * 1000 + Math.floor(Math.random() * 1000),
           date: futureDateStr,
           desc: d + ` (cuota ${i}/${installmentCount})`,
-          amount: cuotaRounded,
+          amount: cuotaAmounts[i - 1],
           category: c,
           paymentMethod: method,
           cardId: cardIdNum,
@@ -10882,34 +10884,46 @@ async function buildAnnualPDF(state, year) {
           let installmentsBlock = '';
           
           // v64: bloque visual de desglose de cupo cuando hay cuotas
-          if (cutoffInfo && cutoffInfo.installmentInfo && cutoffInfo.installmentInfo.hasInstallments) {
-            const info = cutoffInfo.installmentInfo;
+          // v118: solo compras ACTIVAS; desglose coherente (usado = bloqueado + optimizable; libre = cupo − saldo) y aviso cuando
+          // el capital pendiente de las cuotas es mayor que el saldo registrado.
+          const instInfo = cutoffInfo && cutoffInfo.installmentInfo;
+          const hasFinished = !!(instInfo && instInfo.finished && instInfo.finished.length);
+          if (instInfo && (instInfo.hasInstallments || hasFinished)) {
             const limit = d.payment || 1;
-            const futurePct = (cutoffInfo.futureInstallments / limit * 100);
-            const optimPct = (cutoffInfo.optimizableBalance / limit * 100);
-            const freePct = Math.max(0, 100 - futurePct - optimPct);
-            
-            installmentsBlock = `<div style="margin-top: 10px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-from, #7F77DD); font-size: 12px;">
-              <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">💳 Cuotas activas en esta tarjeta</div>
-              ${info.groups.map(g => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 11px;">
-                  <span style="color: var(--text-secondary);">${esc(g.desc)} · Cuota ${g.cuotasPaid + 1}/${g.totalCuotas}</span>
-                  <span style="color: var(--text-primary); font-weight: 500;">${fmt(g.pendingAmount)} pendiente</span>
-                </div>
-              `).join('')}
+            const cupo = window.FPCore ? window.FPCore.cupoBreakdown(limit, d.balance, cutoffInfo.futureInstallmentsRaw) : null;
+            const lockedShown = cupo ? cupo.locked : cutoffInfo.futureInstallments;
+            const optimShown = cupo ? cupo.optimizable : cutoffInfo.optimizableBalance;
+            const freeShown = cupo ? cupo.free : Math.max(0, limit - d.balance);
+            const futurePct = cupo ? cupo.lockedPct : (cutoffInfo.futureInstallments / limit * 100);
+            const optimPct = cupo ? cupo.optimizablePct : (cutoffInfo.optimizableBalance / limit * 100);
+            const activeRows = (instInfo.groups || []).map(g => `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 4px 0; font-size: 11px;">
+                  <span style="color: var(--text-secondary);">${esc(g.desc)} · Cuota ${g.currentIndex}/${g.totalCuotas}</span>
+                  <span style="color: var(--text-primary); font-weight: 500; text-align: right;">${fmt(g.pendingAmount)} por pagar${g.hasInterest ? `<br><small style="color: var(--text-tertiary); font-weight: 400;">capital ${fmt(g.outstandingNow)}</small>` : ''}</span>
+                </div>`).join('');
+            const finishedRow = hasFinished
+              ? `<div style="padding: 6px 0 2px; font-size: 11px; color: var(--text-tertiary);">✓ Ya terminaste de pagar: ${instInfo.finished.map(g => esc(g.desc)).join(', ')}</div>`
+              : '';
+            const exceedsWarn = cutoffInfo.installmentsExceedBalance
+              ? `<div style="margin-top: 10px; padding: 8px 10px; background: var(--warning-bg); color: var(--warning-text); border-radius: 8px; font-size: 11px; line-height: 1.5;">⚠️ El capital que aún falta de tus compras a cuotas (<strong>${fmt(instInfo.outstandingNowTotal)}</strong>) es mayor que el saldo registrado de esta tarjeta (<strong>${fmt(d.balance)}</strong>). Revisa el saldo en tu banco y, si es distinto, corrígelo con el botón "Editar". Mientras tanto, lo bloqueado se muestra limitado al saldo.</div>`
+              : '';
+            const barBlock = instInfo.hasInstallments ? `
               <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);">
                 <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">📊 Desglose del cupo (${fmt(limit)})</div>
                 <div style="display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bg-primary);">
-                  <div style="background: rgba(220, 55, 55, 0.6); width: ${futurePct.toFixed(2)}%;" title="Bloqueado por cuotas futuras"></div>
+                  <div style="background: rgba(220, 55, 55, 0.6); width: ${futurePct.toFixed(2)}%;" title="Capital bloqueado por cuotas futuras"></div>
                   <div style="background: rgba(235, 170, 40, 0.7); width: ${optimPct.toFixed(2)}%;" title="Optimizable (puedes pagar para liberar)"></div>
                   <div style="background: rgba(29, 158, 117, 0.5); flex: 1;" title="Cupo libre"></div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary); margin-top: 4px;">
-                  <span>🔒 Cuotas futuras: ${fmt(cutoffInfo.futureInstallments)} (${futurePct.toFixed(1)}%)</span>
-                  <span>🟡 Optimizable: ${fmt(cutoffInfo.optimizableBalance)}</span>
-                  <span>🟢 Libre: ${fmt(Math.max(0, limit - d.balance))}</span>
+                <div style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 10px; color: var(--text-tertiary); margin-top: 4px;">
+                  <span>🔒 Cuotas futuras: ${fmt(lockedShown)} (${futurePct.toFixed(1)}%)</span>
+                  <span>🟡 Optimizable: ${fmt(optimShown)}</span>
+                  <span>🟢 Libre: ${fmt(freeShown)}</span>
                 </div>
-              </div>
+              </div>${exceedsWarn}` : '';
+            installmentsBlock = `<div style="margin-top: 10px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-to);">
+              <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">💳 Cuotas activas en esta tarjeta</div>
+              ${activeRows}${finishedRow}${barBlock}
             </div>`;
           }
           
@@ -11192,6 +11206,11 @@ async function buildAnnualPDF(state, year) {
   //   - currentMonthInstallmentSum: cuotas que se cobrarán este mes
   //   - groups: lista de grupos de cuotas activos con detalle
   function getCardInstallmentInfo(cardId) {
+    // v118: la lógica vive en src/core/finance.ts (con pruebas). Devuelve solo las compras ACTIVAS en `groups`; las que ya
+    // cumplieron todas sus cuotas van en `finished` (antes salían como activas con "Cuota 5/4" y $ 0 pendiente).
+    if (window.FPCore) {
+      try { return window.FPCore.cardInstallments(state, cardId); } catch (e) { console.warn('cardInstallments falló, uso respaldo:', e); }
+    }
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     const groups = {};
@@ -11208,6 +11227,7 @@ async function buildAnnualPDF(state, year) {
               originalTotal: t.installment.originalTotal,
               totalCuotas: t.installment.total,
               cuotaAmount: t.installment.cuotaAmount,
+              interestRate: t.installment.interestRate || 0,
               hasInterest: t.installment.hasInterest,
               cuotasPaid: 0,
               cuotasPending: 0,
@@ -11221,9 +11241,10 @@ async function buildAnnualPDF(state, year) {
             groups[gid].cuotasPaid++;
           } else {
             groups[gid].cuotasPending++;
-            groups[gid].pendingAmount += t.installment.cuotaAmount;
+            const cuotaReal = parseFloat(t.amount) || t.installment.cuotaAmount;   // v117: monto real de ESA cuota (la última puede diferir por redondeo)
+            groups[gid].pendingAmount += cuotaReal;
             if (txMonth === currentMonthStr) {
-              groups[gid].currentMonthCuota += t.installment.cuotaAmount;
+              groups[gid].currentMonthCuota += cuotaReal;
             }
           }
         }
@@ -11233,11 +11254,17 @@ async function buildAnnualPDF(state, year) {
     const groupsList = Object.values(groups);
     const blockedByInstallments = groupsList.reduce((s, g) => s + g.pendingAmount, 0);
     const currentMonthInstallmentSum = groupsList.reduce((s, g) => s + g.currentMonthCuota, 0);
+    // v117: capital que sigue bloqueado DESPUÉS de la cuota de este mes. Con interés, la suma de las cuotas pendientes incluye
+    // intereses que nunca estuvieron en el saldo de la tarjeta, así que restarla subestimaba lo que SÍ se puede pagar.
+    const futureLockedPrincipal = window.FPCore
+      ? groupsList.reduce((sum, g) => sum + window.FPCore.installmentOutstandingPrincipal(g.originalTotal, g.totalCuotas, g.interestRate, g.cuotasPaid + (g.currentMonthCuota > 0 ? 1 : 0)), 0)
+      : Math.max(0, blockedByInstallments - currentMonthInstallmentSum);
     
     return {
       groups: groupsList,
       blockedByInstallments,
       currentMonthInstallmentSum,
+      futureLockedPrincipal,
       hasInstallments: groupsList.length > 0
     };
   }
@@ -11280,7 +11307,12 @@ async function buildAnnualPDF(state, year) {
     
     // El saldo "no-cuotas" es lo que puedes optimizar libremente
     // (cuotas FUTURAS - cuotas de este mes - cuotas atrasadas, todo eso no se puede liberar pagando)
-    const futureInstallments = Math.max(0, blockedByInstallments - currentMonthInstallmentSum);
+    const futureInstallmentsRaw = (installmentInfo && typeof installmentInfo.futureLockedPrincipal === 'number')
+      ? installmentInfo.futureLockedPrincipal
+      : Math.max(0, blockedByInstallments - currentMonthInstallmentSum);
+    // v118: lo bloqueado por cuotas no puede ser mayor que lo que de verdad se usa del cupo (el saldo). Si lo es, el saldo
+    // registrado no incluye todo el capital de las compras a cuotas: se limita y se avisa (installmentsExceedBalance).
+    const futureInstallments = Math.min(futureInstallmentsRaw, Math.max(0, cardBalance));
     const optimizableBalance = Math.max(0, cardBalance - futureInstallments);
     
     const needsPayment = optimizableBalance > targetMaxBalance;
@@ -11336,6 +11368,8 @@ async function buildAnnualPDF(state, year) {
       blockedByInstallments,
       currentMonthInstallmentSum,
       futureInstallments,
+      futureInstallmentsRaw,
+      installmentsExceedBalance: futureInstallmentsRaw > cardBalance + 1,
       optimizableBalance,
       minPossibleBalance,
       minPossibleUtilization,
@@ -12557,7 +12591,9 @@ async function buildAnnualPDF(state, year) {
     if (orig.paymentMethod === 'tarjeta' && orig.cardId) {
       const oldCard = state.debts.find(d => d.id === orig.cardId);
       if (oldCard) {
-        oldCard.balance = Math.max(0, (oldCard.balance || 0) - origCharged);
+        // v117 FIX: aquí NO se recorta en cero (el recorte se hace una sola vez al final). Antes, si ya habías pagado parte
+        // de la tarjeta, editar cualquier compra dejaba el saldo en 0 y luego sumaba la compra completa: saldo de más.
+        oldCard.balance = (oldCard.balance || 0) - origCharged;
       }
     }
     // Si descontó de un bolsillo, devolver el dinero
@@ -12577,6 +12613,10 @@ async function buildAnnualPDF(state, year) {
     
     // Si era compartido o prestado, eliminar registros antiguos de "Me deben" no pagados
     // (los pagados se respetan, no se borran)
+    // v117 FIX: lo que cada persona YA pagó (pagos completos y abonos parciales) se conoce antes de borrar las deudas
+    // abiertas; así, al recrearlas, solo se cobra lo que falta. Antes se creaba otra deuda por el monto completo y quien ya
+    // te había pagado quedaba debiéndote dos veces.
+    const alreadyPaid = (window.FPCore && state.debtsToMe) ? window.FPCore.paidByPerson(state.debtsToMe, orig.id) : {};
     if ((orig.isShared || orig.isLent) && state.debtsToMe) {
       state.debtsToMe = state.debtsToMe.filter(d => !(d.txId === orig.id && !d.paid));
     }
@@ -12608,6 +12648,11 @@ async function buildAnnualPDF(state, year) {
         newPocket.amount = (newPocket.amount || 0) - newCharged;
       }
     }
+    // v117: recorte en cero UNA sola vez, solo en las tarjetas que se tocaron
+    [orig.cardId, newCardId].forEach(cid => {
+      const cc = cid && state.debts.find(x => x.id === cid);
+      if (cc && cc.balance < 0) cc.balance = 0;
+    });
     // Si nuevo es pago de tarjeta, descontar saldo de la tarjeta pagada
     const isPagoTarjeta = newCategory === 'pagoTarjeta' || newCategory === 'pago-tarjeta' || newCategory === 'pago_tarjeta';
     if (isPagoTarjeta && newPayCardId) {
@@ -12649,12 +12694,17 @@ async function buildAnnualPDF(state, year) {
       updatedTx.sharedDetails = newSharedWith.map((name, idx) => {
         // v48: usar el monto personalizado de esa persona (custom o equal ya distribuido)
         const personAmount = newCustomAmountsByPerson[name] || Math.round(newOwedTotal / newSharedWith.length);
+        const remaining = Math.max(0, personAmount - (alreadyPaid[name] || 0));
+        if (remaining <= 0) {   // esta persona ya cubrió su parte: no se crea otra deuda
+          const paidRec = (state.debtsToMe || []).find(x => x.txId === orig.id && x.name === name && x.paid);
+          return { name: name, amount: personAmount, debtId: paidRec ? paidRec.id : null };
+        }
         
         const debtRecord = {
           id: Date.now() + idx + 1,
           txId: orig.id,
           name: name,
-          amount: personAmount,
+          amount: remaining,
           desc: newDesc,
           date: newDate,
           paid: false,

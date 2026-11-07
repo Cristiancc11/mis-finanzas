@@ -207,3 +207,126 @@ test('auditState: avisos de calidad de datos', () => {
   assert.deepEqual(codes, ['card-over-limit', 'no-budget', 'pocket-negative', 'possible-duplicates']);
   assert.deepEqual(f.auditState({ pockets: [{ name: 'A', amount: 10 }] }, '2026-11', NOW), []);
 });
+
+test('cuotas: la suma de las cuotas coincide EXACTO con lo comprado (sin interés)', () => {
+  assert.deepEqual(f.installmentAmounts(100000, 3, 0), [33333, 33333, 33334]);
+  assert.deepEqual(f.installmentAmounts(1000, 4, 0), [250, 250, 250, 250]);
+  for (const [total, n] of [[100000, 3], [999999, 7], [1234567, 12], [50, 6], [1, 2]] as const) {
+    const parts = f.installmentAmounts(total, n, 0);
+    assert.equal(parts.length, n);
+    assert.equal(parts.reduce((a, b) => a + b, 0), total);
+  }
+});
+
+test('cuotas: con interés usa la fórmula francesa (PMT)', () => {
+  const pmt = f.installmentPayment(1200000, 12, 2);
+  near(pmt, 113471.52, 0.05);                                          // 1,2 M a 12 cuotas, 2 % mensual
+  const parts = f.installmentAmounts(1200000, 12, 2);
+  assert.equal(parts.reduce((a, b) => a + b, 0), Math.round(pmt * 12));
+  assert.ok(Math.abs(parts[11] - parts[0]) <= 6);                      // la última solo absorbe el redondeo
+  // el valor presente de las 12 cuotas a la tasa del crédito vuelve a ser el capital
+  let pv = 0; for (let j = 1; j <= 12; j++) pv += pmt / Math.pow(1.02, j);
+  near(pv, 1200000, 0.5);
+});
+
+test('cuotas: capital pendiente (lo que sigue bloqueado en el cupo)', () => {
+  assert.equal(f.installmentOutstandingPrincipal(120000, 12, 0, 0), 120000);
+  assert.equal(f.installmentOutstandingPrincipal(120000, 12, 0, 3), 90000);
+  assert.equal(f.installmentOutstandingPrincipal(120000, 12, 0, 12), 0);
+  assert.equal(f.installmentOutstandingPrincipal(120000, 12, 0, 99), 0);
+  near(f.installmentOutstandingPrincipal(1200000, 12, 2, 0), 1200000, 0.01);
+  near(f.installmentOutstandingPrincipal(1200000, 12, 2, 12), 0, 0.01);
+  // con interés: igual al valor presente de las cuotas que faltan, y MENOR que la suma nominal de esas cuotas
+  const pmt = f.installmentPayment(1200000, 12, 2);
+  let pv = 0; for (let j = 1; j <= 8; j++) pv += pmt / Math.pow(1.02, j);        // faltan 8 cuotas (se pagaron 4)
+  near(f.installmentOutstandingPrincipal(1200000, 12, 2, 4), pv, 0.5);
+  assert.ok(f.installmentOutstandingPrincipal(1200000, 12, 2, 4) < pmt * 8);
+});
+
+test('cardBalanceAfterEdit: editar no sube el saldo cuando ya pagaste parte de la tarjeta', () => {
+  // saldo 1 M incluía una compra de 200.000; pagaste 900.000 → saldo 100.000; editas la compra sin cambiar el monto
+  assert.equal(f.cardBalanceAfterEdit(100000, 200000, 200000), 100000);        // antes quedaba en 200.000
+  assert.equal(f.cardBalanceAfterEdit(100000, 200000, 250000), 150000);        // subir la compra 50.000 sube el saldo 50.000
+  assert.equal(f.cardBalanceAfterEdit(100000, 200000, 50000), 0);              // el saldo nunca queda negativo
+  assert.equal(f.cardBalanceAfterEdit(500000, 200000, 200000), 500000);
+});
+
+test('paidByPerson: suma pagos completos y abonos parciales por persona', () => {
+  const debts = [
+    { txId: 1, name: 'Ana', amount: 33334, paid: true },
+    { txId: 1, name: 'Luis', amount: 33333, paid: false, payments: [{ amount: 10000 }, { amount: 5000 }] },
+    { txId: 2, name: 'Ana', amount: 999, paid: true },
+    { txId: 1, name: 'Eva', amount: 100, paid: false },
+  ];
+  assert.deepEqual(f.paidByPerson(debts, 1), { Ana: 33334, Luis: 15000 });
+  assert.deepEqual(f.paidByPerson(debts, 99), {});
+});
+
+const mkTx = (id: number, date: string, cardId: number, groupId: number, current: number, total: number, amount: number, extra: Record<string, unknown> = {}): f.TxLike => ({
+  id, date, desc: `COMPRA X (cuota ${current}/${total})`, amount, category: 'compras', cardId,
+  installment: { groupId, current, total, originalTotal: amount * total, cuotaAmount: amount, hasInterest: false, interestRate: 0, ...extra },
+} as f.TxLike);
+
+test('cardInstallments: una compra YA TERMINADA no es activa ni bloquea cupo (antes salía "Cuota 5/4")', () => {
+  // 4 cuotas en jun–sep; hoy es noviembre: las 4 ya pasaron
+  const txs = [mkTx(1, '2026-06-10', 7, 100, 1, 4, 50000), mkTx(2, '2026-07-10', 7, 100, 2, 4, 50000), mkTx(3, '2026-08-10', 7, 100, 3, 4, 50000), mkTx(4, '2026-09-10', 7, 100, 4, 4, 50000)];
+  const state: f.CoreState = { transactions: { '2026-06': [txs[0]], '2026-07': [txs[1]], '2026-08': [txs[2]], '2026-09': [txs[3]] } };
+  const ci = f.cardInstallments(state, 7, NOW);
+  assert.equal(ci.hasInstallments, false);
+  assert.equal(ci.groups.length, 0);
+  assert.equal(ci.finished.length, 1);
+  assert.equal(ci.finished[0].currentIndex, 4);                                  // nunca 5/4
+  assert.equal(ci.finished[0].pendingAmount, 0);
+  assert.equal(ci.futureLockedPrincipal, 0);
+  assert.equal(ci.blockedByInstallments, 0);
+});
+
+test('cardInstallments: compra activa (cuota 6/24) y la cuota del mes', () => {
+  const state: f.CoreState = { transactions: {} };
+  for (let i = 1; i <= 24; i++) {                                               // 24 cuotas desde junio 2026
+    const d = new Date(2026, 5 + (i - 1), 10);
+    const m = f.monthKey(d);
+    (state.transactions![m] = state.transactions![m] || []).push(mkTx(i, `${m}-10`, 7, 200, i, 24, 100000));
+  }
+  const ci = f.cardInstallments(state, 7, NOW);                                  // hoy: noviembre = cuota 6
+  const g = ci.groups[0];
+  assert.equal(ci.groups.length, 1);
+  assert.equal(g.cuotasPaid, 5);                                                 // jun–oct
+  assert.equal(g.currentIndex, 6);
+  assert.equal(g.cuotasPending, 19);
+  assert.equal(g.pendingAmount, 1900000);
+  assert.equal(g.currentMonthCuota, 100000);
+  assert.equal(ci.futureLockedPrincipal, 1800000);                               // sin interés: 18 cuotas siguientes
+  assert.equal(ci.outstandingNowTotal, 1900000);
+  assert.equal(f.cardInstallments(state, 999, NOW).hasInstallments, false);      // otra tarjeta: nada
+});
+
+test('cupoBreakdown: lo bloqueado nunca pasa de lo usado (caso real: 4,09 M bloqueados con 2,2 M usados)', () => {
+  const b = f.cupoBreakdown(12200000, 2206335, 4094625);
+  assert.equal(b.locked, 2206335);                                               // tope: el saldo
+  assert.equal(b.optimizable, 0);
+  assert.equal(b.free, 9993665);
+  assert.equal(b.inconsistent, true);
+  near(b.lockedPct + b.optimizablePct + b.freePct, 100, 1e-9);
+  near(b.lockedPct, 18.08, 0.01);                                                // = utilización, ya no 33,6 %
+  const ok = f.cupoBreakdown(10000000, 3000000, 1000000);
+  assert.deepEqual([ok.locked, ok.optimizable, ok.free, ok.inconsistent], [1000000, 2000000, 7000000, false]);
+  near(ok.lockedPct + ok.optimizablePct + ok.freePct, 100, 1e-9);
+  const over = f.cupoBreakdown(1000000, 1500000, 200000);                         // saldo sobre el cupo: sin libre y sin pasarse del 100 %
+  assert.equal(over.free, 0);
+  assert.ok(over.lockedPct + over.optimizablePct + over.freePct <= 100.000001);
+  assert.deepEqual(f.cupoBreakdown(0, 0, 0).inconsistent, false);
+});
+
+test('auditState: avisa si el capital de las cuotas supera el saldo registrado de la tarjeta', () => {
+  const state: f.CoreState = {
+    debts: [{ id: 7, name: 'Lulo', balance: 500000, payment: 5000000 }],
+    transactions: { '2026-11': [mkTx(1, '2026-11-10', 7, 300, 1, 12, 100000)] },   // capital pendiente 1,2 M > saldo 500.000
+    budgets: { '2026-11': { a: 1 } },
+  };
+  const issues = f.auditState(state, '2026-11', NOW).filter((i) => i.code.startsWith('installments-exceed'));
+  assert.equal(issues.length, 1);
+  assert.match(issues[0].message, /capital pendiente/);
+  state.debts![0].balance = 1500000;                                              // saldo coherente → sin aviso
+  assert.equal(f.auditState(state, '2026-11', NOW).filter((i) => i.code.startsWith('installments-exceed')).length, 0);
+});

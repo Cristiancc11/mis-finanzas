@@ -33,3 +33,20 @@ Usan referencias **estables**, no el gasto parcial del mes:
 - Gasto compartido en partes iguales: las partes suman **exactamente** el total (el sobrante de redondeo va a las primeras personas).
 - Fecha de corte día 29/30/31 se ajusta al último día del mes (corte 31 en abril = 30 de abril).
 - Al cargar, los números guardados como texto o `NaN` se corrigen (`sanitizeState`).
+
+## Compras a cuotas
+- Cuota (sistema francés, tasa **mensual**): `P·r·(1+r)^n / ((1+r)^n − 1)`; sin interés: `P / n`.
+- Las cuotas son enteros y la **última absorbe el redondeo**: sin interés suman exactamente lo comprado (100.000 en 3 → 33.333 + 33.333 + 33.334).
+- El cupo de la tarjeta se ocupa con el **capital** comprado (no con los intereses). Al borrar todo el grupo, el saldo vuelve exacto.
+- "Capital bloqueado" (lo que no puedes liberar pagando antes del corte) = valor presente de las cuotas que faltan **después de la de este mes**. Con interés es menor que la suma de esas cuotas, porque esa suma incluye intereses que nunca estuvieron en el saldo.
+
+## Editar un movimiento
+- Se revierte el efecto del gasto original y se aplica el nuevo. El saldo de la tarjeta se recorta en cero **una sola vez, al final** (si ya pagaste parte de la tarjeta, editar una compra no sube el saldo).
+- En un gasto compartido, lo que cada persona **ya pagó** (pago completo o abonos) se descuenta al recrear las deudas: solo se cobra lo que falta.
+
+## Cupo de la tarjeta y compras a cuotas (v118)
+- **Usado = saldo de la tarjeta.** Se descompone en *capital bloqueado por cuotas futuras* + *optimizable* (lo que sí puedes pagar para bajar la utilización). **Libre = cupo − saldo.**
+- El capital bloqueado **nunca se muestra mayor que el saldo**: la barra siempre suma como máximo el 100 % del cupo.
+- Si el capital que falta de tus compras a cuotas es **mayor que el saldo registrado**, la app lo limita y avisa (en la tarjeta y en el Resumen). Significa que el saldo no incluye todo el capital de esas compras: compáralo con tu banco y corrígelo con "Editar".
+- "Por pagar" de cada compra = suma de sus cuotas pendientes (**incluye intereses**); "capital" = lo que falta de principal. Pueden diferir, y el "por pagar" puede ser mayor que el saldo sin que haya error.
+- Una compra cuyas cuotas ya pasaron todas está **terminada**: sale de la lista de activas ("Ya terminaste de pagar: …"), no bloquea cupo y su contador nunca pasa del total (antes "Cuota 5/4").
