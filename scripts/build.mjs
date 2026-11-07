@@ -48,24 +48,35 @@ for (const d of ['standard_fonts', 'wasm']) {
 }
 
 // 2) Código propio de la app
-const min = async (file, loader) => (await transform(read(path.join(ROOT, file)).toString('utf8'), {
+// Escala tipográfica: el 52 % del texto original era < 12,5 px (ilegible en paneles OLED y en modo claro).
+// Se aplica SOLO al código original (styles.css, app.js, app/index.html); theme.css ya usa la escala nueva.
+// 9–10 px → 12 · 11 → 12,5 · desde 12 px: +8 % redondeado a 0,5. No toca los tamaños numéricos de Chart.js.
+const scaleFonts = (text) => text.replace(/(font-size:\s*)(\d+(?:\.\d+)?)px/gi, (m, pre, n) => {
+  const s = parseFloat(n);
+  if (s >= 36) return m;
+  const out = s < 11 ? 12 : s < 12 ? 12.5 : Math.round(s * 1.08 * 2) / 2;
+  return `${pre}${out}px`;
+});
+const min = async (file, loader, pre = (x) => x) => (await transform(pre(read(path.join(ROOT, file)).toString('utf8')), {
   loader, minify: true, target: 'es2020', legalComments: 'none',
   // Sin format/bundle: esbuild conserva los nombres globales (los onclick="..." dependen de ellos)
 })).code;
 
 const rewrite = (text) => Object.entries(logical).reduce((t, [k, v]) => t.split(k).join(v), text);
 
-emit(await min('app/styles.css', 'css'), 'styles.css', 'styles', 'css');
+emit(await min('app/styles.css', 'css', scaleFonts), 'styles.css', 'styles', 'css');
 emit(await min('app/theme.css', 'css'), 'theme.css', 'theme', 'css');
 // lazy-libs.js contiene rutas /vendor/... que hay que reescribir ANTES de calcular su hash
 emit(rewrite(await min('app/lazy-libs.js', 'js')), 'lazy-libs.js', 'lazy-libs', 'js');
-emit(await min('app/app.js', 'js'), 'app.js', 'app', 'js');
+emit(await min('app/ui-polish.js', 'js'), 'ui-polish.js', 'ui-polish', 'js');
+emit(await min('app/app.js', 'js', scaleFonts), 'app.js', 'app', 'js');
 
 // 3) HTML: reescribe referencias a archivos con hash
 for (const f of ['index.html', 'contacto.html', 'privacidad.html', 'terminos.html', 'app/index.html']) {
   let html = read(path.join(ROOT, f)).toString('utf8');
+  if (f === 'app/index.html') html = scaleFonts(html);
   html = rewrite(html)
-    .replace(/(href|src)="(styles\.css|theme\.css|app\.js|lazy-libs\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
+    .replace(/(href|src)="(styles\.css|theme\.css|app\.js|lazy-libs\.js|ui-polish\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
   mkdir(path.dirname(path.join(DIST, f)));
   fs.writeFileSync(path.join(DIST, f), html);
 }
