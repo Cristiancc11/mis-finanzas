@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "preview": "node scripts/preview.mjs",
-    "check": "node --check app/app.js"
+    "check": "node --check app/app.js && node --check app/ui-polish.js && tsc --noEmit -p ."
   },
   "engines": {
     "node": ">=20"
@@ -18,10 +18,15 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "pdfjs-dist": "^6.5.438",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "xlsx": "0.18.5"
   },
   "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "esbuild": "^0.28.2",
-    "jsdom": "^31.0.0"
+    "jsdom": "^31.0.0",
+    "typescript": "^7.0.2"
   }
 }
