@@ -9003,6 +9003,14 @@ async function buildAnnualPDF(state, year) {
     }
   };
   
+  // v119: ¿el banco deja adelantar el capital de las cuotas? Si sí, ese capital no se trata como "bloqueado" al recomendar pagos.
+  window.setCanPrepayInstallments = function(cardId, value) {
+    const card = (state.debts || []).find(x => x.id === cardId);
+    if (!card) return;
+    card.canPrepayInstallments = !!value;
+    saveState(); renderDebts(); renderResumen();
+  };
+
   window.updateDebt = function(id, field, val) {
     const d = state.debts.find(x => x.id === id);
     if (d) {
@@ -10890,7 +10898,7 @@ async function buildAnnualPDF(state, year) {
           const hasFinished = !!(instInfo && instInfo.finished && instInfo.finished.length);
           if (instInfo && (instInfo.hasInstallments || hasFinished)) {
             const limit = d.payment || 1;
-            const cupo = window.FPCore ? window.FPCore.cupoBreakdown(limit, d.balance, cutoffInfo.futureInstallmentsRaw) : null;
+            const cupo = window.FPCore ? window.FPCore.cupoBreakdown(limit, d.balance, cutoffInfo.futureInstallmentsRaw, !!d.canPrepayInstallments) : null;
             const lockedShown = cupo ? cupo.locked : cutoffInfo.futureInstallments;
             const optimShown = cupo ? cupo.optimizable : cutoffInfo.optimizableBalance;
             const freeShown = cupo ? cupo.free : Math.max(0, limit - d.balance);
@@ -10904,9 +10912,12 @@ async function buildAnnualPDF(state, year) {
             const finishedRow = hasFinished
               ? `<div style="padding: 6px 0 2px; font-size: 11px; color: var(--text-tertiary);">✓ Ya terminaste de pagar: ${instInfo.finished.map(g => esc(g.desc)).join(', ')}</div>`
               : '';
-            const exceedsWarn = cutoffInfo.installmentsExceedBalance
-              ? `<div style="margin-top: 10px; padding: 8px 10px; background: var(--warning-bg); color: var(--warning-text); border-radius: 8px; font-size: 11px; line-height: 1.5;">⚠️ El capital que aún falta de tus compras a cuotas (<strong>${fmt(instInfo.outstandingNowTotal)}</strong>) es mayor que el saldo registrado de esta tarjeta (<strong>${fmt(d.balance)}</strong>). Revisa el saldo en tu banco y, si es distinto, corrígelo con el botón "Editar". Mientras tanto, lo bloqueado se muestra limitado al saldo.</div>`
+            const prepaid = window.FPCore ? window.FPCore.prepaidCapital(instInfo.outstandingNowTotal, d.balance) : 0;
+            const prepaidNote = (prepaid > 1000 && !d.canPrepayInstallments)
+              ? `<div style="margin-top: 10px; padding: 8px 10px; background: var(--info-bg); color: var(--info-text); border-radius: 8px; font-size: 11px; line-height: 1.55;">💡 Tu saldo (<strong>${fmt(d.balance)}</strong>) es menor que el capital que faltaba según el calendario de tus cuotas (<strong>${fmt(instInfo.outstandingNowTotal)}</strong>). Es lo normal si adelantaste pagos a capital en tu banco: unos <strong>${fmt(prepaid)}</strong> ya los pagaste. La app usa como verdad el saldo de tu banco; el calendario es solo una referencia.</div>`
               : '';
+            const prepayToggle = `<label style="display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); cursor: pointer;"><input type="checkbox" ${d.canPrepayInstallments ? 'checked' : ''} onchange="setCanPrepayInstallments(${d.id}, this.checked)" style="width: 16px; height: 16px; min-height: 0; padding: 0; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--brand);"><span style="min-width: 0;"><strong style="color: var(--text-primary);">Mi banco me deja adelantar el pago de mis cuotas.</strong> Actívalo y el pago recomendado antes del corte tendrá en cuenta todo tu saldo; si no, se asume que las cuotas futuras no se pueden pagar antes.</span></label>`;
+            const exceedsWarn = prepaidNote + prepayToggle;
             const barBlock = instInfo.hasInstallments ? `
               <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);">
                 <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">📊 Desglose del cupo (${fmt(limit)})</div>
@@ -11312,7 +11323,11 @@ async function buildAnnualPDF(state, year) {
       : Math.max(0, blockedByInstallments - currentMonthInstallmentSum);
     // v118: lo bloqueado por cuotas no puede ser mayor que lo que de verdad se usa del cupo (el saldo). Si lo es, el saldo
     // registrado no incluye todo el capital de las compras a cuotas: se limita y se avisa (installmentsExceedBalance).
-    const futureInstallments = Math.min(futureInstallmentsRaw, Math.max(0, cardBalance));
+    // v119: si el banco deja adelantar el pago del capital de las cuotas (el usuario lo declara en la tarjeta), ese capital NO está
+    // bloqueado: todo el saldo es optimizable. Es el caso de quien paga la tarjeta completa antes del corte.
+    const cardObj = (state.debts || []).find(x => x.id === cardId);
+    const canPrepay = !!(cardObj && cardObj.canPrepayInstallments);
+    const futureInstallments = canPrepay ? 0 : Math.min(futureInstallmentsRaw, Math.max(0, cardBalance));
     const optimizableBalance = Math.max(0, cardBalance - futureInstallments);
     
     const needsPayment = optimizableBalance > targetMaxBalance;
@@ -11369,7 +11384,8 @@ async function buildAnnualPDF(state, year) {
       currentMonthInstallmentSum,
       futureInstallments,
       futureInstallmentsRaw,
-      installmentsExceedBalance: futureInstallmentsRaw > cardBalance + 1,
+      installmentsExceedBalance: !canPrepay && futureInstallmentsRaw > cardBalance + 1,
+      canPrepayInstallments: canPrepay,
       optimizableBalance,
       minPossibleBalance,
       minPossibleUtilization,

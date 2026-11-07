@@ -318,15 +318,31 @@ test('cupoBreakdown: lo bloqueado nunca pasa de lo usado (caso real: 4,09 M bloq
   assert.deepEqual(f.cupoBreakdown(0, 0, 0).inconsistent, false);
 });
 
-test('auditState: avisa si el capital de las cuotas supera el saldo registrado de la tarjeta', () => {
+test('auditState: si el saldo es menor que el capital del calendario de cuotas, informa de adelantos a capital (no acusa error)', () => {
   const state: f.CoreState = {
     debts: [{ id: 7, name: 'Lulo', balance: 500000, payment: 5000000 }],
     transactions: { '2026-11': [mkTx(1, '2026-11-10', 7, 300, 1, 12, 100000)] },   // capital pendiente 1,2 M > saldo 500.000
     budgets: { '2026-11': { a: 1 } },
   };
-  const issues = f.auditState(state, '2026-11', NOW).filter((i) => i.code.startsWith('installments-exceed'));
+  const issues = f.auditState(state, '2026-11', NOW).filter((i) => i.code.startsWith('installments-prepaid'));
   assert.equal(issues.length, 1);
-  assert.match(issues[0].message, /capital pendiente/);
-  state.debts![0].balance = 1500000;                                              // saldo coherente → sin aviso
-  assert.equal(f.auditState(state, '2026-11', NOW).filter((i) => i.code.startsWith('installments-exceed')).length, 0);
+  assert.equal(issues[0].level, 'info');                                            // informativo: NO es un error del saldo
+  assert.match(issues[0].message, /adelantaste pagos a capital/);
+  state.debts![0].canPrepayInstallments = true;                                     // ya lo declaró: no se repite el aviso
+  assert.equal(f.auditState(state, '2026-11', NOW).filter((i) => i.code.startsWith('installments-prepaid')).length, 0);
+  state.debts![0].canPrepayInstallments = false; state.debts![0].balance = 1500000; // saldo coherente → sin aviso
+  assert.equal(f.auditState(state, '2026-11', NOW).filter((i) => i.code.startsWith('installments-prepaid')).length, 0);
+});
+
+test('cupoBreakdown: si el banco deja adelantar las cuotas, TODO el saldo es optimizable', () => {
+  const b = f.cupoBreakdown(12200000, 2206335, 4094625, true);
+  assert.equal(b.locked, 0);
+  assert.equal(b.optimizable, 2206335);
+  assert.equal(b.inconsistent, false);
+  near(b.lockedPct + b.optimizablePct + b.freePct, 100, 1e-9);
+});
+
+test('prepaidCapital: capital que ya se adelantó', () => {
+  assert.equal(f.prepaidCapital(4897352, 2206335), 2691017);
+  assert.equal(f.prepaidCapital(1000000, 2206335), 0);
 });
