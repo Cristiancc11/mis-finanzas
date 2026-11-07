@@ -4,7 +4,8 @@
 
 type Rec = Record<string, unknown>;
 export interface AmountItem { amount?: number | string; frequency?: string; [k: string]: unknown }
-export interface TxLike { amount?: number | string | null; cashback?: number | string | null; category?: string; payCardId?: unknown; date?: string; desc?: string; [k: string]: unknown }
+export interface InstallmentInfo { groupId?: unknown; total?: number; originalTotal?: number; cuotaAmount?: number; interestRate?: number; hasInterest?: boolean }
+export interface TxLike { cardId?: unknown; installment?: InstallmentInfo; amount?: number | string | null; cashback?: number | string | null; category?: string; payCardId?: unknown; date?: string; desc?: string; [k: string]: unknown }
 export interface CoreState {
   incomes?: AmountItem[];
   monthlyIncomes?: Record<string, AmountItem[]>;
@@ -154,6 +155,128 @@ export function splitEqual(total: number, n: number): number[] {
   return Array.from({ length: n }, (_, i) => base + (i < rem ? 1 : 0));
 }
 
+// ---------------------------------------------------------------- compras a cuotas
+/** Cuota mensual (sistema francés). Con tasa 0 es total ÷ n. `ratePct` es la tasa MENSUAL en %. */
+export function installmentPayment(total: number, n: number, ratePct: number): number {
+  const r = num(ratePct) / 100;
+  if (n <= 0) return 0;
+  if (r === 0) return total / n;
+  const pow = Math.pow(1 + r, n);
+  return (total * r * pow) / (pow - 1);
+}
+/** Montos de cada cuota (enteros). Antes cada cuota se redondeaba por separado y la suma podía no coincidir con lo
+ *  comprado (100.000 en 3 cuotas sumaban 99.999). Ahora la ÚLTIMA absorbe el redondeo: sin interés la suma es EXACTAMENTE
+ *  el total; con interés es la cuota exacta × n redondeada. */
+export function installmentAmounts(total: number, n: number, ratePct: number): number[] {
+  if (n <= 0) return [];
+  const exact = installmentPayment(total, n, ratePct);
+  const payable = num(ratePct) === 0 ? Math.round(total) : Math.round(exact * n);
+  const each = Math.round(exact);
+  return Array.from({ length: n }, (_, i) => (i < n - 1 ? each : payable - each * (n - 1)));
+}
+/** Capital que todavía se debe después de pagar `paid` cuotas (valor presente de las cuotas restantes). Es la parte del
+ *  saldo de la tarjeta que sigue "bloqueada" por la compra a cuotas; con interés es MENOR que la suma de las cuotas
+ *  pendientes (esa suma incluye intereses que nunca estuvieron en el saldo). */
+export function installmentOutstandingPrincipal(total: number, n: number, ratePct: number, paid: number): number {
+  if (n <= 0) return 0;
+  const k = Math.min(Math.max(0, Math.floor(paid)), n);
+  const r = num(ratePct) / 100;
+  if (r === 0) return (total * (n - k)) / n;
+  const a = Math.pow(1 + r, n);
+  return (total * (a - Math.pow(1 + r, k))) / (a - 1);
+}
+
+// ---------------------------------------------------------------- cuotas por tarjeta
+export interface InstallmentGroup {
+  groupId: unknown; desc: string; originalTotal: number; totalCuotas: number; cuotaAmount: number; interestRate: number; hasInterest: boolean;
+  cuotasPaid: number; cuotasPending: number; currentIndex: number; currentMonthCuota: number; pendingAmount: number;
+  outstandingNow: number; lockedAfterThisMonth: number; finished: boolean;
+}
+export interface CardInstallments {
+  groups: InstallmentGroup[];       // solo las ACTIVAS (con cuotas por pagar)
+  finished: InstallmentGroup[];     // compras a cuotas ya cumplidas
+  blockedByInstallments: number;    // suma nominal de cuotas pendientes (incluye intereses)
+  currentMonthInstallmentSum: number;
+  futureLockedPrincipal: number;    // capital que sigue bloqueado DESPUÉS de la cuota de este mes
+  outstandingNowTotal: number;      // capital que aún falta, incluida la cuota de este mes
+  hasInstallments: boolean;         // hay al menos una compra a cuotas ACTIVA
+}
+/** Compras a cuotas de una tarjeta. Una cuota cuenta como pagada si su mes ya pasó. Una compra cuyas cuotas ya pasaron todas
+ *  está TERMINADA: no se muestra como activa, no bloquea cupo y su contador se limita al total (antes salía "Cuota 5/4"). */
+export function cardInstallments(state: CoreState, cardId: unknown, now: Date = new Date()): CardInstallments {
+  const cur = monthKey(now);
+  const map = new Map<unknown, InstallmentGroup>();
+  for (const m of Object.keys(state.transactions || {}).sort()) {
+    for (const t of (state.transactions![m] || [])) {
+      const ins = t.installment;
+      if (t.cardId !== cardId || !ins || !ins.groupId) continue;
+      let g = map.get(ins.groupId);
+      if (!g) {
+        g = { groupId: ins.groupId, desc: String(t.desc || '').replace(/ \(cuota \d+\/\d+\)$/, ''), originalTotal: num(ins.originalTotal), totalCuotas: num(ins.total),
+          cuotaAmount: num(ins.cuotaAmount), interestRate: num(ins.interestRate), hasInterest: !!ins.hasInterest, cuotasPaid: 0, cuotasPending: 0,
+          currentIndex: 1, currentMonthCuota: 0, pendingAmount: 0, outstandingNow: 0, lockedAfterThisMonth: 0, finished: false };
+        map.set(ins.groupId, g);
+      }
+      const txMonth = String(t.date || '').substring(0, 7);
+      if (txMonth < cur) g.cuotasPaid++;
+      else {
+        g.cuotasPending++;
+        const real = num(t.amount) || num(ins.cuotaAmount);   // monto real de ESA cuota (la última puede diferir por redondeo)
+        g.pendingAmount += real;
+        if (txMonth === cur) g.currentMonthCuota += real;
+      }
+    }
+  }
+  const all = [...map.values()];
+  for (const g of all) {
+    g.finished = g.cuotasPending === 0;
+    g.currentIndex = g.totalCuotas > 0 ? Math.min(g.cuotasPaid + 1, g.totalCuotas) : g.cuotasPaid + 1;
+    g.outstandingNow = g.finished ? 0 : installmentOutstandingPrincipal(g.originalTotal, g.totalCuotas, g.interestRate, g.cuotasPaid);
+    g.lockedAfterThisMonth = g.finished ? 0 : installmentOutstandingPrincipal(g.originalTotal, g.totalCuotas, g.interestRate, g.cuotasPaid + (g.currentMonthCuota > 0 ? 1 : 0));
+  }
+  const groups = all.filter((g) => !g.finished);
+  return {
+    groups, finished: all.filter((g) => g.finished),
+    blockedByInstallments: groups.reduce((a, g) => a + g.pendingAmount, 0),
+    currentMonthInstallmentSum: groups.reduce((a, g) => a + g.currentMonthCuota, 0),
+    futureLockedPrincipal: groups.reduce((a, g) => a + g.lockedAfterThisMonth, 0),
+    outstandingNowTotal: groups.reduce((a, g) => a + g.outstandingNow, 0),
+    hasInstallments: groups.length > 0,
+  };
+}
+
+export interface CupoBreakdown { used: number; locked: number; optimizable: number; free: number; lockedPct: number; optimizablePct: number; freePct: number; inconsistent: boolean }
+/** Desglose del cupo: usado = saldo; el capital bloqueado por cuotas NUNCA puede pasar de lo usado (antes la barra mostraba
+ *  4,09 M "bloqueados" con solo 2,2 M usados). Si el capital pendiente de las cuotas supera el saldo, `inconsistent` avisa:
+ *  el saldo registrado no incluye todo el capital de las compras a cuotas. */
+export function cupoBreakdown(limit: number, balance: number, lockedRaw: number): CupoBreakdown {
+  const L = Math.max(0, num(limit));
+  const used = Math.max(0, num(balance));
+  const locked = Math.min(Math.max(0, num(lockedRaw)), used);
+  const optimizable = used - locked;
+  const lockedPct = L > 0 ? Math.min(100, (locked / L) * 100) : 0;
+  const optimizablePct = L > 0 ? Math.min(100 - lockedPct, (optimizable / L) * 100) : 0;
+  return { used, locked, optimizable, free: Math.max(0, L - used), lockedPct, optimizablePct, freePct: Math.max(0, 100 - lockedPct - optimizablePct), inconsistent: num(lockedRaw) > used + 1 };
+}
+
+// ---------------------------------------------------------------- saldos al editar un movimiento
+/** Saldo de tarjeta después de revertir un cargo viejo y aplicar uno nuevo. El recorte en cero se hace UNA sola vez, al final:
+ *  antes se recortaba al revertir y, si ya habías pagado parte de la tarjeta, editar cualquier compra subía el saldo de más. */
+export function cardBalanceAfterEdit(balance: number, oldCharge: number, newCharge: number): number {
+  return Math.max(0, num(balance) - num(oldCharge) + num(newCharge));
+}
+
+/** Lo que cada persona YA pagó de un gasto compartido: deudas pagadas completas + abonos parciales de las no pagadas. */
+export function paidByPerson(debts: { txId?: unknown; name?: string; amount?: number | string; paid?: boolean; payments?: { amount?: number | string }[] }[], txId: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const d of debts || []) {
+    if (d.txId !== txId || !d.name) continue;
+    const got = d.paid ? num(d.amount) : (d.payments || []).reduce((s, p) => s + num(p.amount), 0);
+    if (got > 0) out[d.name] = (out[d.name] || 0) + got;
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- rendimientos
 export const UVT_2026 = 52374;
 export interface Returns {
@@ -228,6 +351,13 @@ export function auditState(state: CoreState, month: string, now: Date = new Date
   if (neg.length) issues.push({ code: 'pocket-negative', level: 'warn', message: `El bolsillo "${neg[0].name}"${neg.length > 1 ? ` y ${neg.length - 1} más están` : ' está'} en negativo. Revisa si falta registrar un ingreso o un traslado.` });
   const over = (state.debts || []).filter((d) => num(d.payment) > 0 && num(d.balance) > num(d.payment));
   if (over.length) issues.push({ code: 'card-over-limit', level: 'warn', message: `La tarjeta "${over[0].name}" muestra un saldo mayor a su cupo. Revisa el saldo o el cupo configurado.` });
+  for (const d of state.debts || []) {
+    const ci = cardInstallments(state, d.id, now);
+    if (ci.hasInstallments && ci.outstandingNowTotal > num(d.balance) + 1000) {
+      const money = (n: number) => '$ ' + Math.round(n).toLocaleString('es-CO');
+      issues.push({ code: `installments-exceed-${d.id}`, level: 'warn', message: `La tarjeta "${d.name}" tiene ${money(ci.outstandingNowTotal)} de capital pendiente en compras a cuotas, pero su saldo registrado es ${money(num(d.balance))}. Revisa el saldo en tu banco y, si es distinto, edítalo en Tarjetas.` });
+    }
+  }
   if (month >= monthKey(now) && budgetTotal(state, month) === 0 && monthExpense(state, month) > 0) {
     issues.push({ code: 'no-budget', level: 'info', message: 'Ya registras gastos este mes pero no definiste presupuesto. Ve a Presupuesto → Configurar para ver tu avance por categoría.' });
   }
