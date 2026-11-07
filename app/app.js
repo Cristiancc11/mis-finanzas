@@ -31,89 +31,87 @@ let saveTimeout = null;
 let isLoadingFromCloud = false;
 
 // ============================================================
-// v53: FRESH RELOAD AL VOLVER A LA APP
-// Si la pestaña fue cerrada/oculta por un rato, al volver se hace
-// un reload limpio para garantizar la última versión sin pedir login.
-// Umbral: 2 minutos. Cambios rápidos de pestaña NO disparan reload.
+// REFRESCO SUAVE AL VOLVER A LA APP (reemplaza al "fresh reload" de la v53)
+// Antes: si la pestaña estaba oculta más de 2 min, al volver se recargaba TODA la página
+// (se perdía la pestaña activa, el scroll y lo que se estaba escribiendo) y, además, al abrir
+// la app se recargaba una segunda vez. Ya no hace falta: los archivos llevan hash en el nombre.
+// Ahora, al volver tras un rato:
+//   1) se avisa si hay una versión nueva de la app (botón "Actualizar", sin forzar nada);
+//   2) se refrescan los datos en silencio, solo si es seguro (sin guardados pendientes,
+//      sin modales abiertos y sin que el usuario esté escribiendo).
 // ============================================================
-const FRESH_RELOAD_KEY = 'finanzaspro_last_hidden_at';
-const FRESH_RELOAD_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutos
+const FRESH_RELOAD_KEY = 'finanzaspro_last_hidden_at';   // se conserva el nombre para limpiar marcas viejas
+const SOFT_REFRESH_THRESHOLD_MS = 2 * 60 * 1000;         // 2 minutos
 
-(function setupFreshReload() {
-  // 1. Al cargar: si hay timestamp de "fui ocultada" y pasó suficiente tiempo,
-  //    limpiar caches y recargar
+function showUpdateBanner() {
+  if (document.getElementById('update-banner')) return;
+  const el = document.createElement('div');
+  el.id = 'update-banner';
+  el.className = 'update-banner';
+  el.setAttribute('role', 'status');
+  el.innerHTML = '<span>Hay una versión nueva de FinanzasPro.</span>' +
+    '<button type="button" class="update-banner-btn">Actualizar</button>' +
+    '<button type="button" class="update-banner-close" aria-label="Cerrar aviso">×</button>';
+  el.querySelector('.update-banner-btn').addEventListener('click', () => window.location.reload());
+  el.querySelector('.update-banner-close').addEventListener('click', () => el.remove());
+  document.body.appendChild(el);
+}
+
+// Compara el app.<hash>.js cargado con el que publica el servidor ahora mismo
+async function checkForNewVersion() {
   try {
-    const lastHidden = parseInt(localStorage.getItem(FRESH_RELOAD_KEY), 10);
-    if (lastHidden && !isNaN(lastHidden)) {
-      const elapsed = Date.now() - lastHidden;
-      if (elapsed >= FRESH_RELOAD_THRESHOLD_MS) {
-        // Limpiar la marca ANTES de recargar para no caer en loop infinito
-        localStorage.removeItem(FRESH_RELOAD_KEY);
-        console.log(`🔄 App estuvo oculta ${Math.round(elapsed/1000)}s — recargando para asegurar última versión...`);
-        
-        // Bloquear el resto del script mientras se prepara el reload
-        window._isFreshReloading = true;
-        
-        // Limpiar Cache API si existe, luego recargar
-        const reloadNow = () => window.location.reload();
-        if ('caches' in window) {
-          caches.keys()
-            .then(names => Promise.all(names.map(n => caches.delete(n))))
-            .finally(reloadNow);
-        } else {
-          reloadNow();
-        }
-        return;
-      } else {
-        // Tiempo muy corto: limpiar la marca y seguir normal
-        localStorage.removeItem(FRESH_RELOAD_KEY);
-      }
-    }
-  } catch(e) {
-    console.warn('Error al chequear fresh reload:', e);
-  }
-  
-  // 2. Registrar listeners para marcar cuando el usuario oculte/cierre la pestaña
-  function markHidden() {
+    const cur = Array.from(document.scripts).map(sc => sc.getAttribute('src') || '')
+      .find(src => /\/_assets\/app\.[0-9a-f]+\.js/.test(src));
+    if (!cur) return false;                                   // desarrollo local sin hash: nada que comparar
+    const res = await fetch(window.location.pathname, { cache: 'no-store' });
+    if (!res.ok) return false;
+    const m = (await res.text()).match(/\/_assets\/app\.[0-9a-f]+\.js/);
+    if (m && !cur.includes(m[0])) { showUpdateBanner(); return true; }
+  } catch (e) { /* sin conexión: ignorar */ }
+  return false;
+}
+
+function canRefreshSilently() {
+  if (!currentUser || !supabaseClient || isLoadingFromCloud || saveTimeout || window._lastSaveFailed) return false;
+  if (document.body.classList.contains('modal-open') || document.body.classList.contains('drawer-open')) return false;
+  const ae = document.activeElement;
+  if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.type !== 'button' && ae.type !== 'checkbox') return false;
+  return true;
+}
+
+// Trae los datos de la nube SIN el camino de "usuario nuevo" de loadFromCloud: si la nube no responde
+// o no devuelve datos (sesión vencida, red caída), no se toca nada de lo que hay en pantalla.
+async function refreshFromCloudSafe() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session || !session.user || session.user.id !== currentUser.id) return;
+  const { data, error } = await supabaseClient.from('dashboard_data').select('data').eq('user_id', currentUser.id).maybeSingle();
+  if (error || !data || !data.data || typeof data.data !== 'object' || Object.keys(data.data).length === 0) return;
+  localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(data.data));
+  if (typeof window.loadState === 'function') window.loadState();
+  updateSyncIndicator('Sincronizado ☁️ ' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }));
+}
+
+async function softRefresh() {
+  await checkForNewVersion();
+  if (!canRefreshSilently()) return;
+  try { await refreshFromCloudSafe(); } catch (e) { console.warn('Refresco silencioso omitido:', e); }
+}
+
+(function setupSoftRefresh() {
+  // Página recién abierta: ya es la versión más reciente. Solo se limpia la marca vieja (sin recargar).
+  try { localStorage.removeItem(FRESH_RELOAD_KEY); } catch (e) {}
+
+  function markHidden() { try { localStorage.setItem(FRESH_RELOAD_KEY, String(Date.now())); } catch (e) {} }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') { markHidden(); return; }
     try {
-      localStorage.setItem(FRESH_RELOAD_KEY, String(Date.now()));
-    } catch(e) {
-      // Ignorar errores de localStorage (modo privado, etc.)
-    }
-  }
-  
-  // visibilitychange: dispara cuando minimizan, cambian de pestaña, cierran navegador,
-  // o cuando vuelven a la app. Marcamos solo cuando queda OCULTA.
-  document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'hidden') {
-      markHidden();
-    } else if (document.visibilityState === 'visible') {
-      // Al volver visible: chequear si pasó suficiente tiempo para recargar
-      try {
-        const lastHidden = parseInt(localStorage.getItem(FRESH_RELOAD_KEY), 10);
-        if (lastHidden && !isNaN(lastHidden)) {
-          const elapsed = Date.now() - lastHidden;
-          if (elapsed >= FRESH_RELOAD_THRESHOLD_MS) {
-            console.log(`🔄 Volviste después de ${Math.round(elapsed/60000)} min — recargando para última versión...`);
-            localStorage.removeItem(FRESH_RELOAD_KEY);
-            const reloadNow = () => window.location.reload();
-            if ('caches' in window) {
-              caches.keys()
-                .then(names => Promise.all(names.map(n => caches.delete(n))))
-                .finally(reloadNow);
-            } else {
-              reloadNow();
-            }
-          }
-        }
-      } catch(e) { console.warn(e); }
-    }
+      const lastHidden = parseInt(localStorage.getItem(FRESH_RELOAD_KEY), 10);
+      localStorage.removeItem(FRESH_RELOAD_KEY);
+      if (lastHidden && Date.now() - lastHidden >= SOFT_REFRESH_THRESHOLD_MS) softRefresh();
+    } catch (e) { console.warn(e); }
   });
-  
-  // pagehide: dispara al cerrar pestaña/navegador. Marca la hora.
   window.addEventListener('pagehide', markHidden);
-  
-  console.log('✓ Fresh reload listeners registrados (umbral: ' + (FRESH_RELOAD_THRESHOLD_MS/60000) + ' min)');
 })();
 
 // Inicializar Supabase
@@ -191,6 +189,17 @@ function hideLoadingScreen() {
     console.warn('No se pudo remover loading screen del DOM:', e);
   }
   console.log('🎯 Loading screen oculto');
+
+  // Volver a la pestaña donde estaba el usuario (antes siempre arrancaba en Resumen)
+  if (!window._tabRestored) {
+    window._tabRestored = true;
+    try {
+      const last = localStorage.getItem('finanzaspro_last_tab');
+      if (last && last !== 'resumen' && document.querySelector(`.fin-tab[data-tab="${last}"]`) && typeof window.navigateTab === 'function') {
+        setTimeout(() => window.navigateTab(last), 60);
+      }
+    } catch (e) {}
+  }
 }
 
 function switchAuthTab(mode) {
@@ -396,6 +405,7 @@ async function loadFromCloud() {
     if (data && data.data && typeof data.data === 'object' && Object.keys(data.data).length > 0) {
       // Hay datos en la nube → cargarlos
       localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(data.data));
+      window._cloudHadData = true;
       console.log('✅ Datos cargados desde la nube. Bolsillos:', (data.data.pockets || []).length, 'Tarjetas:', (data.data.debts || []).length);
       updateSyncIndicator('Sincronizado ☁️');
     } else {
@@ -503,10 +513,14 @@ async function saveToCloud(data) {
         }, { onConflict: 'user_id' });
 
       if (error) throw error;
+      window._lastSaveFailed = false;
       updateSyncIndicator('Sincronizado ☁️ ' + new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}));
     } catch (e) {
       console.error('Error saving to cloud:', e);
+      window._lastSaveFailed = true;   // mientras no se pueda guardar, no se pisan los datos locales con los de la nube
       updateSyncIndicator('Error al guardar ⚠️');
+    } finally {
+      saveTimeout = null;
     }
   }, 1500);
 }
@@ -517,6 +531,9 @@ function updateSyncIndicator(text) {
 }
 
 function checkLocalData() {
+  // Si la nube ya tenía los datos del usuario, no hay nada que migrar: el botón "Subir local" solo estorba
+  // (y subir datos locales viejos encima de los de la nube podría pisarlos).
+  if (window._cloudHadData === true) return;
   // Si hay datos locales y se acaba de crear cuenta nueva, mostrar botón migrar
   const local = localStorage.getItem(STORAGE_KEY_GLOBAL);
   const migrateBtn = document.getElementById('migrate-btn');
@@ -6605,6 +6622,15 @@ async function buildAnnualPDF(state, year) {
   // Exponer al scope global para que loadFromCloud pueda llamarla
   window.loadState = loadState;
 
+  // ---- Puente de SOLO LECTURA hacia las islas React (carpeta src/react) ----
+  // React lee de aquí y se vuelve a dibujar cuando se dispara el evento "fp:change" (fin de renderResumen).
+  window.FP = window.FP || {};
+  window.FP.getState = () => state;
+  window.FP.getMonth = () => currentMonth;
+  window.FP.getCategories = () => CATEGORIES.map(c => ({ id: c.id, label: c.label, icon: c.icon }));
+  window.FP.isCardPayment = (t) => isCardPayment(t);
+  window.FP.fmt = (n) => fmt(n);
+
   function saveState() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
   }
@@ -7221,6 +7247,7 @@ async function buildAnnualPDF(state, year) {
       document.querySelectorAll('.fin-section').forEach(s => s.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('section-' + btn.dataset.tab).classList.add('active');
+      try { localStorage.setItem('finanzaspro_last_tab', btn.dataset.tab); } catch (e) {}
       if (btn.dataset.tab === 'resumen') setTimeout(renderCharts, 50);
       if (btn.dataset.tab === 'presupuesto') { renderBudget(); renderTransactions(); }
     });
@@ -13027,6 +13054,9 @@ async function buildAnnualPDF(state, year) {
     renderCashbackStrategy();
     renderCreditScore();
     renderDebtsToMe();  // NUEVO: Cuentas por cobrar de gastos compartidos
+
+    // Avisar a las islas React que los datos cambiaron
+    window.dispatchEvent(new CustomEvent('fp:change'));
   }
   
   // ============================================================

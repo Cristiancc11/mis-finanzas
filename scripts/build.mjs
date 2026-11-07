@@ -1,6 +1,6 @@
 // Build de FinanzasPro: minifica, versiona con hash, autohospeda librerías y deja todo en dist/.
 // Uso: npm run build
-import { transform } from 'esbuild';
+import { transform, build as esbuild } from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -69,6 +69,13 @@ emit(await min('app/theme.css', 'css'), 'theme.css', 'theme', 'css');
 // lazy-libs.js contiene rutas /vendor/... que hay que reescribir ANTES de calcular su hash
 emit(rewrite(await min('app/lazy-libs.js', 'js')), 'lazy-libs.js', 'lazy-libs', 'js');
 emit(await min('app/ui-polish.js', 'js'), 'ui-polish.js', 'ui-polish', 'js');
+// Islas React (TypeScript): React + componentes en un solo archivo minificado, con hash
+const islands = await esbuild({
+  entryPoints: [path.join(ROOT, 'src/react/main.tsx')], bundle: true, write: false, minify: true,
+  format: 'iife', target: 'es2020', jsx: 'automatic', legalComments: 'none', logLevel: 'warning',
+  define: { 'process.env.NODE_ENV': '"production"' },
+});
+emit(islands.outputFiles[0].text, 'islands.js', 'islands', 'js');
 emit(await min('app/app.js', 'js', scaleFonts), 'app.js', 'app', 'js');
 
 // 3) HTML: reescribe referencias a archivos con hash
@@ -76,7 +83,7 @@ for (const f of ['index.html', 'contacto.html', 'privacidad.html', 'terminos.htm
   let html = read(path.join(ROOT, f)).toString('utf8');
   if (f === 'app/index.html') html = scaleFonts(html);
   html = rewrite(html)
-    .replace(/(href|src)="(styles\.css|theme\.css|app\.js|lazy-libs\.js|ui-polish\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
+    .replace(/(href|src)="(styles\.css|theme\.css|app\.js|lazy-libs\.js|ui-polish\.js|islands\.js)"/g, (m, attr, name) => `${attr}="${logical[name]}"`);
   mkdir(path.dirname(path.join(DIST, f)));
   fs.writeFileSync(path.join(DIST, f), html);
 }

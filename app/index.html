@@ -1025,10 +1025,8 @@
     </div>
 
     <div class="section-group-title">📈 Análisis visual</div>
-    <div class="fin-grid-2">
-      <div class="raised-card"><p class="card-title">📊 Distribución de ahorros</p><div class="chart-container"><canvas id="chart-pockets"></canvas></div></div>
-      <div class="raised-card"><p class="card-title">📉 Flujo mensual</p><div class="chart-container"><canvas id="chart-comparison"></canvas></div></div>
-    </div>
+    <!-- Gráficas del Resumen: las dibuja React (src/react) -->
+    <div id="react-resumen-charts"></div>
 
     <div class="raised-card"><p class="card-title">📋 Resumen ejecutivo</p><div id="summary-content"></div></div>
 
@@ -1050,17 +1048,6 @@
       <div id="cashback-strategy"></div>
     </div>
 
-    <div class="raised-card" style="border: 0.5px solid var(--border-strong); padding: 12px 16px;">
-      <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
-        <span style="font-size: 18px;">💡</span>
-        <span>
-          <strong style="color: var(--text-primary);">¿Quieres revisar tu puntaje crediticio?</strong>
-          Consulta gratis en la app de Nequi o Bancolombia (sección "Mi perfil financiero"), o compra tu reporte completo en
-          <a href="https://usuario.midatacredito.com/login?product=os" target="_blank" rel="noopener" style="color: var(--info-text); font-weight: 500;">midatacredito.com</a>.
-          Consultarlo tú mismo <strong>no afecta tu score</strong>.
-        </span>
-      </div>
-    </div>
   </div>
 
   <div class="fin-section" id="section-presupuesto">
@@ -2328,6 +2315,7 @@
 <script src="lazy-libs.js" defer></script>
 <script src="app.js" defer></script>
 <script src="ui-polish.js" defer></script>
+<script src="islands.js" defer></script>
 
 <script>
 // Logo de la app (los <img class="app-logo-icon"> ya traen src; esto es solo respaldo)
