@@ -3170,9 +3170,12 @@ const THEME_KEY = 'dashboard-theme-preference';
 
 function setTheme(theme) {
   const html = document.documentElement;
-  html.classList.remove('theme-light', 'theme-dark');
+  html.classList.remove('theme-light', 'theme-dark', 'theme-oled');
   if (theme === 'light' || theme === 'dark') {
     html.classList.add('theme-' + theme);
+  } else if (theme === 'oled') {
+    // OLED = oscuro con negro real (pantallas OLED): suma theme-dark para que todo lo "dark" aplique
+    html.classList.add('theme-dark', 'theme-oled');
   }
   // Si es 'auto', no agregamos clase y respeta @media prefers-color-scheme
   localStorage.setItem(THEME_KEY, theme);
@@ -3199,18 +3202,19 @@ function updateThemeToggleIcon() {
   const btn = document.getElementById('theme-toggle-btn');
   if (!btn) return;
   const current = localStorage.getItem(THEME_KEY) || 'auto';
-  const icons = { light: '☀️', dark: '🌙', auto: '🌗' };
-  const labels = { light: 'Claro', dark: 'Oscuro', auto: 'Auto' };
+  const icons = { light: '☀️', dark: '🌙', oled: '⚫', auto: '🌗' };
+  const labels = { light: 'Claro', dark: 'Oscuro', oled: 'OLED', auto: 'Auto' };
   const iconEl = document.getElementById('theme-toggle-icon');
   const labelEl = document.getElementById('theme-toggle-label');
   if (iconEl) iconEl.textContent = icons[current];
   if (labelEl) labelEl.textContent = labels[current];
-  btn.title = `Modo actual: ${labels[current]}. Click para cambiar → Claro → Oscuro → Automático`;
+  btn.title = `Modo actual: ${labels[current]}. Click para cambiar → Claro → Oscuro → OLED → Automático`;
 }
 
 function toggleTheme() {
   const current = localStorage.getItem(THEME_KEY) || 'auto';
-  const next = current === 'light' ? 'dark' : (current === 'dark' ? 'auto' : 'light');
+  const order = ['light', 'dark', 'oled', 'auto'];
+  const next = order[(order.indexOf(current) + 1) % order.length] || 'light';
   setTheme(next);
 }
 
