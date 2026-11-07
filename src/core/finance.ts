@@ -14,7 +14,7 @@ export interface CoreState {
   budgets?: Record<string, Record<string, number | string>>;
   customCategories?: { id: string; isPagoTarjeta?: boolean }[];
   pockets?: { id?: unknown; name?: string; amount?: number | string }[];
-  debts?: { id?: unknown; name?: string; balance?: number | string; payment?: number | string; cutoffDay?: number | string; rate?: number | string; cashbackPercent?: number | string }[];
+  debts?: { id?: unknown; name?: string; canPrepayInstallments?: boolean; balance?: number | string; payment?: number | string; cutoffDay?: number | string; rate?: number | string; cashbackPercent?: number | string }[];
   goals?: { id?: unknown; name?: string; target?: number | string; current?: number | string }[];
   [k: string]: unknown;
 }
@@ -246,17 +246,21 @@ export function cardInstallments(state: CoreState, cardId: unknown, now: Date = 
 }
 
 export interface CupoBreakdown { used: number; locked: number; optimizable: number; free: number; lockedPct: number; optimizablePct: number; freePct: number; inconsistent: boolean }
+/** Capital de las cuotas que YA se pagó por adelantado: lo que el calendario original aún debería y el saldo real ya no tiene.
+ *  (Si el saldo del banco es menor que el capital pendiente del calendario, la diferencia son abonos a capital.) */
+export const prepaidCapital = (outstandingNowTotal: number, balance: number): number => Math.max(0, num(outstandingNowTotal) - num(balance));
+
 /** Desglose del cupo: usado = saldo; el capital bloqueado por cuotas NUNCA puede pasar de lo usado (antes la barra mostraba
  *  4,09 M "bloqueados" con solo 2,2 M usados). Si el capital pendiente de las cuotas supera el saldo, `inconsistent` avisa:
  *  el saldo registrado no incluye todo el capital de las compras a cuotas. */
-export function cupoBreakdown(limit: number, balance: number, lockedRaw: number): CupoBreakdown {
+export function cupoBreakdown(limit: number, balance: number, lockedRaw: number, canPrepay = false): CupoBreakdown {
   const L = Math.max(0, num(limit));
   const used = Math.max(0, num(balance));
-  const locked = Math.min(Math.max(0, num(lockedRaw)), used);
+  const locked = canPrepay ? 0 : Math.min(Math.max(0, num(lockedRaw)), used);   // si el banco deja adelantar las cuotas, todo el saldo es pagable
   const optimizable = used - locked;
   const lockedPct = L > 0 ? Math.min(100, (locked / L) * 100) : 0;
   const optimizablePct = L > 0 ? Math.min(100 - lockedPct, (optimizable / L) * 100) : 0;
-  return { used, locked, optimizable, free: Math.max(0, L - used), lockedPct, optimizablePct, freePct: Math.max(0, 100 - lockedPct - optimizablePct), inconsistent: num(lockedRaw) > used + 1 };
+  return { used, locked, optimizable, free: Math.max(0, L - used), lockedPct, optimizablePct, freePct: Math.max(0, 100 - lockedPct - optimizablePct), inconsistent: !canPrepay && num(lockedRaw) > used + 1 };
 }
 
 // ---------------------------------------------------------------- saldos al editar un movimiento
@@ -353,9 +357,9 @@ export function auditState(state: CoreState, month: string, now: Date = new Date
   if (over.length) issues.push({ code: 'card-over-limit', level: 'warn', message: `La tarjeta "${over[0].name}" muestra un saldo mayor a su cupo. Revisa el saldo o el cupo configurado.` });
   for (const d of state.debts || []) {
     const ci = cardInstallments(state, d.id, now);
-    if (ci.hasInstallments && ci.outstandingNowTotal > num(d.balance) + 1000) {
+    if (ci.hasInstallments && !d.canPrepayInstallments && ci.outstandingNowTotal > num(d.balance) + 1000) {
       const money = (n: number) => '$ ' + Math.round(n).toLocaleString('es-CO');
-      issues.push({ code: `installments-exceed-${d.id}`, level: 'warn', message: `La tarjeta "${d.name}" tiene ${money(ci.outstandingNowTotal)} de capital pendiente en compras a cuotas, pero su saldo registrado es ${money(num(d.balance))}. Revisa el saldo en tu banco y, si es distinto, edítalo en Tarjetas.` });
+      issues.push({ code: `installments-prepaid-${d.id}`, level: 'info', message: `El saldo de "${d.name}" (${money(num(d.balance))}) es menor que el capital que faltaba según el calendario de tus cuotas (${money(ci.outstandingNowTotal)}): es lo normal si adelantaste pagos a capital. Si tu banco te deja adelantar cuotas, actívalo en Tarjetas para que el pago recomendado lo tenga en cuenta.` });
     }
   }
   if (month >= monthKey(now) && budgetTotal(state, month) === 0 && monthExpense(state, month) > 0) {
