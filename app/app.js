@@ -409,21 +409,9 @@ async function loadFromCloud() {
       console.log('✅ Datos cargados desde la nube. Bolsillos:', (data.data.pockets || []).length, 'Tarjetas:', (data.data.debts || []).length);
       updateSyncIndicator('Sincronizado ☁️');
     } else {
-      // No hay datos en la nube → arrancar con datos según el tipo de usuario
-      const ownerEmails = ['cristiancamilo_cc@hotmail.com']; // emails autorizados
-      const isOwner = currentUser.email && ownerEmails.includes(currentUser.email.toLowerCase());
-
-      if (isOwner && typeof MY_STATE !== 'undefined') {
-        // Si es el dueño, cargar sus datos
-        console.log('👑 Cargando datos del propietario por primera vez');
-        localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(MY_STATE));
-        // Subir inmediatamente a la nube para que queden sincronizados
-        await supabaseClient.from('dashboard_data').upsert({
-          user_id: currentUser.id,
-          data: MY_STATE
-        }, { onConflict: 'user_id' });
-        updateSyncIndicator('Datos cargados ☁️');
-      } else {
+      // No hay datos en la nube → cuenta nueva. v116 (privacidad): se eliminó la carga automática de datos personales del
+      // dueño que estaba escrita dentro de este archivo público (saldos, deudas, movimientos y correo).
+      {
         // Usuario nuevo: arrancar con plantilla vacía
         console.log('🆕 Usuario nuevo - cargando plantilla vacía');
 
@@ -691,8 +679,11 @@ function shouldShowWelcomeTour() {
   if (localStorage.getItem(WELCOME_TOUR_KEY) === '1') return false;
   // No mostrar si tiene datos significativos (es usuario existente)
   try {
-    if (state && state.pockets && state.pockets.length > 2) return false;
-    if (state && state.debts && state.debts.length > 0) return false;
+    // v116 FIX: `state` no existe en este ámbito (vive dentro de otra función); el try/catch tragaba el error y SIEMPRE se
+    // mostraba el tour, incluso a quien ya tenía datos. Ahora se lee por el puente window.FP.
+    const st = (window.FP && window.FP.getState && window.FP.getState()) || {};
+    if (st.pockets && st.pockets.length > 2) return false;
+    if (st.debts && st.debts.length > 0) return false;
   } catch (e) {}
   return true;
 }
@@ -736,9 +727,10 @@ function shouldShowOnboardingChecklist() {
 
   // Mostrar si hay <3 bolsillos o no hay tarjetas o no hay ingresos
   try {
-    const fewPockets = !state.pockets || state.pockets.length < 3;
-    const noDebts = !state.debts || state.debts.length === 0;
-    const noIncomes = !state.incomes || state.incomes.length === 0;
+    const st = (window.FP && window.FP.getState && window.FP.getState()) || {};   // v116 FIX: ver shouldShowWelcomeTour
+    const fewPockets = !st.pockets || st.pockets.length < 3;
+    const noDebts = !st.debts || st.debts.length === 0;
+    const noIncomes = !st.incomes || st.incomes.length === 0;
     return fewPockets || noDebts || noIncomes;
   } catch (e) {
     return true;
@@ -3285,9 +3277,9 @@ function checkSmartNotifications() {
     if (!d.cutoffDay) return;
     let nextCutoff;
     if (today.getDate() <= d.cutoffDay) {
-      nextCutoff = new Date(today.getFullYear(), today.getMonth(), d.cutoffDay);
+      nextCutoff = clampedDate(today.getFullYear(), today.getMonth(), d.cutoffDay);
     } else {
-      nextCutoff = new Date(today.getFullYear(), today.getMonth() + 1, d.cutoffDay);
+      nextCutoff = clampedDate(today.getFullYear(), today.getMonth() + 1, d.cutoffDay);
     }
     const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
 
@@ -5192,8 +5184,16 @@ function isDarkThemeActive() {
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
+// Fecha con el día ajustado al último día del mes (corte día 31 en abril → 30). Antes new Date(y, m, 31) saltaba al mes siguiente.
+function clampedDate(year, month0, day) {
+  if (window.FPCore) return window.FPCore.clampedDate(year, month0, day);
+  return new Date(year, month0, day);
+}
+
 // Ingreso total de un mes: recurrentes/snapshot + extras + cashback de transacciones
+// (la lógica vive en src/core/finance.ts, con pruebas; aquí queda la versión anterior solo como respaldo)
 function computeMonthIncome(state, month) {
+  if (window.FPCore) return window.FPCore.monthIncome(state, month);
   let total = 0;
   if (state.monthlyIncomes && state.monthlyIncomes[month]) {
     total += state.monthlyIncomes[month].reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
@@ -5212,6 +5212,7 @@ function computeMonthIncome(state, month) {
 
 // Gasto real de un mes (excluye pagos de tarjeta, que son transferencias internas — v65)
 function computeMonthExpense(state, month) {
+  if (window.FPCore) return window.FPCore.monthExpense(state, month);
   const txs = (state.transactions && state.transactions[month]) || [];
   const real = txs.filter(t => {
     if (t.payCardId) return false;
@@ -6473,91 +6474,6 @@ async function buildAnnualPDF(state, year) {
     isNewUser: true
   };
 
-  // MY_STATE: datos personales del dueño (Cristian) - solo se cargan si es el email autorizado
-  const MY_STATE = {
-    currency: 'COP', interestRate: 7.87,
-    interestBank: 'Lulo Bank Pro (tasa efectiva real)',
-    pockets: [
-      { id: 1, name: 'Fondo de Emergencias', amount: 7611643.18, icon: '🛟' },
-      { id: 2, name: 'Flujo Operativo', amount: 3242994.40, icon: '💰' },
-      { id: 4, name: 'Universidad', amount: 755955.95, icon: '🎓' },
-      { id: 5, name: 'Servicios', amount: 507933.58, icon: '⚡' },
-      { id: 6, name: 'Vida Social', amount: 400389.24, icon: '🍻' },
-      { id: 7, name: 'Gastos Fijos del mes', amount: 384843.09, icon: '🏠' },
-      { id: 8, name: 'Zlatan', amount: 478941.24, icon: '❤️' },
-      { id: 1777485097200, name: 'Efectivo', amount: 270000, icon: '💵', isCash: true },
-      { id: 1777485984540, name: 'Cashback RappiCard', amount: 302777.15, icon: '💳', bank: 'rappi', rate: 9 }
-    ],
-    incomes: [
-      { id: 101, name: 'Salario', amount: 2000000, frequency: 'monthly' },
-      { id: 102, name: 'Rendimientos Lulo Bank (neto)', amount: 75000, frequency: 'monthly' }
-    ],
-    debts: [
-      { id: 301, name: 'RappiCard', balance: 62775.88, rate: 0, payment: 4800000, cutoffDay: 28, brand: 'visa', bank: 'davivienda', lastDigits: '3101' },
-      { id: 302, name: 'Lulo Bank', balance: 681075, rate: 0, payment: 12200000, cutoffDay: 5, brand: 'mastercard', bank: 'lulo', lastDigits: '7310' }
-    ],
-    goals: [
-      { id: 401, name: 'Viajes Futuros', target: 1500000, current: 825643.17 }
-    ],
-    budgets: {
-      '2026-04': {
-        servicios_casa: 0, uber: 0, celular: 0, gimnasio: 0,
-        streaming: 0, comida_fuera: 0, rappi: 0, salidas_milena: 0,
-        gasolina: 0, mascota: 0, mascota_extra: 0, compras: 0, salud: 0, otros: 0
-      },
-      '2026-05': {
-        servicios_casa: 0, uber: 0, celular: 0, gimnasio: 0,
-        streaming: 0, comida_fuera: 0, rappi: 0, salidas_milena: 0,
-        gasolina: 0, mascota: 0, mascota_extra: 0, compras: 0, salud: 0, otros: 0
-      }
-    },
-    transactions: {
-      '2026-04': [
-        { id: 1777482517123, date: '2026-04-28', desc: 'UBER VALENTINA', amount: 9033, category: 'uber', paymentMethod: 'tarjeta', cardId: 301, cashback: 90.33 },
-        { id: 1777482742296, date: '2026-04-29', desc: 'PAGO CANCHA DE FUTBOL', amount: 12000, category: 'comida_fuera', paymentMethod: 'llave', cardId: null, cashback: 0 },
-        { id: 1777483324893, date: '2026-04-29', desc: 'PAGO MOSVISTAR', amount: 204387, category: 'servicios_casa', paymentMethod: 'llave', cardId: null, cashback: 0 },
-        { id: 1777485429051, date: '2026-04-29', desc: 'PAGO GAS MILENA', amount: 9630, category: 'salidas_milena', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 96.3 },
-        { id: 1777498594504, date: '2026-04-29', desc: 'PAGO DATACREDITO', amount: 14000, category: 'otros', paymentMethod: 'debito', cardId: null, pocketId: 2, cashback: 0 },
-        { id: 1777514521403, date: '2026-04-29', desc: 'PAGO UBER IDA GIMNACIO', amount: 6802, category: 'uber', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 68.02 },
-        { id: 1777514550835, date: '2026-04-29', desc: 'PAGO UBER VUELTA GIMNACIO', amount: 10167, category: 'uber', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 101.67 },
-        { id: 1777563261875, date: '2026-04-30', desc: 'PAGO MEDICAMENTOS ZLATAN', amount: 316000, category: 'mascota', paymentMethod: 'tarjeta', cardId: 302, pocketId: null, cashback: 3160 },
-        { id: 1777563698890, date: '2026-04-30', desc: 'PAGO TARJETA RAPPICARD ABRIL', amount: 180436.16, category: 'otros', paymentMethod: 'debito', cardId: null, pocketId: 2, cashback: 0 },
-        { id: 1777564443688, date: '2026-04-30', desc: 'PAGOS GAS ABRIL', amount: 38330, category: 'servicios_casa', paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 383.3 }
-      ]
-    },
-    extraIncomes: {
-      '2026-04': [
-        { id: 1777484464331, date: '2026-04-29', desc: 'REGALO CUMPLEAÑOS', amount: 276000, source: 'regalo', pocketId: 1777485097200 },
-        { id: 1777562631004, date: '2026-04-30', desc: 'PAGO VALENTINA DEUDA', amount: 248300, source: 'prestamo', pocketId: null }
-      ]
-    },
-    creditScore: {
-      lastReported: 691,
-      lastReportedDate: '2026-04-29',
-      history: [
-        { date: '2026-02-09', score: 678, source: 'DataCrédito' },
-        { date: '2026-04-29', score: 691, source: 'DataCrédito' }
-      ],
-      reportData: {
-        utilization: 4.2,
-        pendingPercent: 0.04,
-        cardsBehavior: 'estable',
-        hasFixedLoan: false,
-        hasMortgage: false,
-        mora30: 0,
-        mora60: 0,
-        currentMora: 0,
-        experienceYears: 6,
-        openProducts: 6,
-        newLoans: 0,
-        monthsSinceLastOpen: 10
-      }
-    }
-  };
-
-  // Email del dueño - solo este recibe MY_STATE como datos por defecto
-  const OWNER_EMAILS = ['cristiancamilo_cc@hotmail.com']; // ← agrega aquí los emails autorizados
-
   // DEFAULT_STATE inicial es vacío. Se decidirá en runtime cuál cargar
   const DEFAULT_STATE = EMPTY_STATE;
 
@@ -6576,6 +6492,10 @@ async function buildAnnualPDF(state, year) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const loaded = JSON.parse(raw);
+        // v116: corrige números guardados como texto, NaN y colecciones ausentes (evita "$ NaN" y sumas que concatenan texto)
+        if (window.FPCore) {
+          try { const r = window.FPCore.sanitizeState(loaded); if (r.fixes > 0) console.log('🧹 Datos corregidos al cargar:', r.fixes); } catch (e) {}
+        }
         state = { ...DEFAULT_STATE, ...loaded };
         if (!state.budgets) state.budgets = { [currentMonth]: { ...DEFAULT_BUDGETS } };
         if (!state.transactions) state.transactions = {};
@@ -6610,6 +6530,23 @@ async function buildAnnualPDF(state, year) {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
           }
         }
+        // v116: al abrir la app, el presupuesto del mes actual se hereda del anterior si todavía está vacío
+        // (una sola vez por mes: si el usuario lo deja en cero a propósito, se respeta).
+        try {
+          if (window.FPCore && currentMonth >= getCurrentMonthKey()) {
+            state.budgetRolled = state.budgetRolled || {};
+            const cur = state.budgets[currentMonth];
+            const empty = !cur || Object.values(cur).every(v => !(parseFloat(v) > 0));
+            if (empty && !state.budgetRolled[currentMonth]) {
+              const next = window.FPCore.budgetForNewMonth(state, currentMonth, DEFAULT_BUDGETS);
+              if (Object.values(next).some(v => parseFloat(v) > 0)) {
+                state.budgets[currentMonth] = next;
+                state.budgetRolled[currentMonth] = true;
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+              }
+            }
+          }
+        } catch (e) { console.warn('Herencia de presupuesto omitida:', e); }
         // NO agregar bolsillos automáticamente - cada usuario crea los suyos
       }
     } catch(e) { console.error(e); }
@@ -6962,9 +6899,9 @@ async function buildAnnualPDF(state, year) {
         if (!d.cutoffDay) return null;
         let nextCutoff;
         if (currentDay <= d.cutoffDay) {
-          nextCutoff = new Date(today.getFullYear(), today.getMonth(), d.cutoffDay);
+          nextCutoff = clampedDate(today.getFullYear(), today.getMonth(), d.cutoffDay);
         } else {
-          nextCutoff = new Date(today.getFullYear(), today.getMonth() + 1, d.cutoffDay);
+          nextCutoff = clampedDate(today.getFullYear(), today.getMonth() + 1, d.cutoffDay);
         }
         const daysUntilCutoff = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
         // Float total = días entre compra y pago (aprox 5 días después del corte)
@@ -7110,7 +7047,7 @@ async function buildAnnualPDF(state, year) {
     sel.onchange = (e) => {
       currentMonth = e.target.value;
       if (!state.budgets[currentMonth]) {
-        state.budgets[currentMonth] = { ...DEFAULT_BUDGETS };
+        state.budgets[currentMonth] = newMonthBudget(currentMonth);
         saveState();
       }
       // v37: limpiar búsqueda al cambiar mes (filtros se mantienen)
@@ -7214,6 +7151,12 @@ async function buildAnnualPDF(state, year) {
   const totalIncomeWithCashback = () => totalIncome() + totalMonthCashback() + totalMonthExtraIncome();
   const totalDebt = () => state.debts.reduce((s, d) => s + d.balance, 0);
   const totalLimit = () => state.debts.reduce((s, d) => s + d.payment, 0);
+  // v116: el presupuesto de un mes nuevo se copia del mes anterior con valores (antes arrancaba en cero y había que
+  // reescribirlo completo cada mes). Solo para el mes actual o futuros: no se inventa historia.
+  function newMonthBudget(month) {
+    if (window.FPCore && month >= getCurrentMonthKey()) return window.FPCore.budgetForNewMonth(state, month, DEFAULT_BUDGETS);
+    return { ...DEFAULT_BUDGETS };
+  }
   function totalBudget() { const b = state.budgets[currentMonth] || {}; return Object.values(b).reduce((s, v) => s + (parseFloat(v) || 0), 0); }
   // v65: Helper para detectar si una transacción es pago de tarjeta (NO es un gasto real, es transferencia interna)
   function isCardPayment(t) {
@@ -9354,7 +9297,7 @@ async function buildAnnualPDF(state, year) {
   };
 
   window.updateBudget = function(catId, v) {
-    if (!state.budgets[currentMonth]) state.budgets[currentMonth] = {};
+    if (!state.budgets[currentMonth]) state.budgets[currentMonth] = newMonthBudget(currentMonth);
     state.budgets[currentMonth][catId] = parseFloat(v) || 0;
     saveState(); renderBudget();
   };
@@ -10028,8 +9971,9 @@ async function buildAnnualPDF(state, year) {
         myAmount = Math.round(totalAmount / totalPeople);
         owedTotal = totalAmount - myAmount;
         // Distribuir equitativamente
-        const perPerson = Math.round(owedTotal / sharedWith.length);
-        sharedWith.forEach(name => { customAmountsByPerson[name] = perPerson; });
+        // v116: el reparto suma EXACTAMENTE el total (antes el redondeo podía dejar 1–2 pesos de diferencia)
+        const shares = window.FPCore ? window.FPCore.splitEqual(owedTotal, sharedWith.length) : sharedWith.map(() => Math.round(owedTotal / sharedWith.length));
+        sharedWith.forEach((name, idx) => { customAmountsByPerson[name] = shares[idx]; });
         
         // (log de depuración removido antes de producción)
       }
@@ -10058,8 +10002,8 @@ async function buildAnnualPDF(state, year) {
         }
       } else {
         // Modo igual
-        const perPerson = Math.round(totalAmount / sharedWith.length);
-        sharedWith.forEach(name => { customAmountsByPerson[name] = perPerson; });
+        const shares = window.FPCore ? window.FPCore.splitEqual(totalAmount, sharedWith.length) : sharedWith.map(() => Math.round(totalAmount / sharedWith.length));
+        sharedWith.forEach((name, idx) => { customAmountsByPerson[name] = shares[idx]; });
       }
       
       myAmount = 0;
@@ -10331,7 +10275,7 @@ async function buildAnnualPDF(state, year) {
           `Tu parte: ${fmt(myAmount)} · Te deben: ${fmt(owedTotal)}`
         );
       } else {
-        toastSuccess('Gasto registrado', `${desc} · ${fmt(totalAmount)}`);
+        toastSuccess('Gasto registrado', `${d} · ${fmt(totalAmount)}`);   // v116 FIX: antes usaba `desc` (no existe) y fallaba SIN mostrar el aviso ni cerrar el formulario
       }
     }
 
@@ -11308,9 +11252,9 @@ async function buildAnnualPDF(state, year) {
     // Calcular próxima fecha de corte
     let nextCutoff;
     if (currentDay <= cutoffDay) {
-      nextCutoff = new Date(currentYear, currentMonth, cutoffDay);
+      nextCutoff = clampedDate(currentYear, currentMonth, cutoffDay);
     } else {
-      nextCutoff = new Date(currentYear, currentMonth + 1, cutoffDay);
+      nextCutoff = clampedDate(currentYear, currentMonth + 1, cutoffDay);
     }
 
     const daysLeft = Math.ceil((nextCutoff - today) / (1000 * 60 * 60 * 24));
@@ -11488,7 +11432,7 @@ async function buildAnnualPDF(state, year) {
   }
 
   function renderBudget() {
-    if (!state.budgets[currentMonth]) state.budgets[currentMonth] = { ...DEFAULT_BUDGETS };
+    if (!state.budgets[currentMonth]) state.budgets[currentMonth] = newMonthBudget(currentMonth);
     const b = state.budgets[currentMonth];
     const list = document.getElementById('budget-list');
     const editList = document.getElementById('budget-edit');
@@ -12532,8 +12476,8 @@ async function buildAnnualPDF(state, year) {
         const totalPeople = newSharedWith.length + 1;
         newMyAmount = Math.round(newTotalAmount / totalPeople);
         newOwedTotal = newTotalAmount - newMyAmount;
-        const perPerson = Math.round(newOwedTotal / newSharedWith.length);
-        newSharedWith.forEach(name => { newCustomAmountsByPerson[name] = perPerson; });
+        const shares = window.FPCore ? window.FPCore.splitEqual(newOwedTotal, newSharedWith.length) : newSharedWith.map(() => Math.round(newOwedTotal / newSharedWith.length));
+        newSharedWith.forEach((name, idx) => { newCustomAmountsByPerson[name] = shares[idx]; });
         newEditSplitMode = 'equal';
       }
       newAmount = newMyAmount;
@@ -12578,8 +12522,8 @@ async function buildAnnualPDF(state, year) {
         newEditSplitMode = 'custom';
       } else {
         // Modo igual: dividir entre todos los prestatarios
-        const perPerson = Math.round(newTotalAmount / newSharedWith.length);
-        newSharedWith.forEach(name => { newCustomAmountsByPerson[name] = perPerson; });
+        const shares = window.FPCore ? window.FPCore.splitEqual(newTotalAmount, newSharedWith.length) : newSharedWith.map(() => Math.round(newTotalAmount / newSharedWith.length));
+        newSharedWith.forEach((name, idx) => { newCustomAmountsByPerson[name] = shares[idx]; });
         newEditSplitMode = 'equal';
       }
       
@@ -13014,12 +12958,20 @@ async function buildAnnualPDF(state, year) {
     const exp = spent > 0 ? spent : budget;
     const bal = inc - exp;
 
+    // v116: referencias ESTABLES para lo que mira hacia adelante (cobertura del fondo, proyección anual, puntaje de salud
+    // y alertas de margen). El gasto "hasta hoy" del mes en curso es parcial —a principios de mes casi no existe— y hacía
+    // ver todo mucho mejor de lo real. Las fórmulas están en src/core/finance.ts, con pruebas automáticas.
+    const core = window.FPCore;
+    const expF = core ? core.expenseBaseline(state, currentMonth) : exp;
+    const incF = core ? core.incomeBaseline(state, currentMonth, incRecurrent) : inc;
+    const balF = incF - expF;
+
     document.getElementById('net-worth').textContent = fmt(nw);
     document.getElementById('net-worth-detail').textContent = totalMyDebtsPending() > 0
       ? `Ahorros ${fmt(sav)} − Deudas ${fmt(debt)} (tarjetas + préstamos)`
       : `Ahorros ${fmt(sav)} − Deudas ${fmt(debt)}`;
     document.getElementById('m-savings').textContent = sav > 0 ? fmt(sav) : '—';
-    if (exp > 0) document.getElementById('m-savings-detail').textContent = `Cubre ${(sav/exp).toFixed(1)} meses de gastos`;
+    if (expF > 0) document.getElementById('m-savings-detail').textContent = `Cubre ${(sav/expF).toFixed(1)} meses de tu gasto típico`;
 
     document.getElementById('m-income').textContent = inc > 0 ? fmt(inc) : '—';
     const incomeBreakdown = [];
@@ -13047,9 +12999,9 @@ async function buildAnnualPDF(state, year) {
       document.getElementById('m-margin-detail').textContent = spent > 0 ? 'Basado en gastos reales' : 'Basado en presupuesto';
     }
 
-    renderHealthScore(sav, inc, exp, debt, bal);
-    renderAlerts(sav, inc, exp, debt, bal);
-    renderSummary(sav, inc, exp, debt, bal, nw);
+    renderHealthScore(sav, incF, expF, debt, balF);
+    renderAlerts(sav, incF, expF, totalDebt(), balF);   // las alertas de utilización usan SOLO tarjetas (antes sumaban préstamos personales)
+    renderSummary(sav, incF, expF, debt, balF, nw);
     renderReturns();
     renderCashbackStrategy();
     renderCreditScore();
@@ -13907,6 +13859,13 @@ async function buildAnnualPDF(state, year) {
       if (u < 30) a.push({ id: `util-good-${currentMonth}`, t: 'success', x: `Utilización de crédito en ${u.toFixed(1)}%. Excelente.` });
     }
 
+    // 4. AVISOS DE CALIDAD DE DATOS (bolsillo en negativo, saldo mayor al cupo, sin presupuesto, movimientos repetidos)
+    if (window.FPCore) {
+      window.FPCore.auditState(state, currentMonth).slice(0, 2).forEach(i => {
+        a.push({ id: `data-${i.code}-${currentMonth}`, t: i.level === 'warn' ? 'warning' : 'info', x: `🧹 ${escapeHtml(i.message)}` });
+      });
+    }
+
     // Filtrar las descartadas y renderizar
     const visible = a.filter(x => !dismissed[x.id]);
     c.innerHTML = visible.map(x => `<div class="alert alert-${x.t}" style="position: relative; padding-right: 36px;">${x.x}<button onclick="dismissAlert('${x.id}')" style="position: absolute; top: 50%; right: 8px; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; padding: 4px 8px; font-size: 16px; color: inherit; opacity: 0.6;" title="Descartar">×</button></div>`).join('');
@@ -13942,6 +13901,7 @@ async function buildAnnualPDF(state, year) {
       const e = state.pockets.find(p => /emergencia/i.test(p.name));
       if (e) h += `<div class="summary-row"><span>Fondo emergencia ideal (6 meses)</span><span style="font-weight: 500;">${fmt(ide)} (${((e.amount/ide)*100).toFixed(0)}% logrado)</span></div>`;
     }
+    h += `<p style="font-size: 12px; color: var(--text-secondary); margin: 12px 0 0;">Proyección con tu ingreso recurrente y tu gasto típico mensual (promedio de tus meses anteriores o tu presupuesto), sin multiplicar por 12 los ingresos extra de una sola vez.</p>`;
     c.innerHTML = h;
   }
 
@@ -13972,9 +13932,11 @@ async function buildAnnualPDF(state, year) {
     const mRG = p * (Math.pow(1 + r, 1/12) - 1);
     const mRN = mRG - mT;
     const aRN = aRG - aT;
-    const inc = totalIncomeWithCashback();  // Total real con extras y cashback
-    const sp = totalSpent() || totalBudget();
-    const margin = Math.max(0, inc - sp);
+    // v116: el aporte mensual de la proyección usa ingreso y gasto TÍPICOS (antes: gasto parcial del mes → proyección inflada)
+    const core = window.FPCore;
+    const margin = core
+      ? Math.max(0, core.incomeBaseline(state, currentMonth, totalIncome()) - core.expenseBaseline(state, currentMonth))
+      : Math.max(0, totalIncomeWithCashback() - (totalSpent() || totalBudget()));
     const eA = aRN / p;
     const eM = Math.pow(1 + eA, 1/12) - 1;
     function proj(m, ct) { let b = p; for (let i = 0; i < m; i++) b = b * (1 + eM) + ct; return b; }
@@ -14033,7 +13995,7 @@ async function buildAnnualPDF(state, year) {
         const currentDay = today.getDate();
         const daysUntilCutoff = currentDay <= d.cutoffDay
           ? d.cutoffDay - currentDay
-          : (new Date(today.getFullYear(), today.getMonth() + 1, d.cutoffDay) - today) / (1000 * 60 * 60 * 24);
+          : (clampedDate(today.getFullYear(), today.getMonth() + 1, d.cutoffDay) - today) / (1000 * 60 * 60 * 24);
         floatDays = Math.max(1, Math.round(daysUntilCutoff + 5));
       }
       floatMensual += cardSpent * tasaDiaria * floatDays;

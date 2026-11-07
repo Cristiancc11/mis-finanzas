@@ -7,7 +7,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "preview": "node scripts/preview.mjs",
-    "check": "node --check app/app.js && node --check app/ui-polish.js && tsc --noEmit -p ."
+    "check": "node --check app/app.js && node --check app/ui-polish.js && tsc --noEmit -p .",
+    "test": "node scripts/test.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -23,6 +24,7 @@
     "xlsx": "0.18.5"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "esbuild": "^0.28.2",
