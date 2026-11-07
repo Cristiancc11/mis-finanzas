@@ -36,12 +36,11 @@
 <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 
 <!-- Preload de fuentes -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 
 <!-- Estilos personalizados - cache busting automático -->
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="theme.css">
 
 <!-- Librerías externas -->
 <script src="/vendor/chart.js" defer></script>
@@ -758,52 +757,52 @@
 
     <nav class="side-menu-nav">
       <button class="side-menu-item active" data-tab="resumen" onclick="navigateTab('resumen')">
-        <span class="side-menu-item-icon">🏠</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></svg></span>
         <span class="side-menu-item-text">Resumen</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="presupuesto" onclick="navigateTab('presupuesto')">
-        <span class="side-menu-item-icon">💸</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 16H8" /><path d="M14 8H8" /><path d="M16 12H8" /><path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z" /></svg></span>
         <span class="side-menu-item-text">Presupuesto</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="bolsillos" onclick="navigateTab('bolsillos')">
-        <span class="side-menu-item-icon">👛</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17h3v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a3.16 3.16 0 0 0 2-2h1a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-1a5 5 0 0 0-2-4V3a4 4 0 0 0-3.2 1.6l-.3.4H11a6 6 0 0 0-6 6v1a5 5 0 0 0 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z" /><path d="M16 10h.01" /><path d="M2 8v1a2 2 0 0 0 2 2h1" /></svg></span>
         <span class="side-menu-item-text">Bolsillos</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="ingresos" onclick="navigateTab('ingresos')">
-        <span class="side-menu-item-icon">💰</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 18V6" /></svg></span>
         <span class="side-menu-item-text">Ingresos</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="deudas" onclick="navigateTab('deudas')">
-        <span class="side-menu-item-icon">💳</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /><path d="M6 14h2" /></svg></span>
         <span class="side-menu-item-text">Tarjetas</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="mis-deudas" onclick="navigateTab('mis-deudas')">
-        <span class="side-menu-item-icon">📝</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" /><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" /><path d="m2 16 6 6" /><circle cx="16" cy="9" r="2.9" /><circle cx="6" cy="5" r="3" /></svg></span>
         <span class="side-menu-item-text">Mis Deudas</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="metas" onclick="navigateTab('metas')">
-        <span class="side-menu-item-icon">🎯</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg></span>
         <span class="side-menu-item-text">Metas</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="analisis" onclick="navigateTab('analisis')">
-        <span class="side-menu-item-icon">📊</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg></span>
         <span class="side-menu-item-text">Análisis</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="conversor" onclick="navigateTab('conversor')">
-        <span class="side-menu-item-icon">💱</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" /></svg></span>
         <span class="side-menu-item-text">Conversor</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
       <button class="side-menu-item" data-tab="perfil" onclick="navigateTab('perfil')">
-        <span class="side-menu-item-icon">👤</span>
+        <span class="side-menu-item-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg></span>
         <span class="side-menu-item-text">Mi Perfil</span>
         <span class="side-menu-item-arrow">›</span>
       </button>
@@ -830,7 +829,7 @@
 
     <div class="side-menu-footer">
       <button class="side-menu-logout" onclick="closeSideMenu(); handleLogout();">
-        <span>🚪</span>
+        <span class="side-menu-logout-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg></span>
         <span>Cerrar sesión</span>
       </button>
       <p class="side-menu-version">v1.0 · Mayo 2026</p>
@@ -850,16 +849,16 @@
   </div>
 
   <div class="fin-tabs">
-    <button class="fin-tab active" data-tab="resumen"><span class="tab-icon">🏠</span><span class="tab-label">Resumen</span></button>
-    <button class="fin-tab" data-tab="presupuesto"><span class="tab-icon">💸</span><span class="tab-label">Presupuesto</span></button>
-    <button class="fin-tab" data-tab="bolsillos"><span class="tab-icon">👛</span><span class="tab-label">Bolsillos</span></button>
-    <button class="fin-tab" data-tab="ingresos"><span class="tab-icon">💰</span><span class="tab-label">Ingresos</span></button>
-    <button class="fin-tab" data-tab="deudas"><span class="tab-icon">💳</span><span class="tab-label">Tarjetas</span></button>
-    <button class="fin-tab" data-tab="mis-deudas"><span class="tab-icon">📝</span><span class="tab-label">Mis Deudas</span></button>
-    <button class="fin-tab" data-tab="metas"><span class="tab-icon">🎯</span><span class="tab-label">Metas</span></button>
-    <button class="fin-tab" data-tab="analisis"><span class="tab-icon">📊</span><span class="tab-label">Análisis</span></button>
-    <button class="fin-tab" data-tab="conversor"><span class="tab-icon">💱</span><span class="tab-label">Conversor</span></button>
-    <button class="fin-tab" data-tab="perfil"><span class="tab-icon">👤</span><span class="tab-label">Perfil</span></button>
+    <button class="fin-tab active" data-tab="resumen"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></svg></span><span class="tab-label">Resumen</span></button>
+    <button class="fin-tab" data-tab="presupuesto"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 16H8" /><path d="M14 8H8" /><path d="M16 12H8" /><path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z" /></svg></span><span class="tab-label">Presupuesto</span></button>
+    <button class="fin-tab" data-tab="bolsillos"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17h3v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a3.16 3.16 0 0 0 2-2h1a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-1a5 5 0 0 0-2-4V3a4 4 0 0 0-3.2 1.6l-.3.4H11a6 6 0 0 0-6 6v1a5 5 0 0 0 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z" /><path d="M16 10h.01" /><path d="M2 8v1a2 2 0 0 0 2 2h1" /></svg></span><span class="tab-label">Bolsillos</span></button>
+    <button class="fin-tab" data-tab="ingresos"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 18V6" /></svg></span><span class="tab-label">Ingresos</span></button>
+    <button class="fin-tab" data-tab="deudas"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /><path d="M6 14h2" /></svg></span><span class="tab-label">Tarjetas</span></button>
+    <button class="fin-tab" data-tab="mis-deudas"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" /><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" /><path d="m2 16 6 6" /><circle cx="16" cy="9" r="2.9" /><circle cx="6" cy="5" r="3" /></svg></span><span class="tab-label">Mis Deudas</span></button>
+    <button class="fin-tab" data-tab="metas"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg></span><span class="tab-label">Metas</span></button>
+    <button class="fin-tab" data-tab="analisis"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg></span><span class="tab-label">Análisis</span></button>
+    <button class="fin-tab" data-tab="conversor"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" /></svg></span><span class="tab-label">Conversor</span></button>
+    <button class="fin-tab" data-tab="perfil"><span class="tab-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg></span><span class="tab-label">Perfil</span></button>
   </div>
 
   <!-- v102: se quitó el botón de ocultar/mostrar menú lateral (no aportaba valor) -->
@@ -867,7 +866,7 @@
   <!-- v66: Bloque de cuenta + cerrar sesión, siempre visible al fondo del sidebar -->
   <div class="sidebar-account">
     <button onclick="handleLogout()" class="sidebar-logout-btn" title="Cerrar sesión">
-      <span class="sidebar-logout-icon">🚪</span>
+      <span class="sidebar-logout-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg></span>
       <span class="sidebar-logout-text">Cerrar sesión</span>
     </button>
   </div>
