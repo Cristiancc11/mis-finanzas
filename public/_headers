@@ -1,0 +1,28 @@
+# Headers de seguridad y caché — los leen Cloudflare Pages y Netlify.
+# (GitHub Pages NO permite headers personalizados: ahí este archivo se ignora.)
+
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  # MODO REPORTE: no bloquea nada, solo avisa en la consola del navegador (F12) lo que bloquearía.
+  # Cuando la consola quede sin avisos, cambia el nombre a Content-Security-Policy para aplicarla.
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://flagcdn.com https://safxdvagmrkpkyzpghtt.supabase.co; connect-src 'self' https://safxdvagmrkpkyzpghtt.supabase.co wss://safxdvagmrkpkyzpghtt.supabase.co https://co.dolarapi.com https://www.datos.gov.co; worker-src 'self' blob:; frame-src 'self' blob: https://safxdvagmrkpkyzpghtt.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# Archivos con hash en el nombre: nunca cambian, se pueden guardar un año
+/_assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Imágenes y datos de pdf.js (mismo nombre si se reemplazan): caché de una semana
+/assets/*
+  Cache-Control: public, max-age=604800
+/vendor/*
+  Cache-Control: public, max-age=604800
+
+# HTML: siempre revalidar para que los hashes nuevos se vean al desplegar
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+/app/*
+  Cache-Control: public, max-age=0, must-revalidate
