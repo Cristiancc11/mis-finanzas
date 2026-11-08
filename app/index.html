@@ -1251,10 +1251,10 @@
 
       <!-- Paso 1: Información básica -->
       <div style="display: grid; gap: 10px;">
-        <input type="text" id="pocket-name" placeholder="Nombre del bolsillo (ej: Ahorros, Vacaciones)" />
+        <div class="field-group"><label class="field-label" for="pocket-name">Nombre del bolsillo</label><input type="text" id="pocket-name" placeholder="Ej: Ahorros, Vacaciones" /></div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <input type="number" inputmode="decimal" id="pocket-amount" placeholder="Monto actual" min="0" step="0.01" />
-          <select id="pocket-icon">
+          <div class="field-group"><label class="field-label" for="pocket-amount">Monto actual</label><input type="number" inputmode="decimal" id="pocket-amount" placeholder="$ 0" min="0" step="0.01" /></div>
+          <div class="field-group"><label class="field-label" for="pocket-icon">Tipo de bolsillo</label><select id="pocket-icon">
             <option value="💰">💰 Operativo</option>
             <option value="✈️">✈️ Viajes</option>
             <option value="🛟">🛟 Emergencia</option>
@@ -1267,12 +1267,12 @@
             <option value="💵">💵 Efectivo</option>
             <option value="🐷">🐷 Ahorro</option>
             <option value="🎯">🎯 Meta</option>
-          </select>
+          </select></div>
         </div>
 
         <!-- Paso 2: ¿Dónde está tu dinero? -->
         <div>
-          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Dónde tienes este dinero?</label>
+          <label class="field-label" for="pocket-bank" style="display: block; margin-bottom: 6px;">¿Dónde tienes este dinero?</label>
           <select id="pocket-bank">
             <option value="generic">🏦 Cuenta bancaria (genérico)</option>
             <option value="cash">💵 Efectivo (físico)</option>
@@ -1316,7 +1316,7 @@
 
         <!-- Paso 3: ¿Genera rentabilidad? -->
         <div>
-          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500;">¿Genera rentabilidad?</label>
+          <label class="field-label" for="pocket-rate" style="display: block; margin-bottom: 6px;">¿Genera rentabilidad?</label>
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
             <input type="number" inputmode="decimal" id="pocket-rate" placeholder="0 = no genera rentabilidad" min="0" max="50" step="0.01" value="0" />
             <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">% E.A.</span>
@@ -1499,7 +1499,7 @@
       <div id="debt-limit-banner"></div>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px;">
-        <select id="card-template" onchange="applyCardTemplate()">
+        <div class="field-group"><label class="field-label" for="card-template">Elige tu tarjeta</label><select id="card-template" onchange="applyCardTemplate()">
           <option value="">— Selecciona tu tarjeta —</option>
           <optgroup label="🟣 Lulo Bank">
             <option value="lulo_master">Lulo Bank Mastercard</option>
@@ -1564,20 +1564,20 @@
           <optgroup label="✏️ Personalizada">
             <option value="custom">Otra tarjeta (datos manuales)</option>
           </optgroup>
-        </select>
+        </select></div>
       </div>
 
       <div id="card-template-info" style="display: none; padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 12px; line-height: 1.5; margin-bottom: 10px;"></div>
 
       <div class="form-row-debt" id="debt-form">
-        <input type="text" id="debt-name" placeholder="Nombre de la tarjeta" />
-        <input type="number" inputmode="decimal" id="debt-balance" placeholder="Saldo actual" min="0" step="0.01" />
-        <input type="number" inputmode="decimal" id="debt-rate" placeholder="Tasa % anual" min="0" step="0.01" value="0" />
-        <input type="number" inputmode="decimal" id="debt-payment" placeholder="Cupo total" min="0" step="0.01" />
+        <div class="field-group"><label class="field-label" for="debt-name">Nombre de la tarjeta</label><input type="text" id="debt-name" placeholder="Ej: Visa Davivienda" /></div>
+        <div class="field-group"><label class="field-label" for="debt-balance">Saldo actual</label><input type="number" inputmode="decimal" id="debt-balance" placeholder="$ 0" min="0" step="0.01" /></div>
+        <div class="field-group"><label class="field-label" for="debt-rate">Tasa de interés anual (%)</label><input type="number" inputmode="decimal" id="debt-rate" placeholder="Tasa % anual" min="0" step="0.01" value="0" /></div>
+        <div class="field-group"><label class="field-label" for="debt-payment">Cupo total</label><input type="number" inputmode="decimal" id="debt-payment" placeholder="$ 0" min="0" step="0.01" /></div>
         <button onclick="addDebt()">Agregar</button>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
-        <select id="debt-bank">
+        <div class="field-group"><label class="field-label" for="debt-bank">Banco emisor</label><select id="debt-bank">
           <option value="">Banco emisor</option>
           <option value="davivienda">Davivienda</option>
           <option value="lulo">Lulo Bank</option>
@@ -1596,21 +1596,21 @@
           <option value="bancoomeva">Bancoomeva</option>
           <option value="nu">Nu Colombia</option>
           <option value="other">Otro banco</option>
-        </select>
-        <select id="debt-brand">
+        </select></div>
+        <div class="field-group"><label class="field-label" for="debt-brand">Franquicia</label><select id="debt-brand">
           <option value="">Franquicia</option>
           <option value="visa">VISA</option>
           <option value="mastercard">Mastercard</option>
           <option value="amex">American Express</option>
           <option value="diners">Diners Club</option>
           <option value="cmr">CMR</option>
-        </select>
-        <input type="text" id="debt-digits" placeholder="Últimos 4 dígitos" maxlength="4" pattern="[0-9]{4}" />
-        <input type="number" inputmode="numeric" id="debt-cutoff" placeholder="Día corte (1-31)" min="1" max="31" />
+        </select></div>
+        <div class="field-group"><label class="field-label" for="debt-digits">Últimos 4 dígitos</label><input type="text" id="debt-digits" placeholder="Ej: 1234" maxlength="4" pattern="[0-9]{4}" /></div>
+        <div class="field-group"><label class="field-label" for="debt-cutoff">Día de corte (1–31)</label><input type="number" inputmode="numeric" id="debt-cutoff" placeholder="Ej: 28" min="1" max="31" /></div>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
-        <input type="number" inputmode="decimal" id="debt-cashback" placeholder="Cashback %" min="0" max="100" step="0.1" value="0" title="% de cashback que da esta tarjeta" />
-        <input type="text" id="debt-benefits" placeholder="Beneficios (opcional)" />
+        <div class="field-group"><label class="field-label" for="debt-cashback">Cashback (%)</label><input type="number" inputmode="decimal" id="debt-cashback" placeholder="Cashback %" min="0" max="100" step="0.1" value="0" title="% de cashback que da esta tarjeta" /></div>
+        <div class="field-group"><label class="field-label" for="debt-benefits">Beneficios (opcional)</label><input type="text" id="debt-benefits" placeholder="Ej: sin cuota de manejo" /></div>
       </div>
     </div>
   </div>
@@ -1644,24 +1644,24 @@
       <p style="font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px;">Préstamos bancarios o lo que le debes a alguien. <strong>Si compraste algo a cuotas con tarjeta, no lo registres aquí</strong> — ya se trackea solo desde "Registrar gasto" → Financiación (lo verás arriba, en "Cuotas activas").</p>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-        <input type="text" id="mydebt-name" placeholder="Ej: Préstamo banco, A mamá" />
+        <div class="field-group"><label class="field-label" for="mydebt-name">Nombre de la deuda</label><input type="text" id="mydebt-name" placeholder="Ej: Préstamo banco, A mamá" /></div>
 
-        <select id="mydebt-type">
+        <div class="field-group"><label class="field-label" for="mydebt-type">Tipo de deuda</label><select id="mydebt-type">
           <option value="prestamo">💼 Préstamo (banco o entidad)</option>
           <option value="persona">👤 Persona (informal)</option>
           <option value="otro">📋 Otro</option>
-        </select>
+        </select></div>
 
-        <input type="number" inputmode="decimal" id="mydebt-total" placeholder="Monto total adeudado" min="0" step="0.01" />
+        <div class="field-group"><label class="field-label" for="mydebt-total">Monto total adeudado</label><input type="number" inputmode="decimal" id="mydebt-total" placeholder="$ 0" min="0" step="0.01" /></div>
 
-        <input type="number" inputmode="decimal" id="mydebt-monthly" placeholder="Cuota mensual (opcional)" min="0" step="0.01" />
+        <div class="field-group"><label class="field-label" for="mydebt-monthly">Cuota mensual (opcional)</label><input type="number" inputmode="decimal" id="mydebt-monthly" placeholder="$ 0" min="0" step="0.01" /></div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <input type="date" id="mydebt-start-date" title="Fecha de inicio" />
-          <input type="number" id="mydebt-due-day" placeholder="Día vence (1-31)" min="1" max="31" />
+          <div class="field-group"><label class="field-label" for="mydebt-start-date">Fecha de inicio</label><input type="date" id="mydebt-start-date" title="Fecha de inicio" /></div>
+          <div class="field-group"><label class="field-label" for="mydebt-due-day">Día de vencimiento (1–31)</label><input type="number" id="mydebt-due-day" placeholder="Ej: 10" min="1" max="31" /></div>
         </div>
 
-        <input type="text" id="mydebt-notes" placeholder="Notas (opcional)" />
+        <div class="field-group"><label class="field-label" for="mydebt-notes">Notas (opcional)</label><input type="text" id="mydebt-notes" placeholder="Ej: se paga los 10 de cada mes" /></div>
 
         <button onclick="addMyDebt()" style="padding: 12px; background: linear-gradient(135deg, var(--accent-from, #7F77DD), var(--accent-to, #1D9E75)); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">📝 Agregar deuda</button>
       </div>
