@@ -2,7 +2,7 @@
    No toca los emojis de los datos del usuario (íconos de bolsillos, categorías, etc.). */
 (function () {
   var RE = /^[\s\u200d\ufe0f]*\p{Extended_Pictographic}[\u200d\ufe0f\u{1F3FB}-\u{1F3FF}\p{Extended_Pictographic}]*\s*/u;
-  var SEL = '.section-group-title, .card-title';
+  var SEL = '.section-group-title, .card-title, .form-section-title, .big-modal-title, .field-label';
   var pending = false;
 
   function clean(root) {
@@ -76,10 +76,23 @@
   var nativeScroll = Element.prototype.scrollIntoView;
   Element.prototype.scrollIntoView = function () { openFormFor(this); return nativeScroll.apply(this, arguments); };
 
+  // Accesibilidad: campos que solo tienen texto de ayuda (placeholder) y ninguna etiqueta reciben aria-label con ese texto,
+  // para que un lector de pantalla sepa qué se pide. No cambia nada visual.
+  function labelPlaceholders() {
+    var fields = document.querySelectorAll('.fp-form-card input[placeholder], .fp-form-card textarea[placeholder], .big-modal-body input[placeholder]');
+    for (var i = 0; i < fields.length; i++) {
+      var f = fields[i];
+      if (f.getAttribute('aria-label') || f.closest('label')) continue;
+      if (f.id && document.querySelector('label[for="' + f.id + '"]')) continue;
+      f.setAttribute('aria-label', f.getAttribute('placeholder'));
+    }
+  }
+
   function start() {
     collapseAdvanced();
     clean(document);
     collapseForms();
+    labelPlaceholders();
     // Los títulos se vuelven a dibujar cuando cambian los datos: observar solo altas/bajas de nodos
     new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
   }
