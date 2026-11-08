@@ -316,6 +316,43 @@ export function budgetForNewMonth(state: CoreState, month: string, defaults: Rec
   return { ...src };
 }
 
+// ---------------------------------------------------------------- presupuesto: categorías y KPIs
+export type BudgetTone = 'over' | 'warn' | 'ok' | 'tracking';
+export interface BudgetRow {
+  id: string; label: string; icon: string; budget: number; spent: number; available: number;
+  hasBudget: boolean; pct: number; realPct: number; tone: BudgetTone; barWidth: number;
+}
+export interface BudgetOverview {
+  rows: BudgetRow[];                                  // ordenadas por urgencia
+  totalBudget: number; totalSpent: number; available: number;
+  counts: { over: number; warn: number; ok: number };
+}
+/** Presupuesto vs gasto real por categoría de un mes (misma lógica que la pantalla Presupuesto, ahora pura y con pruebas).
+ *  Las filas se ordenan por urgencia: excedidas, cerca del límite, bajo control y sin límite; dentro de cada grupo, mayor % primero.
+ *  Los pagos de tarjeta no cuentan como gasto. */
+export function budgetOverview(state: CoreState, month: string, categories: { id: string; label: string; icon?: string }[]): BudgetOverview {
+  const budget = (state.budgets || {})[month] || {};
+  const txs = (state.transactions || {})[month] || [];
+  const counts = { over: 0, warn: 0, ok: 0 };
+  let totalBudget = 0, totalSpent = 0;
+  const rows: BudgetRow[] = categories.map((c) => {
+    const bg = num(budget[c.id]);
+    const sp = txs.filter((t) => t.category === c.id && !isCardPayment(state, t)).reduce((a, t) => a + num(t.amount), 0);
+    const hasBudget = bg > 0;
+    const realPct = hasBudget ? (sp / bg) * 100 : 0;
+    const pct = Math.min(100, realPct);
+    totalBudget += bg; totalSpent += sp;
+    let tone: BudgetTone = 'tracking';
+    if (hasBudget && pct >= 100) { tone = 'over'; counts.over++; }
+    else if (hasBudget && pct >= 80) { tone = 'warn'; counts.warn++; }
+    else if (hasBudget) { tone = 'ok'; counts.ok++; }
+    return { id: c.id, label: c.label, icon: c.icon || '', budget: bg, spent: sp, available: bg - sp, hasBudget, pct, realPct, tone, barWidth: hasBudget ? pct : (sp > 0 ? 100 : 0) };
+  });
+  const rank: Record<BudgetTone, number> = { over: 0, warn: 1, ok: 2, tracking: 3 };
+  rows.sort((a, b) => (rank[a.tone] - rank[b.tone]) || (b.realPct - a.realPct));
+  return { rows, totalBudget, totalSpent, available: totalBudget - totalSpent, counts };
+}
+
 // ---------------------------------------------------------------- calidad de datos
 const numFields = (obj: Rec | undefined, keys: string[]): number => {
   let fixes = 0;

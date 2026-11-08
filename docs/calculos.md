@@ -51,3 +51,9 @@ Usan referencias **estables**, no el gasto parcial del mes:
 - **Interruptor por tarjeta "Mi banco me deja adelantar el pago de mis cuotas"** (`canPrepayInstallments`): si está activo, el capital de las cuotas futuras **no se considera bloqueado**; todo el saldo es optimizable y el pago recomendado antes del corte es `saldo − objetivo de utilización`. Si está apagado (por defecto), se asume que las cuotas futuras no se pueden pagar antes.
 - "Por pagar" de cada compra = suma de sus cuotas pendientes (**incluye intereses**); "capital" = lo que falta de principal. Pueden diferir, y el "por pagar" puede ser mayor que el saldo sin que haya error.
 - Una compra cuyas cuotas ya pasaron todas está **terminada**: sale de la lista de activas ("Ya terminaste de pagar: …"), no bloquea cupo y su contador nunca pasa del total (antes "Cuota 5/4").
+
+## Presupuesto (pantalla en React)
+- KPIs: **Ingreso del mes** = recurrentes + extras + cashback; **Presupuesto total** = suma de los límites; **Gastado hasta hoy** = gasto de las categorías (sin pagos de tarjeta); **Margen real** = ingreso − gastado ("Si gastas todo" = ingreso − presupuesto).
+- Cada categoría: `% usado = gastado ÷ presupuesto`. Estados: **excedida** (≥ 100 %), **cerca del límite** (≥ 80 %), **bajo control** (< 80 %) y **solo seguimiento** (sin límite). Se ordenan por urgencia y, dentro de cada grupo, por % real.
+- Gastar **exactamente** el presupuesto cuenta como excedida y se muestra "Llegaste al límite" (antes: "Excediste $ 0").
+- Las categorías sin presupuesto y sin gasto se pliegan detrás de un botón.
