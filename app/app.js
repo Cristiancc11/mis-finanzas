@@ -6567,6 +6567,8 @@ async function buildAnnualPDF(state, year) {
   window.FP.getCategories = () => CATEGORIES.map(c => ({ id: c.id, label: c.label, icon: c.icon }));
   window.FP.isCardPayment = (t) => isCardPayment(t);
   window.FP.fmt = (n) => fmt(n);
+  // Ingresos del mes visible, calculados por la lógica actual (React los usa tal cual hasta migrar también los ingresos)
+  window.FP.getIncome = () => ({ recurring: totalIncome(), extras: totalMonthExtraIncome(), cashback: totalMonthCashback() });
 
   function saveState() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
@@ -11577,6 +11579,7 @@ async function buildAnnualPDF(state, year) {
       }
     }
 
+    window.dispatchEvent(new CustomEvent('fp:change'));   // la pantalla Presupuesto en React se vuelve a dibujar
     document.getElementById('budget-total').textContent = fmt(tBudget);
     document.getElementById('budget-spent-total').textContent = fmt(tSpent);
     const av = tBudget - tSpent;

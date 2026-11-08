@@ -554,3 +554,35 @@ html.theme-dark {
 /* Etiquetas visibles en los formularios de bolsillo, tarjeta rápida y deuda */
 .form-row-debt { align-items: end; }
 .fp-form-card .field-group > .field-label { margin-bottom: 0; }
+
+/* ==========================================================================
+   Presupuesto en React: KPIs y categorías (el código anterior queda oculto)
+   ========================================================================== */
+html.fp-react-budget #budget-summary { display: none; }
+html.fp-react-budget #subsection-categorias > .raised-card:first-of-type > :is(#budget-quick-summary, .budget-row.header, #budget-list, .summary-row) { display: none; }
+#react-budget-kpis { margin-bottom: 4px; }
+.fp-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 16px; }
+.fp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 650; }
+.fp-chip-over { background: var(--danger-bg); color: var(--danger-text); }
+.fp-chip-warn { background: var(--warning-bg); color: var(--warning-text); }
+.fp-chip-ok { background: var(--success-bg); color: var(--success-text); }
+.fp-budget-head, .fp-budget-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: center; }
+.fp-budget-head { padding: 6px 16px 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
+.fp-budget-head span:nth-child(2), .fp-budget-head span:nth-child(4) { text-align: right; }
+.fp-budget-row { padding: 14px 16px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-primary); transition: border-color .15s, box-shadow .15s; }
+.fp-budget-row:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+.fp-budget-row.is-over { border-color: color-mix(in srgb, var(--danger-text) 38%, var(--border)); background: color-mix(in srgb, var(--danger-bg) 45%, var(--bg-primary)); }
+.fp-bcat { font-weight: 650; font-size: 14.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-bbud, .fp-bavail { text-align: right; font-weight: 650; font-size: 14.5px; }
+.fp-bbud em { font-style: italic; font-weight: 450; color: var(--text-tertiary); }
+.fp-bspent { display: grid; gap: 6px; min-width: 0; }
+.fp-bspent strong { font-size: 14.5px; }
+.fp-bstatus { font-size: 12.5px; font-weight: 600; }
+.fp-bstatus.is-over { color: var(--danger-text); } .fp-bstatus.is-warn { color: var(--warning-text); } .fp-bstatus.is-ok { color: var(--success-text); } .fp-bstatus.is-tracking { color: var(--text-tertiary); }
+.fp-btotals { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
+@media (max-width: 760px) {
+  .fp-budget-head { display: none; }
+  .fp-budget-row { grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .fp-bcat { grid-column: 1 / -1; } .fp-bspent { grid-column: 1 / -1; order: 3; } .fp-bbud { text-align: left; } .fp-bavail { text-align: right; }
+}
+.fp-empty-toggle { display: block; margin: 6px 0 4px; padding: 8px 2px !important; font-size: 14px !important; }

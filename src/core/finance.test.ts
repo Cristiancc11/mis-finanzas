@@ -346,3 +346,40 @@ test('prepaidCapital: capital que ya se adelantó', () => {
   assert.equal(f.prepaidCapital(4897352, 2206335), 2691017);
   assert.equal(f.prepaidCapital(1000000, 2206335), 0);
 });
+
+test('budgetOverview: orden por urgencia, estados, conteos y totales', () => {
+  const cats = [{ id: 'mercado', label: 'Mercado' }, { id: 'servicios', label: 'Servicios' }, { id: 'gym', label: 'Gimnasio' }, { id: 'streaming', label: 'Streaming' }, { id: 'rappi', label: 'Rappi' }, { id: 'ocio', label: 'Ocio' }];
+  const state: f.CoreState = {
+    budgets: { '2026-11': { mercado: 700000, servicios: 450000, gym: 120000, rappi: 0, ocio: 100000 } },
+    transactions: { '2026-11': [
+      { amount: 560000, category: 'mercado' },                 // 80 % → cerca del límite
+      { amount: 600000, category: 'servicios' },               // 133 % → excedida
+      { amount: 60000, category: 'gym' },                      // 50 % → bajo control
+      { amount: 38900, category: 'streaming' },                // sin presupuesto, con gasto → solo seguimiento
+      { amount: 500000, category: 'ocio', payCardId: 7 },      // pago de tarjeta: NO cuenta
+    ] },
+  };
+  const o = f.budgetOverview(state, '2026-11', cats);
+  assert.deepEqual(o.rows.map((r) => [r.id, r.tone]), [['servicios', 'over'], ['mercado', 'warn'], ['gym', 'ok'], ['ocio', 'ok'], ['streaming', 'tracking'], ['rappi', 'tracking']]);
+  assert.deepEqual(o.counts, { over: 1, warn: 1, ok: 2 });
+  assert.equal(o.totalBudget, 1370000);
+  assert.equal(o.totalSpent, 560000 + 600000 + 60000 + 38900);
+  assert.equal(o.available, 1370000 - 1258900);
+  const serv = o.rows[0];
+  assert.equal(serv.available, -150000);
+  assert.equal(serv.barWidth, 100);                              // la barra nunca pasa de 100 %
+  assert.ok(serv.realPct > 133 && serv.realPct < 134);          // pero el % real sí se conserva para ordenar
+  assert.equal(o.rows.find((r) => r.id === 'streaming')!.barWidth, 100);   // solo seguimiento con gasto: barra completa neutra
+  assert.equal(o.rows.find((r) => r.id === 'rappi')!.barWidth, 0);         // sin presupuesto ni gasto: barra vacía
+  assert.equal(o.rows.find((r) => r.id === 'ocio')!.spent, 0);
+});
+
+test('budgetOverview: mes sin presupuesto ni gastos y categorías con presupuesto en texto', () => {
+  const cats = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }];
+  const empty = f.budgetOverview({}, '2026-11', cats);
+  assert.deepEqual([empty.totalBudget, empty.totalSpent, empty.available, empty.counts.over + empty.counts.warn + empty.counts.ok], [0, 0, 0, 0]);
+  const txt = f.budgetOverview({ budgets: { '2026-11': { a: '1000' } }, transactions: { '2026-11': [{ amount: '250', category: 'a' }] } }, '2026-11', cats);
+  assert.equal(txt.rows[0].id, 'a'); assert.equal(txt.rows[0].pct, 25); assert.equal(txt.totalBudget, 1000);
+  // gastar EXACTAMENTE el presupuesto cuenta como excedida (pct = 100), igual que antes
+  assert.equal(f.budgetOverview({ budgets: { '2026-11': { a: 1000 } }, transactions: { '2026-11': [{ amount: 1000, category: 'a' }] } }, '2026-11', cats).rows[0].tone, 'over');
+});

@@ -2,6 +2,7 @@
 // y avisa con el evento "fp:change" cada vez que cambian los datos. Así React y el código viejo conviven mientras
 // se migra pantalla por pantalla.
 import { useEffect, useState } from 'react';
+import { budgetOverview, type BudgetOverview, type CoreState } from '../core/finance';
 
 export interface Pocket { id: number | string; name: string; amount: number; icon?: string; isCash?: boolean }
 export interface Goal { id: number | string; name: string; target: number; current: number }
@@ -20,6 +21,7 @@ interface Bridge {
   getCategories(): Category[];
   isCardPayment(t: Tx): boolean;
   fmt(n: number): string;
+  getIncome(): { recurring: number; extras: number; cashback: number };
 }
 declare global {
   interface Window {
@@ -38,6 +40,8 @@ export interface Snapshot {
   goals: Goal[];
   series: MonthPoint[];
   categories: CategoryRow[];
+  income: { recurring: number; extras: number; cashback: number };
+  overview: BudgetOverview;
   fmt: (n: number) => string;
 }
 
@@ -76,12 +80,16 @@ export function readSnapshot(): Snapshot {
   const rows: CategoryRow[] = cats.map((c) => ({ id: c.id, label: c.label, icon: c.icon || '', spent: spentBy[c.id] || 0, budget: num(budgets[c.id]) }));
   for (const id of Object.keys(spentBy)) if (!known.has(id)) rows.push({ id, label: id, icon: '', spent: spentBy[id], budget: num(budgets[id]) });
 
+  const income = (fp.getIncome && fp.getIncome()) || { recurring: 0, extras: 0, cashback: 0 };
+  const overview = budgetOverview(state as unknown as CoreState, month, cats);
   return {
     month,
     pockets: (state.pockets || []).filter((p) => num(p.amount) > 0),
     goals: state.goals || [],
     series,
     categories: rows.filter((r) => r.spent > 0 || r.budget > 0).sort((a, b) => b.spent - a.spent || b.budget - a.budget),
+    income,
+    overview,
     fmt: fp.fmt || defaultFmt,
   };
 }
