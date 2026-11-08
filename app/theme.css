@@ -462,3 +462,91 @@ html.theme-dark {
 /* Cifras grandes: nunca se parten en dos líneas; más pequeñas en pantallas angostas */
 .metric-hero-value, .metric-value, .net-worth-hero-value { white-space: nowrap; }
 @media (max-width: 900px) { .metric-hero-value { font-size: 22px; } .metric-hero { padding: 16px; } }
+
+/* ==========================================================================
+   FORMULARIOS v4: campos cómodos, etiquetas claras, interruptores, modal limpio
+   ========================================================================== */
+.field-group { gap: 7px; }
+.field-label { font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--text-secondary); }
+.field-hint { font-size: 12.5px; line-height: 1.45; color: var(--text-tertiary); }
+.form-grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 14px; margin-bottom: 14px; }
+.form-section-title { font-size: 12.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-secondary); margin: 24px 0 14px; padding-top: 22px; }
+.form-section-title.no-border-top { margin-top: 4px; padding-top: 0; border-top: 0; }
+
+/* Campos (solo dentro de formularios: no se agrandan los campos pequeños de las tablas) */
+:is(.field-group, .big-modal-body, .fp-form-card) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), select) {
+  min-height: 46px; padding: 0 14px; border-radius: 12px; font-size: 15px; box-shadow: none;
+  background-color: var(--bg-primary); border: 1.5px solid var(--border-strong); transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+:is(.field-group, .big-modal-body, .fp-form-card) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), select):hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--border-strong)); }
+:is(.field-group, .big-modal-body, .fp-form-card) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), select):focus { border-color: var(--brand); box-shadow: var(--ring); outline: none; }
+:is(.field-group, .big-modal-body, .fp-form-card) select {
+  appearance: none; -webkit-appearance: none; padding-right: 42px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a94a6' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; background-size: 16px;
+}
+:is(.field-group, .big-modal-body, .fp-form-card) textarea { min-height: 96px; padding: 12px 14px; border-radius: 12px; font-size: 15px; border: 1.5px solid var(--border-strong); box-shadow: none; }
+:is(.field-group, .big-modal-body, .fp-form-card) input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+:is(.field-group, .big-modal-body, .fp-form-card) input[type=number]::-webkit-inner-spin-button,
+:is(.field-group, .big-modal-body, .fp-form-card) input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Interruptores (antes casillas pequeñas) */
+:is(.big-modal-body, .fp-form-card) input[type=checkbox] {
+  appearance: none; -webkit-appearance: none; position: relative; flex-shrink: 0; cursor: pointer;
+  width: 42px !important; height: 25px !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+  border: 0 !important; border-radius: 999px; background: var(--border-strong); box-shadow: none !important; transition: background-color .2s;
+}
+:is(.big-modal-body, .fp-form-card) input[type=checkbox]::after {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: transform .2s;
+}
+:is(.big-modal-body, .fp-form-card) input[type=checkbox]:checked { background: var(--brand); }
+:is(.big-modal-body, .fp-form-card) input[type=checkbox]:checked::after { transform: translateX(17px); }
+:is(.big-modal-body, .fp-form-card) input[type=checkbox]:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 40%, transparent); outline-offset: 2px; }
+:is(.big-modal-body, .fp-form-card) label[style*="cursor: pointer"] { border-radius: 12px !important; padding: 13px 14px !important; gap: 12px !important; font-size: 14px !important; line-height: 1.4; }
+
+/* Tipo de gasto: tarjetas de elección con estado activo claro */
+.expense-type-selector { gap: 10px !important; }
+.expense-type-option {
+  border-radius: 14px !important; padding: 14px 8px !important; border-width: 1.5px !important;
+  background: var(--bg-primary) !important; box-shadow: var(--shadow-xs); transition: border-color .15s, background-color .15s, box-shadow .15s !important;
+}
+.expense-type-option:hover { border-color: var(--border-strong) !important; background: var(--bg-secondary) !important; }
+.expense-type-option[style*="var(--accent-to)"] { background: var(--brand-soft) !important; border-color: var(--brand) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent) !important; }
+.expense-type-option span:last-child { font-size: 13.5px !important; font-weight: 650 !important; }
+
+/* Modal (registrar gasto y similares): limpio, con encabezado claro */
+.big-modal-overlay { background: rgba(8, 14, 24, .55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.big-modal-card { border-radius: 22px; max-width: 600px; border: 1px solid var(--border); box-shadow: 0 40px 90px -24px rgba(8, 15, 25, .55); }
+.big-modal-header { background: var(--bg-primary) !important; border-bottom: 1px solid var(--border); border-radius: 22px 22px 0 0; padding: 20px 24px; }
+.big-modal-title { color: var(--text-primary) !important; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+.big-modal-close { width: 38px; height: 38px; background: var(--bg-secondary) !important; color: var(--text-secondary) !important; transition: background-color .15s, color .15s; }
+.big-modal-close:hover { background: var(--border) !important; color: var(--text-primary) !important; }
+.big-modal-body { padding: 10px 24px 26px; }
+.big-modal-footer { padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bg-primary); }
+@media (max-width: 480px) {
+  .big-modal-card { border-radius: 22px 22px 0 0; max-width: none; }
+  .big-modal-header { border-radius: 22px 22px 0 0; padding: 16px 18px; }
+  .big-modal-body { padding: 8px 18px 22px; } .big-modal-footer { padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Botones de acción principales de los formularios */
+:is(.big-modal-footer, .fp-form-card) button:is([onclick^="add"], [onclick^="save"], [onclick^="submit"]), .big-modal-footer > button {
+  width: 100%; min-height: 50px; padding: 0 20px; border: 0 !important; border-radius: 14px; color: #fff !important; font-size: 15.5px; font-weight: 650; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to)) !important;
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--brand) 85%, transparent); transition: transform .15s, filter .15s, box-shadow .15s;
+}
+:is(.big-modal-footer, .fp-form-card) button:is([onclick^="add"], [onclick^="save"], [onclick^="submit"]):hover, .big-modal-footer > button:hover { filter: brightness(1.07); transform: translateY(-1px); }
+:is(.big-modal-footer, .fp-form-card) button:is([onclick^="add"], [onclick^="save"], [onclick^="submit"]):active, .big-modal-footer > button:active { transform: translateY(0); }
+
+/* Formularios plegables de las pestañas */
+.fp-form-card { padding: 22px 24px 26px; }
+.fp-form-card > p:first-of-type { font-size: 13.5px; line-height: 1.5; color: var(--text-secondary); margin: 0 0 16px; }
+@media (max-width: 768px) {
+  :is(.field-group, .big-modal-body, .fp-form-card) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), select, textarea) { font-size: 16px; }
+}
+
+/* Ajustes finos de formularios */
+.big-modal-card { max-width: 640px; }
+:is(.field-group, .big-modal-body, .fp-form-card) select { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 36px; font-size: 14.5px; }
+.form-section-title:not(.no-border-top) { margin-top: 24px !important; padding-top: 22px !important; border-top: 1px solid var(--border) !important; margin-bottom: 14px !important; }
