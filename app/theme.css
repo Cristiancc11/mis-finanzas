@@ -550,3 +550,7 @@ html.theme-dark {
 .big-modal-card { max-width: 640px; }
 :is(.field-group, .big-modal-body, .fp-form-card) select { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 36px; font-size: 14.5px; }
 .form-section-title:not(.no-border-top) { margin-top: 24px !important; padding-top: 22px !important; border-top: 1px solid var(--border) !important; margin-bottom: 14px !important; }
+
+/* Etiquetas visibles en los formularios de bolsillo, tarjeta rápida y deuda */
+.form-row-debt { align-items: end; }
+.fp-form-card .field-group > .field-label { margin-bottom: 0; }

@@ -78,6 +78,17 @@
 
   // Accesibilidad: campos que solo tienen texto de ayuda (placeholder) y ninguna etiqueta reciben aria-label con ese texto,
   // para que un lector de pantalla sepa qué se pide. No cambia nada visual.
+  // Enlaza cada etiqueta suelta ("<label class=field-label>" sin "for") con el campo que tiene justo después, para que un clic
+  // en la etiqueta lleve al campo y los lectores de pantalla las asocien.
+  function linkLooseLabels() {
+    var labels = document.querySelectorAll('.field-group > label.field-label:not([for])');
+    for (var i = 0; i < labels.length; i++) {
+      var next = labels[i].nextElementSibling;
+      while (next && !/^(INPUT|SELECT|TEXTAREA)$/.test(next.tagName)) next = next.nextElementSibling;
+      if (next && next.id && next.type !== 'hidden') labels[i].setAttribute('for', next.id);
+    }
+  }
+
   function labelPlaceholders() {
     var fields = document.querySelectorAll('.fp-form-card input[placeholder], .fp-form-card textarea[placeholder], .big-modal-body input[placeholder]');
     for (var i = 0; i < fields.length; i++) {
@@ -92,6 +103,7 @@
     collapseAdvanced();
     clean(document);
     collapseForms();
+    linkLooseLabels();
     labelPlaceholders();
     // Los títulos se vuelven a dibujar cuando cambian los datos: observar solo altas/bajas de nodos
     new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
