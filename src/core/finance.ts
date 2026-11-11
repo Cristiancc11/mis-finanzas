@@ -479,6 +479,88 @@ export function trmInsight(values: number[]): TrmInsight | null {
   return { tone: pctVsAvg <= -1.5 ? 'buy' : pctVsAvg >= 1.5 ? 'sell' : 'flat', pctVsAvg, current, avg, min: Math.min(...values), max: Math.max(...values) };
 }
 
+// ---------------------------------------------------------------- análisis: calendario, comparativa y gastos hormiga
+export interface Reminder { title?: string; date?: string; recurring?: string; icon?: string; amount?: number }
+export interface CalEvent { icon: string; label: string; type: 'cutoff' | 'reminder'; reminderId?: string; amount?: number }
+export interface CalendarMonth { year: number; month: number; daysInMonth: number; startWeekday: number; events: Record<number, CalEvent[]> }
+
+/** Eventos del mes de `today`: cortes de tarjeta y recordatorios. Un día que no existe ese mes (31 en abril, 29 en febrero) cae en el último día. */
+export function calendarMonth(state: CoreState & { reminders?: Record<string, Reminder | null> }, today: Date): CalendarMonth {
+  const year = today.getFullYear(), month = today.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startWeekday = (new Date(year, month, 1).getDay() + 6) % 7;      // lunes = 0
+  const events: Record<number, CalEvent[]> = {};
+  const add = (day: number, e: CalEvent) => { (events[day] = events[day] || []).push(e); };
+  for (const d of state.debts || []) {
+    const cd = Math.floor(num(d.cutoffDay));
+    if (cd >= 1) add(Math.min(cd, daysInMonth), { icon: '💳', label: 'Corte ' + (d.name || ''), type: 'cutoff' });
+  }
+  for (const [id, r] of Object.entries(state.reminders || {})) {
+    if (!r || !/^\d{4}-\d{2}-\d{2}/.test(r.date || '')) continue;
+    const [ry, rm, rd] = (r.date as string).split('-').map(Number);
+    let day: number | null = null;
+    if (r.recurring === 'monthly') { if (ry < year || (ry === year && rm - 1 <= month)) day = Math.min(rd, daysInMonth); }   // desde el mes en que empieza
+    else if (r.recurring === 'yearly') { if (rm - 1 === month) day = Math.min(rd, daysInMonth); }
+    else if (ry === year && rm - 1 === month) day = Math.min(rd, daysInMonth);
+    if (day && day >= 1) add(day, { icon: r.icon || '📌', label: String(r.title ?? ''), type: 'reminder', reminderId: id, amount: r.amount });
+  }
+  return { year, month, daysInMonth, startWeekday, events };
+}
+
+export interface CompareRow { id: string; current: number; previous: number; diff: number; pct: number; trend: 'up' | 'down' | 'flat'; isNew: boolean }
+export interface MonthComparison {
+  hasData: boolean; currentMonth: string; previousMonth: string; throughDay: number | null;
+  currentTotal: number; previousTotal: number; diff: number; pct: number | null; rows: CompareRow[];
+}
+const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+/** Gasto del mes actual contra el anterior por categoría (sin pagos de tarjeta).
+ *  'same-period' compara hasta el mismo día del mes (justo a mitad de mes); 'full' compara el mes anterior completo. */
+export function monthComparison(state: CoreState, today: Date, mode: 'same-period' | 'full' = 'same-period'): MonthComparison {
+  const currentMonth = ym(today);
+  const prevDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const previousMonth = ym(prevDate);
+  const real = (m: string) => ((state.transactions || {})[m] || []).filter((t) => !isCardPayment(state, t));
+  const cur = real(currentMonth), prev = real(previousMonth);
+  const prevDays = new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 0).getDate();
+  const day = (t: TxLike) => parseInt(String(t.date || '').substring(8, 10), 10);
+  const same = mode === 'same-period';
+  const within = (txs: TxLike[], max: number) => (same ? txs.filter((t) => !(day(t) > max)) : txs);   // sin fecha válida: cuenta
+  const c = within(cur, today.getDate()), p = within(prev, Math.min(today.getDate(), prevDays));
+  const byCat = (txs: TxLike[]) => { const m: Record<string, number> = {}; for (const t of txs) m[String(t.category)] = (m[String(t.category)] || 0) + num(t.amount); return m; };
+  const cc = byCat(c), pc = byCat(p);
+  const currentTotal = c.reduce((a, t) => a + num(t.amount), 0), previousTotal = p.reduce((a, t) => a + num(t.amount), 0);
+  const rows: CompareRow[] = [...new Set([...Object.keys(cc), ...Object.keys(pc)])].map((id) => {
+    const current = cc[id] || 0, previous = pc[id] || 0, diff = current - previous;
+    const pct = previous > 0 ? (diff / previous) * 100 : (current > 0 ? 100 : 0);
+    return { id, current, previous, diff, pct, trend: Math.abs(pct) > 10 ? (diff > 0 ? 'up' : 'down') : 'flat', isNew: previous === 0 && current > 0 } as CompareRow;
+  }).sort((a, b) => (b.current - a.current) || (b.previous - a.previous));
+  const diff = currentTotal - previousTotal;
+  return { hasData: cur.length + prev.length > 0, currentMonth, previousMonth, throughDay: same ? today.getDate() : null, currentTotal, previousTotal, diff, pct: previousTotal > 0 ? (diff / previousTotal) * 100 : null, rows };
+}
+
+export const ANT_MAX_AMOUNT = 50000;
+export interface AntPattern { key: string; count: number; total: number; avg: number; monthsSpan: number; projectedYear: number }
+/** Gastos pequeños (≤ 50.000) que se repiten: se agrupan por las dos primeras palabras de la descripción. No cuentan los pagos de tarjeta
+ *  ni las cuotas de compras a plazos (no son gastos hormiga). La proyección anual = total ÷ meses distintos en que aparece × 12. */
+export function antExpenses(state: CoreState): { enough: boolean; patterns: AntPattern[] } {
+  const all = Object.values(state.transactions || {}).flatMap((a) => (Array.isArray(a) ? a : [])).filter((t) => !isCardPayment(state, t));
+  if (all.length < 5) return { enough: false, patterns: [] };
+  const groups: Record<string, { count: number; total: number; months: Set<string> }> = {};
+  for (const t of all) {
+    const desc = String(t.desc || '').trim();
+    if (!desc || num(t.amount) > ANT_MAX_AMOUNT || (t as TxLike & { installment?: unknown }).installment) continue;
+    const key = desc.toLowerCase().split(/\s+/).slice(0, 2).join(' ').substring(0, 30);
+    const g = (groups[key] = groups[key] || { count: 0, total: 0, months: new Set<string>() });
+    g.count++; g.total += num(t.amount);
+    if (t.date) g.months.add(String(t.date).substring(0, 7));
+  }
+  const patterns = Object.entries(groups).filter(([, g]) => g.count >= 2).map(([key, g]) => {
+    const monthsSpan = Math.max(1, g.months.size);
+    return { key, count: g.count, total: g.total, avg: g.total / g.count, monthsSpan, projectedYear: (g.total / monthsSpan) * 12 };
+  }).sort((a, b) => b.total - a.total).slice(0, 10);
+  return { enough: true, patterns };
+}
+
 // ---------------------------------------------------------------- calidad de datos
 const numFields = (obj: Rec | undefined, keys: string[]): number => {
   let fixes = 0;

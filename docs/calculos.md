@@ -72,3 +72,8 @@ Usan referencias **estables**, no el gasto parcial del mes:
 - **Tasa de ahorro** del mes = (ingresos − gastos) ÷ ingresos, en % entero. Sin ingresos no hay tasa (no se dibuja el punto); gastar más de lo que entra da una tasa **negativa**.
 - **Gasto por categoría**: del mes calendario actual, sin pagos de tarjeta, de mayor a menor. Una categoría desconocida se muestra con su nombre.
 - **Historial del dólar**: los últimos 7, 30 o 90 días guardados. **Señal**: si la TRM de hoy está **≥ 1,5 % por debajo** del promedio del período → "buen momento para comprar"; **≥ 1,5 % por encima** → "buen momento para vender"; en medio → "en su promedio habitual". Es información histórica, no una predicción.
+
+## Análisis: comparativa, gastos hormiga y calendario (en React)
+- **Comparativa vs mes anterior**: por defecto compara el **mismo período** (del 1 al día de hoy en ambos meses) para comparar lo mismo con lo mismo; el botón "Mes completo" compara el mes anterior entero. **No incluye pagos de tarjeta** (antes los sumaba como gasto y aparecían como categoría). `%` por categoría = (ahora − antes) ÷ antes; sube/baja si el cambio supera el 10 %; sin gasto anterior se marca "nuevo".
+- **Gastos hormiga**: gastos de **≤ 50.000** que se repiten (2 o más veces) con las mismas dos primeras palabras de la descripción. **No cuentan** los pagos de tarjeta ni las cuotas de compras a plazos. Proyección anual = total ÷ meses distintos en que aparece × 12. Función Pro.
+- **Calendario**: cortes de tarjeta y recordatorios (únicos, mensuales desde el mes en que empiezan, anuales). Un día que no existe ese mes (29, 30 o 31) cae en el último día del mes. Los textos se muestran como texto, no como HTML.

@@ -506,3 +506,70 @@ test('señal del dólar: ±1,5 % contra el promedio del período', () => {
   assert.equal(edge.min, 98.5); assert.equal(edge.max, 100);
   assert.equal(f.trmInsight([4100])!.tone, 'flat');                              // un solo punto: sin señal
 });
+
+test('calendario: cortes y recordatorios; un día inexistente cae en el último del mes', () => {
+  const state = { debts: [{ id: 1, name: 'Aurora', cutoffDay: 31, balance: 0 }, { id: 2, name: 'Brisa', cutoffDay: 5, balance: 0 }, { id: 3, name: 'SinCorte', balance: 0 }], reminders: {
+    a: { title: 'Arriendo', date: '2026-09-30', recurring: 'monthly', amount: 1100000 },        // mensual desde septiembre, día 30
+    b: { title: 'SOAT', date: '2025-11-20', recurring: 'yearly' },                                 // anual: noviembre
+    c: { title: 'Cita', date: '2026-11-12' },                                                      // único, este mes
+    d: { title: 'Otro mes', date: '2026-12-12' },                                                  // único, otro mes
+    e: { title: 'Futuro mensual', date: '2027-01-15', recurring: 'monthly' },                      // todavía no empieza
+    f: { title: 'Pago 31', date: '2026-01-31', recurring: 'monthly' },                             // día 31 en un mes de 30 días
+    g: null, h: { title: 'Sin fecha' },
+  } } as unknown as f.CoreState;
+  const nov = f.calendarMonth(state, new Date(2026, 10, 11));                                       // noviembre de 2026: 30 días, empieza en domingo
+  assert.deepEqual([nov.daysInMonth, nov.startWeekday], [30, 6]);
+  assert.deepEqual(nov.events[30].map((e) => e.label), ['Corte Aurora', 'Arriendo', 'Pago 31']);   // 31 → 30
+  assert.deepEqual(nov.events[5].map((e) => e.label), ['Corte Brisa']);
+  assert.deepEqual(nov.events[20].map((e) => e.label), ['SOAT']);
+  assert.deepEqual(nov.events[12].map((e) => e.label), ['Cita']);
+  assert.equal(nov.events[12][0].type, 'reminder'); assert.equal(nov.events[12][0].reminderId, 'c');
+  assert.equal(nov.events[30][1].amount, 1100000);
+  assert.ok(!Object.values(nov.events).flat().some((e) => ['Otro mes', 'Futuro mensual', 'Sin fecha'].includes(e.label)));
+  const feb = f.calendarMonth({ debts: [{ id: 1, name: 'X', cutoffDay: 30, balance: 0 }] } as unknown as f.CoreState, new Date(2027, 1, 10));   // febrero de 2027: 28 días
+  assert.deepEqual(Object.keys(feb.events), ['28']);
+  assert.equal(f.calendarMonth({}, new Date(2026, 10, 11)).events[1], undefined);
+});
+
+test('comparativa: sin pagos de tarjeta y con la opción de comparar el mismo período', () => {
+  const tx = (date: string, amount: number, category: string, extra: Record<string, unknown> = {}) => ({ date, amount, category, ...extra });
+  const state = { transactions: {
+    '2026-11': [tx('2026-11-03', 100, 'a'), tx('2026-11-09', 50, 'b'), tx('2026-11-20', 999, 'a'), tx('2026-11-05', 700, 'pago_tarjeta', { payCardId: 7 })],
+    '2026-10': [tx('2026-10-02', 80, 'a'), tx('2026-10-10', 20, 'c'), tx('2026-10-25', 400, 'a'), tx('2026-10-08', 500, 'pago_tarjeta')],
+  } } as unknown as f.CoreState;
+  const today = new Date(2026, 10, 11);
+  const same = f.monthComparison(state, today, 'same-period');
+  assert.equal(same.throughDay, 11);
+  assert.deepEqual([same.currentTotal, same.previousTotal], [150, 100]);                // hasta el 11: nov 100+50 · oct 80+20; ni pagos de tarjeta ni lo posterior
+  assert.equal(same.pct, 50);
+  assert.equal(f.monthComparison({ transactions: { '2026-11': [tx('2026-11-03', 105, 'a')], '2026-10': [tx('2026-10-03', 100, 'a')] } } as unknown as f.CoreState, today).rows[0].trend, 'flat');   // +5 %: dentro del margen del 10 %
+  assert.deepEqual(same.rows.map((r) => [r.id, r.current, r.previous, r.trend, r.isNew]), [['a', 100, 80, 'up', false], ['b', 50, 0, 'up', true], ['c', 0, 20, 'down', false]]);
+  const full = f.monthComparison(state, today, 'full');
+  assert.deepEqual([full.currentTotal, full.previousTotal, full.throughDay], [1149, 500, null]);   // mes completo; el pago de tarjeta sigue sin contar
+  assert.ok(full.rows.every((r) => r.id !== 'pago_tarjeta'));
+  assert.equal(f.monthComparison({}, today).hasData, false);
+  assert.equal(f.monthComparison({ transactions: { '2026-11': [tx('2026-11-01', 5, 'pago_tarjeta', { payCardId: 1 })] } } as unknown as f.CoreState, today).hasData, false);   // solo pagos de tarjeta: no hay qué comparar
+  assert.equal(f.monthComparison({ transactions: { '2026-11': [tx('2026-11-01', 5, 'a')] } } as unknown as f.CoreState, today).pct, null);             // sin mes anterior no hay %
+  // marzo: el mes anterior (febrero) tiene 28 días; el día 31 compara con todo febrero
+  const mar = f.monthComparison({ transactions: { '2027-02': [tx('2027-02-28', 10, 'a')], '2027-03': [tx('2027-03-31', 10, 'a')] } } as unknown as f.CoreState, new Date(2027, 2, 31));
+  assert.deepEqual([mar.currentTotal, mar.previousTotal], [10, 10]);
+});
+
+test('gastos hormiga: pequeños y repetidos; sin pagos de tarjeta ni cuotas', () => {
+  const tx = (date: string, desc: string, amount: number, extra: Record<string, unknown> = {}) => ({ date, desc, amount, category: 'x', ...extra });
+  const state = { transactions: {
+    '2026-10': [tx('2026-10-02', 'Tinto Oxxo', 3000), tx('2026-10-09', 'tinto oxxo centro', 3500), tx('2026-10-20', 'Uber', 18000), tx('2026-10-21', 'PORTATIL (cuota 1/10)', 40000, { installment: { current: 1, total: 10 } })],
+    '2026-11': [tx('2026-11-02', 'Tinto  Oxxo', 4000), tx('2026-11-05', 'Uber', 22000), tx('2026-11-06', 'PORTATIL (cuota 2/10)', 40000, { installment: { current: 2, total: 10 } }), tx('2026-11-07', 'PAGO TARJETA', 30000, { payCardId: 3 }), tx('2026-11-08', 'Cena grande', 200000)],
+  } } as unknown as f.CoreState;
+  const r = f.antExpenses(state);
+  assert.equal(r.enough, true);
+  assert.deepEqual(r.patterns.map((p) => p.key), ['uber', 'tinto oxxo']);               // ni cuotas, ni pago de tarjeta, ni la cena de 200.000
+  const tinto = r.patterns[1];
+  assert.deepEqual([tinto.count, tinto.total, tinto.monthsSpan], [3, 10500, 2]);
+  assert.equal(tinto.avg, 3500);
+  assert.equal(tinto.projectedYear, (10500 / 2) * 12);                                 // 63.000 al año
+  assert.equal(r.patterns[0].projectedYear, (40000 / 2) * 12);
+  assert.deepEqual(f.antExpenses({ transactions: { '2026-11': [tx('2026-11-01', 'a', 1), tx('2026-11-02', 'a', 1)] } } as unknown as f.CoreState), { enough: false, patterns: [] });
+  const solo = f.antExpenses({ transactions: { '2026-11': ['a', 'b', 'c', 'd', 'e'].map((d, i) => tx('2026-11-0' + (i + 1), d, 100)) } } as unknown as f.CoreState);
+  assert.deepEqual(solo, { enough: true, patterns: [] });                              // suficientes datos pero ningún patrón repetido
+});

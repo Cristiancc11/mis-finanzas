@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { ResumenCharts } from './ResumenCharts';
 import { BudgetKpis, BudgetCategories } from './Budget';
 import { Transactions } from './Transactions';
+import { MonthComparison, AntExpenses, FinancialCalendar } from './AnalysisInsights';
 import { IncomeExpenseChart, SavingsRateChart, CategoryDonutChart, TrmChart, TrmInsight } from './AnalysisCharts';
 
 /** Crea un contenedor justo antes de un elemento de la app actual (que queda oculto por CSS cuando React ya dibuja esa parte). */
@@ -44,6 +45,15 @@ function mount() {
   swap('chart-savings-rate', <SavingsRateChart />);
   swap('chart-category-pie', <CategoryDonutChart />);
   swap('trm-history-chart', <TrmChart />);
+
+  // Análisis: comparativa con el mes anterior, gastos hormiga y calendario (el código anterior sigue calculando, oculto)
+  const cmp = rootBefore('react-month-comparison', '#month-comparison-content');
+  const ant = rootBefore('react-ant-expenses', '#ant-expenses-content');
+  const cal = rootBefore('react-fin-calendar', '#financial-calendar');
+  if (cmp) createRoot(cmp).render(<MonthComparison />);
+  if (ant) createRoot(ant).render(<AntExpenses />);
+  if (cal) createRoot(cal).render(<FinancialCalendar />);
+  if (cmp && ant && cal) document.documentElement.classList.add('fp-react-insights');
   const insight = document.getElementById('trm-history-insight');
   if (insight && !insight.dataset.react) { insight.dataset.react = '1'; insight.innerHTML = ''; createRoot(insight).render(<TrmInsight />); }
 
