@@ -6070,6 +6070,8 @@ async function buildAnnualPDF(state, year) {
   window.FP.isCardPayment = (t) => isCardPayment(t);
   window.FP.fmt = (n) => fmt(n);
   // Ingresos del mes visible, calculados por la lógica actual (React los usa tal cual hasta migrar también los ingresos)
+  window.FP.getBankInfo = () => (typeof BANK_INFO !== 'undefined' ? BANK_INFO : {});     // nombre, logo y color de cada banco
+  window.FP.getBrandInfo = () => (typeof BRAND_INFO !== 'undefined' ? BRAND_INFO : {});   // nombre y logo de cada franquicia
   window.FP.getCutoffStatus = (d) => getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id);   // corte, pago recomendado y utilización de una tarjeta
   window.FP.getPaymentMethods = () => getPaymentMethodsAsMap();
   window.FP.getMonthLabel = (m) => getMonthLabel(m);
@@ -10264,6 +10266,7 @@ async function buildAnnualPDF(state, year) {
   };
 
   function renderDebts() {
+    window.dispatchEvent(new CustomEvent('fp:change'));   // la lista de tarjetas en React se vuelve a dibujar
     const list = document.getElementById('debt-list');
     if (!list) {
       console.warn('⚠️ Elemento debt-list no existe en el DOM');
@@ -10290,249 +10293,9 @@ async function buildAnnualPDF(state, year) {
     
     const debt = totalDebt(), limit = totalLimit();
     
-    if (state.debts.length === 0) {
-      list.innerHTML = `
-        <div class="empty-state-fancy">
-          <div class="empty-state-icon">💳</div>
-          <h3 class="empty-state-title">Sin tarjetas registradas</h3>
-          <p class="empty-state-message">
-            Registra tus tarjetas de crédito para hacer seguimiento de cupos,
-            cashback y mejorar tu score crediticio.
-          </p>
-          <button class="empty-state-action" onclick="document.getElementById('card-template')?.focus()">
-            ➕ Agregar mi primera tarjeta
-          </button>
-        </div>
-      `;
-    } else {
-      console.log('💳 Renderizando', state.debts.length, 'tarjetas');
-      
-      // Verificar que BANK_INFO y BRAND_INFO existan
-      const safeBank = (typeof BANK_INFO !== 'undefined' && BANK_INFO) ? BANK_INFO : {};
-      const safeBrand = (typeof BRAND_INFO !== 'undefined' && BRAND_INFO) ? BRAND_INFO : {};
-      
-      list.innerHTML = '<div class="cards-grid">' + state.debts.map(d => {
-        try {
-          const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
-          const bank = safeBank[d.bank] || { name: '', logo: '', cardClass: '' };
-          const brand = safeBrand[d.brand] || { name: '', logo: '' };
-          const lastDigits = d.lastDigits || (d.id ? d.id.toString().slice(-4) : '0000');
+    // La lista de tarjetas (imagen + detalle de cada una) y el estado vacío ahora los dibuja React (src/react/CardsList.tsx).
+    // Aquí solo quedan los totales y el aviso de límite del plan.
 
-          return `<div class="credit-card ${bank.cardClass || ''}">
-            <div class="credit-card-top">
-              ${bank.logo || `<div class="credit-card-bank-name">${esc(d.name || 'Tarjeta')}</div>`}
-              <div class="credit-card-info-label" style="text-align: right;">CUPO TOTAL<br><span class="credit-card-info-value">${fmt(d.payment || 0)}</span></div>
-            </div>
-            <div>
-              <div class="credit-card-chip"></div>
-              <div class="credit-card-number">•••• •••• •••• ${lastDigits}</div>
-              <div class="credit-card-bottom">
-                <div>
-                  <div class="credit-card-info-label">Saldo actual</div>
-                  <div class="credit-card-info-value">${fmt(d.balance || 0)}</div>
-                </div>
-                <div class="credit-card-brand">${brand.logo || ''}</div>
-              </div>
-            </div>
-          </div>`;
-        } catch(e) {
-          console.error('❌ Error renderizando tarjeta:', d.name, e);
-          return `<div class="credit-card" style="background: #d4d4d4;">
-            <div class="credit-card-top">
-              <div class="credit-card-bank-name">${esc(d.name || 'Tarjeta')}</div>
-            </div>
-            <div class="credit-card-bottom">
-              <div class="credit-card-info-value">${fmt(d.balance || 0)} / ${fmt(d.payment || 0)}</div>
-            </div>
-          </div>`;
-        }
-      }).join('') + '</div>';
-
-      // Detalles editables debajo de las tarjetas
-      list.innerHTML += state.debts.map(d => {
-        try {
-          const u = d.payment > 0 ? ((d.balance / d.payment) * 100).toFixed(1) : 0;
-          const cutoffInfo = d.cutoffDay ? getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id) : null;
-          const cardStats = getCardMonthStats(d.id);
-          const bank = safeBank[d.bank] || { name: 'Banco' };
-          const brand = safeBrand[d.brand] || { name: 'Tarjeta' };
-          const lastDigits = d.lastDigits || (d.id ? d.id.toString().slice(-4) : '0000');
-
-          // v81: listado de gastos del mes, aislado en su propio try-catch — si algún dato puntual
-          // está malformado, esto se degrada solo (mostrando un aviso) en vez de tumbar toda la card.
-          let txListHtml = '';
-          try {
-            if (cardStats.txCount > 0 && Array.isArray(cardStats.transactions)) {
-              const rows = cardStats.transactions.map(t => {
-                const cat = (typeof CATEGORIES !== 'undefined' && CATEGORIES) ? CATEGORIES.find(c => c.id === t.category) : null;
-                const catIcon = cat ? cat.icon : '📋';
-                let ds = '';
-                try { ds = new Date(t.date + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }); } catch(e) { ds = t.date || ''; }
-                const instLabel = (t.installment && t.installment.current && t.installment.total) ? ` · Cuota ${t.installment.current}/${t.installment.total}` : '';
-                const cashbackLine = (t.cashback && t.cashback > 0) ? `<div style="font-size: 10px; color: var(--success-text);">+${fmt(t.cashback)} cashback</div>` : '';
-                return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
-                  <div style="min-width: 0; flex: 1;">
-                    <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${catIcon} ${esc(t.desc || 'Gasto')}</div>
-                    <div style="font-size: 10px; color: var(--text-tertiary);">${ds}${instLabel}</div>
-                  </div>
-                  <div style="text-align: right; flex-shrink: 0; margin-left: 8px;">
-                    <div style="font-weight: 600;">${fmt(t.amount)}</div>
-                    ${cashbackLine}
-                  </div>
-                </div>`;
-              }).join('');
-
-              txListHtml = `<details style="margin-top: 6px; font-size: 12px;">
-                <summary style="cursor: pointer; color: var(--text-secondary); padding: 4px 0;">📋 Ver los ${cardStats.txCount} gastos de este mes</summary>
-                <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto;">
-                  ${rows}
-                </div>
-              </details>`;
-            }
-          } catch(e) {
-            console.error('❌ Error armando el listado de gastos de la tarjeta:', d.name, e);
-            txListHtml = `<div style="margin-top: 6px; font-size: 11px; color: var(--text-tertiary);">No se pudo cargar el detalle de gastos de este mes.</div>`;
-          }
-
-          // Determinar si necesita pago para mantener utilización ≤3%
-          let utilizationAlert = '';
-          let installmentsBlock = '';
-          
-          // v64: bloque visual de desglose de cupo cuando hay cuotas
-          // v118: solo compras ACTIVAS; desglose coherente (usado = bloqueado + optimizable; libre = cupo − saldo) y aviso cuando
-          // el capital pendiente de las cuotas es mayor que el saldo registrado.
-          const instInfo = cutoffInfo && cutoffInfo.installmentInfo;
-          const hasFinished = !!(instInfo && instInfo.finished && instInfo.finished.length);
-          if (instInfo && (instInfo.hasInstallments || hasFinished)) {
-            const limit = d.payment || 1;
-            const cupo = window.FPCore ? window.FPCore.cupoBreakdown(limit, d.balance, cutoffInfo.futureInstallmentsRaw, !!d.canPrepayInstallments) : null;
-            const lockedShown = cupo ? cupo.locked : cutoffInfo.futureInstallments;
-            const optimShown = cupo ? cupo.optimizable : cutoffInfo.optimizableBalance;
-            const freeShown = cupo ? cupo.free : Math.max(0, limit - d.balance);
-            const futurePct = cupo ? cupo.lockedPct : (cutoffInfo.futureInstallments / limit * 100);
-            const optimPct = cupo ? cupo.optimizablePct : (cutoffInfo.optimizableBalance / limit * 100);
-            const activeRows = (instInfo.groups || []).map(g => `
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 4px 0; font-size: 11px;">
-                  <span style="color: var(--text-secondary);">${esc(g.desc)} · Cuota ${g.currentIndex}/${g.totalCuotas}</span>
-                  <span style="color: var(--text-primary); font-weight: 500; text-align: right;">${fmt(g.pendingAmount)} por pagar${g.hasInterest ? `<br><small style="color: var(--text-tertiary); font-weight: 400;">capital ${fmt(g.outstandingNow)}</small>` : ''}</span>
-                </div>`).join('');
-            const finishedRow = hasFinished
-              ? `<div style="padding: 6px 0 2px; font-size: 11px; color: var(--text-tertiary);">✓ Ya terminaste de pagar: ${instInfo.finished.map(g => esc(g.desc)).join(', ')}</div>`
-              : '';
-            const prepaid = window.FPCore ? window.FPCore.prepaidCapital(instInfo.outstandingNowTotal, d.balance) : 0;
-            const prepaidNote = (prepaid > 1000 && !d.canPrepayInstallments)
-              ? `<div style="margin-top: 10px; padding: 8px 10px; background: var(--info-bg); color: var(--info-text); border-radius: 8px; font-size: 11px; line-height: 1.55;">💡 Tu saldo (<strong>${fmt(d.balance)}</strong>) es menor que el capital que faltaba según el calendario de tus cuotas (<strong>${fmt(instInfo.outstandingNowTotal)}</strong>). Es lo normal si adelantaste pagos a capital en tu banco: unos <strong>${fmt(prepaid)}</strong> ya los pagaste. La app usa como verdad el saldo de tu banco; el calendario es solo una referencia.</div>`
-              : '';
-            const prepayToggle = `<label style="display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); cursor: pointer;"><input type="checkbox" ${d.canPrepayInstallments ? 'checked' : ''} onchange="setCanPrepayInstallments(${d.id}, this.checked)" style="width: 16px; height: 16px; min-height: 0; padding: 0; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--brand);"><span style="min-width: 0;"><strong style="color: var(--text-primary);">Mi banco me deja adelantar el pago de mis cuotas.</strong> Actívalo y el pago recomendado antes del corte tendrá en cuenta todo tu saldo; si no, se asume que las cuotas futuras no se pueden pagar antes.</span></label>`;
-            const exceedsWarn = prepaidNote + prepayToggle;
-            const barBlock = instInfo.hasInstallments ? `
-              <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);">
-                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">📊 Desglose del cupo (${fmt(limit)})</div>
-                <div style="display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bg-primary);">
-                  <div style="background: rgba(220, 55, 55, 0.6); width: ${futurePct.toFixed(2)}%;" title="Capital bloqueado por cuotas futuras"></div>
-                  <div style="background: rgba(235, 170, 40, 0.7); width: ${optimPct.toFixed(2)}%;" title="Optimizable (puedes pagar para liberar)"></div>
-                  <div style="background: rgba(29, 158, 117, 0.5); flex: 1;" title="Cupo libre"></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 10px; color: var(--text-tertiary); margin-top: 4px;">
-                  <span>🔒 Cuotas futuras: ${fmt(lockedShown)} (${futurePct.toFixed(1)}%)</span>
-                  <span>🟡 Optimizable: ${fmt(optimShown)}</span>
-                  <span>🟢 Libre: ${fmt(freeShown)}</span>
-                </div>
-              </div>${exceedsWarn}` : '';
-            installmentsBlock = `<div style="margin-top: 10px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-to);">
-              <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">💳 Cuotas activas en esta tarjeta</div>
-              ${activeRows}${finishedRow}${barBlock}
-            </div>`;
-          }
-          
-          if (cutoffInfo && cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
-            const recommendedPayment = cutoffInfo.paymentNeeded;
-            const targetMax = cutoffInfo.targetMaxBalance;
-            const hasInstallments = cutoffInfo.installmentInfo && cutoffInfo.installmentInfo.hasInstallments;
-            
-            if (hasInstallments && !cutoffInfo.canReachTarget) {
-              // No es posible llegar al objetivo porque hay cuotas futuras bloqueando
-              utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
-                <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago para minimizar utilización</div>
-                <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
-                <div style="color: var(--text-primary); font-size: 11px; margin-top: 4px;">
-                  ⚠️ Tienes <strong>${fmt(cutoffInfo.futureInstallments)}</strong> en cuotas futuras bloqueando el cupo.<br>
-                  Mínimo posible esta facturación: <strong>${cutoffInfo.minPossibleUtilization.toFixed(1)}%</strong> de utilización.
-                </div>
-                <div style="color: var(--success-text); font-weight: 600; margin-top: 6px;">→ Paga <strong>${fmt(cutoffInfo.optimizableBalance)}</strong> antes del ${cutoffInfo.dateStr} para bajar a ${cutoffInfo.minPossibleUtilization.toFixed(1)}%</div>
-                <div style="color: var(--text-tertiary); font-size: 10px; margin-top: 4px;">💡 Incluye cuota del mes: ${fmt(cutoffInfo.currentMonthInstallmentSum)}</div>
-              </div>`;
-            } else {
-              // Caso normal: sí se puede llegar al objetivo elegido
-              utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, var(--warning-bg), var(--info-bg)); border-left: 3px solid var(--warning-text); border-radius: var(--radius-md); font-size: 12px;">
-                <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 4px;">💡 Pago recomendado para mantener tu objetivo</div>
-                <div style="color: var(--text-primary);">Saldo actual: <strong>${fmt(d.balance)}</strong> (${u}% utilización)</div>
-                <div style="color: var(--text-primary);">Objetivo: mantener saldo ≤ <strong>${fmt(targetMax)}</strong> (${cutoffInfo.targetUtilization}% utilización)</div>
-                <div style="color: var(--success-text); font-weight: 600; margin-top: 4px;">→ Paga <strong>${fmt(recommendedPayment)}</strong> antes del ${cutoffInfo.dateStr}</div>
-                ${hasInstallments ? `<div style="color: var(--text-tertiary); font-size: 10px; margin-top: 4px;">💡 Incluye cuota obligatoria del mes: ${fmt(cutoffInfo.currentMonthInstallmentSum)}</div>` : ''}
-              </div>`;
-            }
-          } else if (cutoffInfo && !cutoffInfo.needsPayment && cutoffInfo.daysLeft <= 10) {
-            utilizationAlert = `<div style="margin-top: 8px; padding: 10px 12px; background: var(--success-bg); border-left: 3px solid var(--success-text); border-radius: var(--radius-md); font-size: 12px; color: var(--success-text);">
-              <strong>✅ Utilización óptima:</strong> Tu saldo de ${fmt(d.balance)} (${u}%) está debajo del 3% objetivo. No necesitas pago anticipado.
-            </div>`;
-          }
-
-        return `<div class="card-detail-section">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px;">
-            <div style="flex: 1; min-width: 0;">
-              <strong style="font-size: 14px;">${esc(d.name)} · ${brand.name}</strong>
-              <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">
-                ${bank.name} · Termina en ${lastDigits}
-              </div>
-            </div>
-            <div style="display: flex; gap: 6px; flex-shrink: 0;">
-              <button onclick="editCard(${d.id})" style="background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                ✏️ <span class="btn-text">Editar</span>
-              </button>
-              <button onclick="removeDebt(${d.id})" style="background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                🗑️ <span class="btn-text">Eliminar</span>
-              </button>
-            </div>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
-            <span>Utilización: <strong>${u}%</strong></span>
-            <span>Disponible: <strong>${fmt(d.payment - d.balance)}</strong></span>
-          </div>
-          <div class="progress-bar"><div class="progress-fill ${u > 30 ? 'warning' : (u > 10 ? 'warning' : 'success')}" style="width: ${Math.min(100, u)}%"></div></div>
-          ${cutoffInfo ? `<div style="margin-top: 10px; padding: 8px 10px; background: ${cutoffInfo.bg}; color: ${cutoffInfo.color}; border-radius: var(--radius-md); font-size: 12px;">${cutoffInfo.icon} ${cutoffInfo.text}</div>` : ''}
-          ${utilizationAlert}
-          ${installmentsBlock}
-          ${cardStats.txCount > 0 ? `<div style="margin-top: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); font-size: 12px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: var(--text-secondary);">📊 Compras este mes:</span><span style="font-weight: 500;">${cardStats.txCount} (${fmt(cardStats.totalSpent)})</span></div>
-            <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">💰 Cashback ganado:</span><span style="font-weight: 500; color: var(--success-text);">+${fmt(cardStats.totalCashback)}</span></div>
-          </div>
-          ${txListHtml}` : ''}
-          <div style="display: grid; grid-template-columns: 1fr 100px auto; gap: 8px; margin-top: 10px; align-items: center;">
-            <input type="number" value="${d.balance}" min="0" step="0.01" onchange="updateDebt(${d.id}, 'balance', this.value)" placeholder="Saldo actual" title="Editar saldo rápido" />
-            <input type="number" value="${d.cutoffDay || ''}" min="1" max="31" onchange="updateDebt(${d.id}, 'cutoffDay', this.value)" placeholder="Día corte" title="Día del mes que cierra el periodo" />
-            <span style="font-size: 11px; color: var(--text-tertiary); align-self: center;">día corte</span>
-          </div>
-          <p style="font-size: 11px; color: var(--text-tertiary); margin: 6px 0 0; text-align: center;">
-            💡 Para cambiar nombre, cupo o número, usa el botón "Editar" arriba
-          </p>
-        </div>`;
-        } catch(e) {
-          console.error('❌ Error renderizando detalle de tarjeta:', d.name, e);
-          return `<div class="card-detail-section">
-            <strong>${esc(d.name || 'Tarjeta')}</strong>
-            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">
-              Cupo: ${fmt(d.payment || 0)} · Saldo: ${fmt(d.balance || 0)}
-            </div>
-            <div style="display: flex; gap: 6px; margin-top: 8px;">
-              <button onclick="editCard(${d.id})" style="background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px;">✏️ Editar</button>
-              <button onclick="removeDebt(${d.id})" style="background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px;">🗑️ Eliminar</button>
-            </div>
-          </div>`;
-        }
-      }).join('');
-    }
-    
     // Actualizar totales (con verificación de elementos)
     const debtTotalEl = document.getElementById('debt-total');
     if (debtTotalEl) debtTotalEl.textContent = fmt(debt);

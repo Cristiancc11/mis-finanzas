@@ -597,3 +597,19 @@ test('tarjetas: qué consejo se muestra y color de urgencia', () => {
   assert.equal(f.cardInsightKind(50.01, 500.1, 1000, false), 'high');
   assert.deepEqual([-2, 0, 1, 2, 3, 4, 7, 8, 30].map(f.urgencyTone), ['danger', 'danger', 'danger', 'warning', 'warning', 'info', 'info', 'muted', 'muted']);
 });
+
+test('tarjetas: estadísticas del mes de una tarjeta (impacto real, cashback y orden)', () => {
+  const state = { transactions: { '2026-11': [
+    { id: 1, date: '2026-11-03', amount: 30000, cardId: 301, cashback: 300 },
+    { id: 2, date: '2026-11-09', amount: 30000, cardId: '301', cashback: '200', isShared: true, totalAmount: 90000 },        // compartido: la tarjeta cargó 90.000
+    { id: 3, date: '2026-11-05', amount: 120000, cardId: 301, isLent: true, totalAmount: 120000, cashback: 1200 },
+    { id: 4, date: '2026-11-07', amount: 90000, cardId: 301, installment: { current: 3, total: 10 }, totalAmount: 900000 },      // cuota: pesa la cuota, no el precio completo
+    { id: 5, date: '2026-11-08', amount: 5000, cardId: 302 }, { id: 6, date: '2026-11-08', amount: 7000, cardId: null }, { id: 7, date: '2026-11-08', amount: 9, cashback: 99 },
+  ], '2026-10': [{ id: 8, date: '2026-10-01', amount: 1, cardId: 301 }] } } as unknown as f.CoreState;
+  const s = f.cardMonthStats(state, 301, '2026-11');
+  assert.deepEqual([s.txCount, s.totalSpent, s.totalCashback], [4, 30000 + 90000 + 120000 + 90000, 1700]);
+  assert.deepEqual(s.transactions.map((t) => t.id), [2, 4, 3, 1]);                       // más reciente primero
+  assert.deepEqual(f.cardMonthStats(state, 999, '2026-11'), { txCount: 0, totalSpent: 0, totalCashback: 0, transactions: [] });
+  assert.equal(f.cardMonthStats(state, 301, '2026-12').txCount, 0);
+  assert.deepEqual([0, 10, 10.1, 30, 30.1, 95].map(f.utilBarTone), ['success', 'success', 'warning', 'warning', 'danger', 'danger']);
+});

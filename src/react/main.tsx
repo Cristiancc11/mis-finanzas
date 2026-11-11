@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { ResumenCharts } from './ResumenCharts';
 import { BudgetKpis, BudgetCategories } from './Budget';
 import { Transactions } from './Transactions';
+import { CardsList } from './CardsList';
 import { CardsOverview, CardInsight, TargetUtilization, UpcomingPayments } from './Cards';
 import { MonthComparison, AntExpenses, FinancialCalendar } from './AnalysisInsights';
 import { IncomeExpenseChart, SavingsRateChart, CategoryDonutChart, TrmChart, TrmInsight } from './AnalysisCharts';
@@ -66,6 +67,8 @@ function mount() {
   if (cTg) createRoot(cTg).render(<TargetUtilization />);
   if (cUp) createRoot(cUp).render(<UpcomingPayments />);
   if (cOv && cIn && cTg && cUp) document.documentElement.classList.add('fp-react-cards');
+  const cLs = rootBefore('react-card-list', '#debt-list');
+  if (cLs) { createRoot(cLs).render(<CardsList />); document.documentElement.classList.add('fp-react-cardlist'); }
   const insight = document.getElementById('trm-history-insight');
   if (insight && !insight.dataset.react) { insight.dataset.react = '1'; insight.innerHTML = ''; createRoot(insight).render(<TrmInsight />); }
 

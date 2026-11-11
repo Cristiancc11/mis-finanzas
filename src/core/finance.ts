@@ -585,6 +585,28 @@ export function cardInsightKind(util: number, debt: number, limit: number, hasUr
 /** Color de urgencia de un corte según los días que faltan: ≤ 1 rojo, ≤ 3 ámbar, ≤ 7 azul, más de 7 neutro. */
 export const urgencyTone = (daysLeft: number): 'danger' | 'warning' | 'info' | 'muted' => (daysLeft <= 1 ? 'danger' : daysLeft <= 3 ? 'warning' : daysLeft <= 7 ? 'info' : 'muted');
 
+// ---------------------------------------------------------------- tarjetas: estadísticas del mes y color de la barra
+/** Lo que una compra "pesó" en la tarjeta: en cuotas, la cuota; en un gasto compartido o prestado, el TOTAL (la tarjeta se cargó por todo,
+ *  no solo por tu parte); si no, el monto. */
+export function txCardImpact(t: TxLike & { installment?: unknown; isShared?: boolean; isLent?: boolean; totalAmount?: unknown }): number {
+  if (t.installment) return num(t.amount);
+  if ((t.isShared || t.isLent) && t.totalAmount !== undefined && t.totalAmount !== null) return num(t.totalAmount);
+  return num(t.amount);
+}
+export interface CardMonthStats { txCount: number; totalSpent: number; totalCashback: number; transactions: TxLike[] }
+/** Compras de una tarjeta en un mes: cuántas, cuánto pesaron, cashback y la lista (más reciente primero). */
+export function cardMonthStats(state: CoreState, cardId: unknown, month: string): CardMonthStats {
+  const txs = (((state.transactions || {})[month] || []) as TxLike[]).filter((t) => t.cardId !== undefined && t.cardId !== null && String(t.cardId) === String(cardId));
+  return {
+    txCount: txs.length,
+    totalSpent: txs.reduce((a, t) => a + txCardImpact(t as never), 0),
+    totalCashback: txs.reduce((a, t) => a + num(t.cashback), 0),
+    transactions: [...txs].sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))),
+  };
+}
+/** Color de la barra de utilización de una tarjeta: ≤ 10 % verde, ≤ 30 % ámbar, más de 30 % rojo. */
+export const utilBarTone = (utilPct: number): 'success' | 'warning' | 'danger' => (utilPct <= 10 ? 'success' : utilPct <= 30 ? 'warning' : 'danger');
+
 // ---------------------------------------------------------------- calidad de datos
 const numFields = (obj: Rec | undefined, keys: string[]): number => {
   let fixes = 0;
