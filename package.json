@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.7",
-    "chart.js": "^4.6.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "pdfjs-dist": "^6.5.438",

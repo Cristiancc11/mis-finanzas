@@ -66,3 +66,9 @@ Usan referencias **estables**, no el gasto parcial del mes:
 - **Estadísticas** con filtros activos: cantidad de resultados, suma de montos y cashback.
 - **Páginas de 10**; se muestran primera, anterior, actual, siguiente y última, con "…" en los saltos.
 - **Editar y borrar** usan el mes real del movimiento (antes usaban el mes visible y fallaban con movimientos de otro mes al filtrar por fechas).
+
+## Análisis y Conversor (gráficas en React, sin Chart.js)
+- **Ingresos vs gastos**: últimos 6 meses; los pagos de tarjeta no cuentan como gasto.
+- **Tasa de ahorro** del mes = (ingresos − gastos) ÷ ingresos, en % entero. Sin ingresos no hay tasa (no se dibuja el punto); gastar más de lo que entra da una tasa **negativa**.
+- **Gasto por categoría**: del mes calendario actual, sin pagos de tarjeta, de mayor a menor. Una categoría desconocida se muestra con su nombre.
+- **Historial del dólar**: los últimos 7, 30 o 90 días guardados. **Señal**: si la TRM de hoy está **≥ 1,5 % por debajo** del promedio del período → "buen momento para comprar"; **≥ 1,5 % por encima** → "buen momento para vender"; en medio → "en su promedio habitual". Es información histórica, no una predicción.
