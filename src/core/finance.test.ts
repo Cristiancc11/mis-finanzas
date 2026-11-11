@@ -457,3 +457,52 @@ test('estadísticas de los movimientos filtrados', () => {
   assert.deepEqual(s, { count: 2, sum: 350, cashback: 3 });
   assert.deepEqual(f.filterStats([]), { count: 0, sum: 0, cashback: 0 });
 });
+
+test('tasa de ahorro: entera y nula si no hay ingresos', () => {
+  assert.equal(f.savingsRate(4000000, 3000000), 25);
+  assert.equal(f.savingsRate(3000000, 3500000), -17);                          // gastar más de lo que entra da tasa negativa
+  assert.equal(f.savingsRate(0, 500000), null);
+  assert.equal(f.savingsRate(-5, 1), null);
+  assert.equal(f.savingsRate(3, 1), 67);
+});
+
+test('gasto por categoría del mes: sin pagos de tarjeta, ordenado', () => {
+  const state: f.CoreState = { transactions: { '2026-11': [
+    { amount: 100, category: 'a' }, { amount: 300, category: 'b' }, { amount: 50, category: 'a' },
+    { amount: 999, category: 'pago_tarjeta' }, { amount: 777, category: 'c', payCardId: 5 }, { amount: 0, category: 'd' },
+  ] } };
+  assert.deepEqual(f.categoryTotals(state, '2026-11'), [{ id: 'b', value: 300 }, { id: 'a', value: 150 }]);
+  assert.deepEqual(f.categoryTotals(state, '2026-10'), []);
+});
+
+test('ejes: pasos redondos y escala que cubre los datos', () => {
+  assert.equal(f.niceStep(0), 1);
+  assert.equal(f.niceStep(0.9), 1); assert.equal(f.niceStep(1.4), 1.5); assert.equal(f.niceStep(230000), 250000);
+  const sc = f.niceScale(0, 4650000, 4);
+  assert.ok(sc.min <= 0 && sc.max >= 4650000 && sc.ticks[0] === sc.min && sc.ticks[sc.ticks.length - 1] === sc.max);
+  assert.deepEqual(f.niceScale(35, 55, 4).ticks, [35, 40, 45, 50, 55]);
+  const flat = f.niceScale(4100, 4100);                                         // un solo valor: no se rompe
+  assert.ok(flat.max > flat.min && flat.ticks.length >= 2);
+  const neg = f.niceScale(-17, 60, 4); assert.ok(neg.min <= -17 && neg.max >= 60);
+});
+
+test('historial de la TRM: ventana de días y orden', () => {
+  const hist = { '2026-11-10': 4100, '2026-10-12': 4000, '2026-09-01': 3900, '2026-11-01': 4050 };
+  const today = new Date('2026-11-11T12:00:00Z');
+  assert.deepEqual(f.trmWindow(hist, 7, today), { dates: ['2026-11-10'], values: [4100] });
+  assert.deepEqual(f.trmWindow(hist, 30, today).dates, ['2026-10-12', '2026-11-01', '2026-11-10']);
+  assert.deepEqual(f.trmWindow(hist, 90, today).dates.length, 4);
+  assert.deepEqual(f.trmWindow({}, 30, today), { dates: [], values: [] });
+});
+
+test('señal del dólar: ±1,5 % contra el promedio del período', () => {
+  assert.equal(f.trmInsight([]), null);
+  const buy = f.trmInsight([4200, 4200, 4200, 4100])!;                         // hoy 4100 vs promedio 4175 → -1,8 %
+  assert.equal(buy.tone, 'buy'); assert.ok(buy.pctVsAvg < -1.5);
+  assert.equal(f.trmInsight([4000, 4000, 4000, 4000, 4040])!.tone, 'flat');    // hoy 4040 vs 4008 → +0,8 %
+  assert.equal(f.trmInsight([4000, 4000, 4000, 4100])!.tone, 'sell');          // hoy 4100 vs 4025 → +1,9 %
+  assert.equal(f.trmInsight([4000, 4000, 4000, 4150])!.tone, 'sell');          // hoy 4150 vs 4037,5 → +2,8 %
+  const edge = f.trmInsight([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 98.5])!;
+  assert.equal(edge.min, 98.5); assert.equal(edge.max, 100);
+  assert.equal(f.trmInsight([4100])!.tone, 'flat');                              // un solo punto: sin señal
+});

@@ -32,7 +32,6 @@ const read = (p) => fs.readFileSync(p);
 
 // 1) Librerías de terceros: autohospedadas desde node_modules (versiones fijadas en package-lock.json)
 const vendor = [
-  ['/vendor/chart.js',            'chart.js/dist/chart.umd.min.js',                'chart',            'js'],
   ['/vendor/supabase.js',         '@supabase/supabase-js/dist/umd/supabase.js',    'supabase',         'js'],
   ['/vendor/xlsx.js',             'xlsx/dist/xlsx.full.min.js',                    'xlsx',             'js'],
   ['/vendor/jspdf.js',            'jspdf/dist/jspdf.umd.min.js',                   'jspdf',            'js'],

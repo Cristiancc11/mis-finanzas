@@ -1,8 +1,10 @@
 // Punto de entrada de las "islas" React: se montan dentro de la app actual, sin reescribirla de golpe.
+import type { ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ResumenCharts } from './ResumenCharts';
 import { BudgetKpis, BudgetCategories } from './Budget';
 import { Transactions } from './Transactions';
+import { IncomeExpenseChart, SavingsRateChart, CategoryDonutChart, TrmChart, TrmInsight } from './AnalysisCharts';
 
 /** Crea un contenedor justo antes de un elemento de la app actual (que queda oculto por CSS cuando React ya dibuja esa parte). */
 function rootBefore(id: string, refSelector: string): HTMLElement | null {
@@ -30,6 +32,21 @@ function mount() {
   // Presupuesto: lista de movimientos (búsqueda, filtros, chips, paginación)
   const tx = rootBefore('react-tx', '#subsection-movimientos .tx-header');
   if (tx) { createRoot(tx).render(<Transactions />); document.documentElement.classList.add('fp-react-tx'); }
+  // Análisis y Conversor: las gráficas dibujadas antes con Chart.js (que ya no se carga)
+  const swap = (canvasId: string, node: ReactElement) => {
+    const canvas = document.getElementById(canvasId);
+    const wrap = canvas && canvas.parentElement;
+    if (!wrap || wrap.dataset.react) return;
+    wrap.dataset.react = '1'; wrap.style.height = 'auto'; wrap.innerHTML = '';
+    createRoot(wrap).render(node);
+  };
+  swap('chart-income-expense', <IncomeExpenseChart />);
+  swap('chart-savings-rate', <SavingsRateChart />);
+  swap('chart-category-pie', <CategoryDonutChart />);
+  swap('trm-history-chart', <TrmChart />);
+  const insight = document.getElementById('trm-history-insight');
+  if (insight && !insight.dataset.react) { insight.dataset.react = '1'; insight.innerHTML = ''; createRoot(insight).render(<TrmInsight />); }
+
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
 else mount();

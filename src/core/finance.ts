@@ -429,6 +429,56 @@ export function filterStats(txs: TxLike[]): { count: number; sum: number; cashba
   return { count: txs.length, sum: txs.reduce((a, t) => a + num(t.amount), 0), cashback: txs.reduce((a, t) => a + num(t.cashback), 0) };
 }
 
+// ---------------------------------------------------------------- análisis y conversor: datos de las gráficas
+/** Tasa de ahorro del mes en % (entera). Sin ingresos no hay tasa (null), no 0 %. */
+export const savingsRate = (income: number, expense: number): number | null => (num(income) > 0 ? Math.round(((num(income) - num(expense)) / num(income)) * 100) : null);
+
+/** Gasto por categoría de un mes (sin pagos de tarjeta), de mayor a menor y solo lo positivo. */
+export function categoryTotals(state: CoreState, month: string): { id: string; value: number }[] {
+  const by: Record<string, number> = {};
+  for (const t of ((state.transactions || {})[month] || [])) {
+    if (isCardPayment(state, t)) continue;
+    by[String(t.category)] = (by[String(t.category)] || 0) + num(t.amount);
+  }
+  return Object.entries(by).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([id, value]) => ({ id, value }));
+}
+
+/** Paso "redondo" para un eje: 1, 1,5, 2, 2,5, 3, 4, 5, 7,5 o 10 por potencia de 10. */
+export function niceStep(raw: number): number {
+  if (!(raw > 0)) return 1;
+  const exp = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / exp;
+  const nf = f <= 1 ? 1 : f <= 1.5 ? 1.5 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 3 ? 3 : f <= 4 ? 4 : f <= 5 ? 5 : f <= 7.5 ? 7.5 : 10;
+  return nf * exp;
+}
+/** Escala de un eje que cubre [min, max] con unas `target` divisiones "redondas". */
+export function niceScale(min: number, max: number, target = 4): { min: number; max: number; step: number; ticks: number[] } {
+  let lo = Math.min(min, max), hi = Math.max(min, max);
+  if (hi === lo) { const pad = Math.abs(hi) * 0.05 || 1; lo -= pad; hi += pad; }
+  const step = niceStep((hi - lo) / target);
+  const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step;
+  const ticks: number[] = [];
+  for (let v = a; v <= b + step / 1e6; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return { min: a, max: b, step, ticks };
+}
+
+/** Puntos del historial de la TRM (fecha ISO → valor) de los últimos `days` días, en orden cronológico. */
+export function trmWindow(history: Record<string, number>, days: number, today: Date = new Date()): { dates: string[]; values: number[] } {
+  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const dates = Object.keys(history || {}).sort().filter((d) => d >= cutoffStr);
+  return { dates, values: dates.map((d) => num(history[d])) };
+}
+export interface TrmInsight { tone: 'buy' | 'sell' | 'flat'; pctVsAvg: number; current: number; avg: number; min: number; max: number }
+/** Compara la TRM de hoy (último valor) con el promedio del período: ≥ 1,5 % por debajo → buen momento para comprar; ≥ 1,5 % por encima → para vender. */
+export function trmInsight(values: number[]): TrmInsight | null {
+  if (!values.length) return null;
+  const current = values[values.length - 1];
+  const avg = values.reduce((a, v) => a + v, 0) / values.length;
+  const pctVsAvg = ((current - avg) / avg) * 100;
+  return { tone: pctVsAvg <= -1.5 ? 'buy' : pctVsAvg >= 1.5 ? 'sell' : 'flat', pctVsAvg, current, avg, min: Math.min(...values), max: Math.max(...values) };
+}
+
 // ---------------------------------------------------------------- calidad de datos
 const numFields = (obj: Rec | undefined, keys: string[]): number => {
   let fixes = 0;
