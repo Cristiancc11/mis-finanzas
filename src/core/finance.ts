@@ -561,6 +561,30 @@ export function antExpenses(state: CoreState): { enough: boolean; patterns: AntP
   return { enough: true, patterns };
 }
 
+// ---------------------------------------------------------------- tarjetas: resumen, consejo y próximos pagos
+export interface CardsOverview { count: number; limit: number; debt: number; available: number; util: number; cashbackMonth: number }
+/** Resumen de todas las tarjetas: cupo total, saldo, disponible, utilización general y cashback del mes (de las compras con tarjeta). */
+export function cardsOverview(state: CoreState, month: string): CardsOverview {
+  const debts = state.debts || [];
+  const limit = debts.reduce((a, d) => a + num((d as { payment?: unknown }).payment), 0);
+  const debt = debts.reduce((a, d) => a + num(d.balance), 0);
+  const ids = new Set(debts.map((d) => String(d.id)));
+  const cashbackMonth = ((state.transactions || {})[month] || []).filter((t) => t.cardId != null && ids.has(String(t.cardId))).reduce((a, t) => a + num(t.cashback), 0);
+  return { count: debts.length, limit, debt, available: limit - debt, util: limit > 0 ? (debt / limit) * 100 : 0, cashbackMonth };
+}
+
+export type CardInsightKind = 'urgent' | 'no-limit' | 'clean' | 'ok' | 'warn' | 'high';
+/** Qué consejo mostrar: una tarjeta que corta hoy o mañana y aún necesita pago manda sobre todo; después, según la utilización general
+ *  (0 = sin saldo, ≤ 30 % saludable, ≤ 50 % atención, > 50 % alta). Con saldo pero sin cupo registrado no se puede calcular. */
+export function cardInsightKind(util: number, debt: number, limit: number, hasUrgent: boolean): CardInsightKind {
+  if (hasUrgent) return 'urgent';
+  if (limit <= 0 && debt > 0) return 'no-limit';
+  if (util === 0) return 'clean';
+  return util <= 30 ? 'ok' : util <= 50 ? 'warn' : 'high';
+}
+/** Color de urgencia de un corte según los días que faltan: ≤ 1 rojo, ≤ 3 ámbar, ≤ 7 azul, más de 7 neutro. */
+export const urgencyTone = (daysLeft: number): 'danger' | 'warning' | 'info' | 'muted' => (daysLeft <= 1 ? 'danger' : daysLeft <= 3 ? 'warning' : daysLeft <= 7 ? 'info' : 'muted');
+
 // ---------------------------------------------------------------- calidad de datos
 const numFields = (obj: Rec | undefined, keys: string[]): number => {
   let fixes = 0;
