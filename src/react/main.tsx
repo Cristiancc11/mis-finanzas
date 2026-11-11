@@ -2,6 +2,7 @@
 import { createRoot } from 'react-dom/client';
 import { ResumenCharts } from './ResumenCharts';
 import { BudgetKpis, BudgetCategories } from './Budget';
+import { Transactions } from './Transactions';
 
 /** Crea un contenedor justo antes de un elemento de la app actual (que queda oculto por CSS cuando React ya dibuja esa parte). */
 function rootBefore(id: string, refSelector: string): HTMLElement | null {
@@ -26,6 +27,9 @@ function mount() {
   if (kpis) createRoot(kpis).render(<BudgetKpis />);
   if (cats) createRoot(cats).render(<BudgetCategories />);
   if (kpis && cats) document.documentElement.classList.add('fp-react-budget');
+  // Presupuesto: lista de movimientos (búsqueda, filtros, chips, paginación)
+  const tx = rootBefore('react-tx', '#subsection-movimientos .tx-header');
+  if (tx) { createRoot(tx).render(<Transactions />); document.documentElement.classList.add('fp-react-tx'); }
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
 else mount();
