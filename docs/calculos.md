@@ -84,3 +84,9 @@ Usan referencias **estables**, no el gasto parcial del mes:
 - **Consejo**: una tarjeta que corta **hoy o mañana** y todavía necesita pago manda sobre todo lo demás. Si no hay nada urgente: sin saldo → "Excelente"; utilización ≤ 30 % → "Buen manejo"; ≤ 50 % → "Atención"; > 50 % → "Utilización alta". Con saldo pero **sin cupo registrado** avisa "Falta el cupo" (antes decía "Excelente").
 - **Objetivo de utilización** (por defecto 3 %): el porcentaje del cupo que quieres **tener usado** en cada corte (el texto anterior decía "libre", que era al revés). Se guarda entre 1 y 100; fuera de ese rango se rechaza. Muestra el saldo máximo que equivale en tu cupo total.
 - **Próximos pagos**: cortes ordenados del más cercano al más lejano; color rojo si faltan ≤ 1 día, ámbar ≤ 3, azul ≤ 7, neutro si son más.
+
+## Tarjetas: lista de tarjetas (en React)
+- **Cartera**: cada tarjeta con proporción real (máximo 360 px de ancho); se elige una para ver su detalle (en celular, carrusel horizontal). El detalle va en dos columnas: a la izquierda utilización, corte y aviso de pago; a la derecha cuotas, desglose del cupo, compras del mes y edición rápida.
+- **Compras del mes de una tarjeta**: una compra en cuotas pesa **su cuota** (no el precio completo); un gasto compartido o prestado pesa **el total** (la tarjeta se cargó por todo, no solo por tu parte). El cashback suma el de esas compras.
+- **Barra de utilización**: ≤ 10 % verde, ≤ 30 % ámbar, más de 30 % rojo (antes todo lo que pasaba de 10 % era ámbar).
+- El mensaje de "utilización óptima" usa **tu objetivo** (antes decía siempre "3 %"). El logo VISA ya no se corta.
