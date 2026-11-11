@@ -22,6 +22,8 @@ interface Bridge {
   isCardPayment(t: Tx): boolean;
   fmt(n: number): string;
   getIncome(): { recurring: number; extras: number; cashback: number };
+  getPaymentMethods(): Record<string, { icon: string; label: string }>;
+  getMonthLabel(m: string): string;
 }
 declare global {
   interface Window {

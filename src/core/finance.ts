@@ -353,6 +353,82 @@ export function budgetOverview(state: CoreState, month: string, categories: { id
   return { rows, totalBudget, totalSpent, available: totalBudget - totalSpent, counts };
 }
 
+// ---------------------------------------------------------------- movimientos: búsqueda, filtros, orden y páginas
+export interface TxFilters {
+  search: string; categories: string[]; cardId: string | number | null; pocketId: string | number | null;
+  dateFrom: string; dateTo: string; amountMin: number | string | null; amountMax: number | string | null;
+  cashbackOnly: boolean; paymentMethod: string;
+}
+export const emptyFilters = (): TxFilters => ({ search: '', categories: [], cardId: '', pocketId: '', dateFrom: '', dateTo: '', amountMin: null, amountMax: null, cashbackOnly: false, paymentMethod: '' });
+const has = (v: unknown): boolean => v !== '' && v !== null && v !== undefined;
+
+/** Cuántos filtros hay activos (cada grupo cuenta uno: el rango de fechas y el de montos cuentan como uno cada uno). */
+export function countActiveFilters(f: Partial<TxFilters>): number {
+  let n = 0;
+  if (f.search && f.search.trim()) n++;
+  if (f.categories && f.categories.length > 0) n++;
+  if (has(f.cardId)) n++;
+  if (has(f.pocketId)) n++;
+  if (f.dateFrom || f.dateTo) n++;
+  if (has(f.amountMin) || has(f.amountMax)) n++;
+  if (f.cashbackOnly) n++;
+  if (f.paymentMethod) n++;
+  return n;
+}
+/** Con rango de fechas la búsqueda abarca TODO el histórico; sin él, solo el mes que se está viendo. */
+export const usingDateRange = (f: Partial<TxFilters>): boolean => !!(f.dateFrom || f.dateTo);
+
+export function filterTransactions<T extends TxLike>(txs: T[], f: Partial<TxFilters>): T[] {
+  const q = f.search && f.search.trim() ? f.search.trim().toLowerCase() : '';
+  return txs.filter((t) => {
+    if (q && !String(t.desc || '').toLowerCase().includes(q)) return false;
+    if (f.categories && f.categories.length > 0 && !f.categories.includes(String(t.category))) return false;
+    if (has(f.cardId) && String(t.cardId || '') !== String(f.cardId)) return false;
+    if (has(f.pocketId) && String((t as TxLike & { pocketId?: unknown }).pocketId || '') !== String(f.pocketId)) return false;
+    if (f.dateFrom && String(t.date || '') < f.dateFrom) return false;
+    if (f.dateTo && String(t.date || '') > f.dateTo) return false;
+    const amt = num(t.amount);
+    if (has(f.amountMin) && amt < parseFloat(String(f.amountMin))) return false;
+    if (has(f.amountMax) && amt > parseFloat(String(f.amountMax))) return false;
+    if (f.cashbackOnly && !(num(t.cashback) > 0)) return false;
+    if (f.paymentMethod && (t as TxLike & { paymentMethod?: string }).paymentMethod !== f.paymentMethod) return false;
+    return true;
+  });
+}
+/** Más recientes primero: fecha descendente y, si empatan, el de creación/id más reciente arriba. */
+export function sortTransactions<T extends TxLike>(txs: T[]): T[] {
+  const stamp = (t: TxLike) => num((t as TxLike & { createdAt?: unknown }).createdAt) || num(t.id);
+  return [...txs].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || stamp(b) - stamp(a));
+}
+/** Los movimientos a mostrar: filtrados y ordenados. */
+export function selectTransactions(state: CoreState, month: string, f: Partial<TxFilters>): TxLike[] {
+  const all = usingDateRange(f) ? Object.keys(state.transactions || {}).flatMap((m) => (state.transactions || {})[m] || []) : [...((state.transactions || {})[month] || [])];
+  return sortTransactions(filterTransactions(all, f));
+}
+export interface Page<T> { items: T[]; page: number; totalPages: number; start: number; end: number; total: number }
+/** Página `page` (empieza en 1) con `size` elementos; la página se ajusta al rango válido. */
+export function paginate<T>(items: T[], page: number, size = 10): Page<T> {
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const p = Math.min(Math.max(1, Math.floor(num(page)) || 1), totalPages);
+  const start = (p - 1) * size;
+  return { items: items.slice(start, start + size), page: p, totalPages, start: start + 1, end: Math.min(start + size, total), total };
+}
+/** Números de página a mostrar: primera, anterior, actual, siguiente y última; con "…" donde hay saltos. */
+export function pageNumbers(current: number, totalPages: number): (number | '…')[] {
+  const set = new Set<number>();
+  for (const n of [1, current - 1, current, current + 1, totalPages]) if (n >= 1 && n <= totalPages) set.add(n);
+  const nums = [...set].sort((a, b) => a - b);
+  const out: (number | '…')[] = [];
+  let last = 0;
+  for (const n of nums) { if (n - last > 1) out.push('…'); out.push(n); last = n; }
+  return out;
+}
+/** Resumen de los movimientos filtrados: cuántos, cuánto suman y cuánto cashback dejan. */
+export function filterStats(txs: TxLike[]): { count: number; sum: number; cashback: number } {
+  return { count: txs.length, sum: txs.reduce((a, t) => a + num(t.amount), 0), cashback: txs.reduce((a, t) => a + num(t.cashback), 0) };
+}
+
 // ---------------------------------------------------------------- calidad de datos
 const numFields = (obj: Rec | undefined, keys: string[]): number => {
   let fixes = 0;

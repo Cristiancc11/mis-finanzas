@@ -57,3 +57,12 @@ Usan referencias **estables**, no el gasto parcial del mes:
 - Cada categoría: `% usado = gastado ÷ presupuesto`. Estados: **excedida** (≥ 100 %), **cerca del límite** (≥ 80 %), **bajo control** (< 80 %) y **solo seguimiento** (sin límite). Se ordenan por urgencia y, dentro de cada grupo, por % real.
 - Gastar **exactamente** el presupuesto cuenta como excedida y se muestra "Llegaste al límite" (antes: "Excediste $ 0").
 - Las categorías sin presupuesto y sin gasto se pliegan detrás de un botón.
+
+## Movimientos del mes (lista en React)
+- **Orden:** fecha descendente; si empatan, el de creación (o id) más reciente arriba.
+- **Qué se muestra:** sin rango de fechas, solo el mes que estás viendo; **con rango de fechas, todo el histórico**.
+- **Filtros** (se combinan con "y"): texto en la descripción (sin importar mayúsculas), categorías, tarjeta, bolsillo, fechas, monto mínimo/máximo, solo con cashback y método de pago.
+- **Filtros activos:** el rango de fechas cuenta como 1 y el de montos como 1. Un texto de solo espacios no cuenta.
+- **Estadísticas** con filtros activos: cantidad de resultados, suma de montos y cashback.
+- **Páginas de 10**; se muestran primera, anterior, actual, siguiente y última, con "…" en los saltos.
+- **Editar y borrar** usan el mes real del movimiento (antes usaban el mes visible y fallaban con movimientos de otro mes al filtrar por fechas).

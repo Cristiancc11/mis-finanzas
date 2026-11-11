@@ -6568,6 +6568,8 @@ async function buildAnnualPDF(state, year) {
   window.FP.isCardPayment = (t) => isCardPayment(t);
   window.FP.fmt = (n) => fmt(n);
   // Ingresos del mes visible, calculados por la lógica actual (React los usa tal cual hasta migrar también los ingresos)
+  window.FP.getPaymentMethods = () => getPaymentMethodsAsMap();
+  window.FP.getMonthLabel = (m) => getMonthLabel(m);
   window.FP.getIncome = () => ({ recurring: totalIncome(), extras: totalMonthExtraIncome(), cashback: totalMonthCashback() });
 
   function saveState() {
@@ -12838,6 +12840,7 @@ async function buildAnnualPDF(state, year) {
 
     // v37: actualizar count badge total y stats banner
     updateTxFilterStats(txs);
+    window.dispatchEvent(new CustomEvent('fp:change'));   // la lista de movimientos en React se vuelve a dibujar
     if (txs.length === 0) {
       const hasActiveFilters = countActiveTxFilters() > 0;
       if (hasActiveFilters) {

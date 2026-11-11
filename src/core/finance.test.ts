@@ -383,3 +383,77 @@ test('budgetOverview: mes sin presupuesto ni gastos y categorías con presupuest
   // gastar EXACTAMENTE el presupuesto cuenta como excedida (pct = 100), igual que antes
   assert.equal(f.budgetOverview({ budgets: { '2026-11': { a: 1000 } }, transactions: { '2026-11': [{ amount: 1000, category: 'a' }] } }, '2026-11', cats).rows[0].tone, 'over');
 });
+
+const T = (id: number, date: string, desc: string, amount: number, category: string, extra: Record<string, unknown> = {}): f.TxLike => ({ id, date, desc, amount, category, paymentMethod: 'debito', cardId: null, pocketId: 2, cashback: 0, ...extra } as f.TxLike);
+
+test('filtros de movimientos: cada filtro por separado', () => {
+  const txs = [
+    T(1, '2026-11-01', 'Supermercado Éxito', 100000, 'mercado'),
+    T(2, '2026-11-02', 'NETFLIX', 38900, 'streaming', { paymentMethod: 'tarjeta', cardId: 301, pocketId: null, cashback: 389 }),
+    T(3, '2026-11-03', 'Uber centro', 18700, 'uber', { paymentMethod: 'tarjeta', cardId: 302, pocketId: null }),
+    T(4, '2026-10-20', 'Mercado octubre', 250000, 'mercado', { pocketId: 4 }),
+  ];
+  const ids = (fl: Partial<f.TxFilters>) => f.filterTransactions(txs, fl).map((t) => t.id);
+  assert.deepEqual(ids({}), [1, 2, 3, 4]);
+  assert.deepEqual(ids({ search: '  SUPER ' }), [1]);                      // sin importar mayúsculas ni espacios
+  assert.deepEqual(ids({ search: 'mercado' }), [1, 4]);                      // 'Supermercado' también contiene 'mercado'
+  assert.deepEqual(ids({ search: 'octubre' }), [4]);
+  assert.deepEqual(ids({ categories: ['mercado', 'uber'] }), [1, 3, 4]);
+  assert.deepEqual(ids({ cardId: '301' }), [2]);                              // el id puede venir como texto
+  assert.deepEqual(ids({ cardId: 302 }), [3]);
+  assert.deepEqual(ids({ pocketId: 4 }), [4]);
+  assert.deepEqual(ids({ dateFrom: '2026-11-02' }), [2, 3]);
+  assert.deepEqual(ids({ dateTo: '2026-10-31' }), [4]);
+  assert.deepEqual(ids({ amountMin: 50000 }), [1, 4]);
+  assert.deepEqual(ids({ amountMax: '40000' }), [2, 3]);
+  assert.deepEqual(ids({ amountMin: 20000, amountMax: 100000 }), [1, 2]);
+  assert.deepEqual(ids({ cashbackOnly: true }), [2]);
+  assert.deepEqual(ids({ paymentMethod: 'tarjeta' }), [2, 3]);
+  assert.deepEqual(ids({ categories: ['mercado'], amountMin: 150000, search: 'oct' }), [4]);   // los filtros se combinan (Y)
+});
+
+test('filtros de movimientos: conteo de filtros activos y rango de fechas', () => {
+  assert.equal(f.countActiveFilters(f.emptyFilters()), 0);
+  assert.equal(f.countActiveFilters({ search: '   ' }), 0);                  // solo espacios no es un filtro
+  assert.equal(f.countActiveFilters({ dateFrom: '2026-11-01', dateTo: '2026-11-30' }), 1);   // el rango de fechas cuenta uno
+  assert.equal(f.countActiveFilters({ amountMin: 0, amountMax: 5 }), 1);     // y el de montos, otro
+  assert.equal(f.countActiveFilters({ amountMin: 0 }), 1);                    // 0 sí es un valor
+  assert.equal(f.countActiveFilters({ search: 'a', categories: ['x'], cardId: 1, pocketId: 2, dateFrom: 'd', amountMax: 1, cashbackOnly: true, paymentMethod: 'tarjeta' }), 8);
+  assert.equal(f.usingDateRange({ dateTo: '2026-11-30' }), true);
+  assert.equal(f.usingDateRange({ search: 'x' }), false);
+});
+
+test('movimientos: con rango de fechas busca en todo el histórico; sin él, solo el mes', () => {
+  const state: f.CoreState = { transactions: {
+    '2026-11': [T(1, '2026-11-05', 'A', 10, 'x'), T(2, '2026-11-05', 'B', 20, 'x')],
+    '2026-10': [T(3, '2026-10-30', 'C', 30, 'x')],
+  } };
+  assert.deepEqual(f.selectTransactions(state, '2026-11', {}).map((t) => t.id), [2, 1]);                    // mismo día: el id mayor primero
+  assert.deepEqual(f.selectTransactions(state, '2026-11', { dateFrom: '2026-10-01' }).map((t) => t.id), [2, 1, 3]);   // histórico, más reciente arriba
+  assert.deepEqual(f.selectTransactions(state, '2026-10', {}).map((t) => t.id), [3]);
+  assert.deepEqual(f.selectTransactions({}, '2026-11', {}), []);
+  const sorted = f.sortTransactions([{ ...T(1, '2026-11-05', 'a', 1, 'x'), createdAt: 50 }, { ...T(2, '2026-11-05', 'b', 1, 'x'), createdAt: 99 }] as f.TxLike[]);
+  assert.deepEqual(sorted.map((t) => t.id), [2, 1]);                          // el desempate usa createdAt antes que el id
+});
+
+test('paginación: páginas, rangos y números a mostrar', () => {
+  const items = Array.from({ length: 25 }, (_, i) => i + 1);
+  let p = f.paginate(items, 1);
+  assert.deepEqual([p.items.length, p.page, p.totalPages, p.start, p.end, p.total], [10, 1, 3, 1, 10, 25]);
+  p = f.paginate(items, 3);
+  assert.deepEqual([p.items, p.start, p.end], [[21, 22, 23, 24, 25], 21, 25]);
+  assert.equal(f.paginate(items, 99).page, 3);                               // se ajusta si la página no existe
+  assert.equal(f.paginate(items, 0).page, 1);
+  assert.deepEqual([f.paginate([], 1).totalPages, f.paginate([], 1).items.length], [1, 0]);
+  assert.deepEqual(f.pageNumbers(1, 3), [1, 2, 3]);
+  assert.deepEqual(f.pageNumbers(1, 20), [1, 2, '…', 20]);
+  assert.deepEqual(f.pageNumbers(10, 20), [1, '…', 9, 10, 11, '…', 20]);
+  assert.deepEqual(f.pageNumbers(20, 20), [1, '…', 19, 20]);
+  assert.deepEqual(f.pageNumbers(1, 1), [1]);
+});
+
+test('estadísticas de los movimientos filtrados', () => {
+  const s = f.filterStats([T(1, '2026-11-01', 'a', 100, 'x', { cashback: 1 }), T(2, '2026-11-01', 'b', '250' as unknown as number, 'x', { cashback: '2' as unknown as number })]);
+  assert.deepEqual(s, { count: 2, sum: 350, cashback: 3 });
+  assert.deepEqual(f.filterStats([]), { count: 0, sum: 0, cashback: 0 });
+});
