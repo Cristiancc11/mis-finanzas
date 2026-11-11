@@ -573,3 +573,27 @@ test('gastos hormiga: pequeños y repetidos; sin pagos de tarjeta ni cuotas', ()
   const solo = f.antExpenses({ transactions: { '2026-11': ['a', 'b', 'c', 'd', 'e'].map((d, i) => tx('2026-11-0' + (i + 1), d, 100)) } } as unknown as f.CoreState);
   assert.deepEqual(solo, { enough: true, patterns: [] });                              // suficientes datos pero ningún patrón repetido
 });
+
+test('tarjetas: resumen general (cupo, saldo, utilización y cashback del mes)', () => {
+  const state = { debts: [{ id: 301, name: 'A', balance: 1450000, payment: 8000000 }, { id: 302, name: 'B', balance: '820000', payment: '6000000' }], transactions: { '2026-11': [
+    { amount: 100, cardId: 301, cashback: 1000 }, { amount: 100, cardId: '302', cashback: '500' }, { amount: 100, cardId: null, cashback: 9999 }, { amount: 100, cardId: 999, cashback: 777 },
+  ], '2026-10': [{ amount: 1, cardId: 301, cashback: 5000 }] } } as unknown as f.CoreState;
+  const o = f.cardsOverview(state, '2026-11');
+  assert.deepEqual([o.count, o.limit, o.debt, o.available, o.cashbackMonth], [2, 14000000, 2270000, 11730000, 1500]);   // el cashback es solo de este mes y de estas tarjetas
+  assert.ok(Math.abs(o.util - (2270000 / 14000000) * 100) < 1e-9);
+  assert.deepEqual(f.cardsOverview({}, '2026-11'), { count: 0, limit: 0, debt: 0, available: 0, util: 0, cashbackMonth: 0 });
+  assert.equal(f.cardsOverview({ debts: [{ id: 1, name: 'x', balance: 500 }] } as unknown as f.CoreState, '2026-11').util, 0);   // sin cupo no hay %, no es infinito
+});
+
+test('tarjetas: qué consejo se muestra y color de urgencia', () => {
+  assert.equal(f.cardInsightKind(80, 800, 1000, true), 'urgent');              // una tarjeta que corta mañana manda sobre todo
+  assert.equal(f.cardInsightKind(0, 0, 1000, false), 'clean');
+  assert.equal(f.cardInsightKind(0, 0, 0, false), 'clean');                    // sin tarjetas con saldo
+  assert.equal(f.cardInsightKind(0, 500, 0, false), 'no-limit');               // saldo sin cupo registrado: no se puede decir "excelente"
+  assert.equal(f.cardInsightKind(0.1, 1, 1000, false), 'ok');
+  assert.equal(f.cardInsightKind(30, 300, 1000, false), 'ok');
+  assert.equal(f.cardInsightKind(30.01, 300.1, 1000, false), 'warn');
+  assert.equal(f.cardInsightKind(50, 500, 1000, false), 'warn');
+  assert.equal(f.cardInsightKind(50.01, 500.1, 1000, false), 'high');
+  assert.deepEqual([-2, 0, 1, 2, 3, 4, 7, 8, 30].map(f.urgencyTone), ['danger', 'danger', 'danger', 'warning', 'warning', 'info', 'info', 'muted', 'muted']);
+});

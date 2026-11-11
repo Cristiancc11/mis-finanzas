@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { ResumenCharts } from './ResumenCharts';
 import { BudgetKpis, BudgetCategories } from './Budget';
 import { Transactions } from './Transactions';
+import { CardsOverview, CardInsight, TargetUtilization, UpcomingPayments } from './Cards';
 import { MonthComparison, AntExpenses, FinancialCalendar } from './AnalysisInsights';
 import { IncomeExpenseChart, SavingsRateChart, CategoryDonutChart, TrmChart, TrmInsight } from './AnalysisCharts';
 
@@ -54,6 +55,17 @@ function mount() {
   if (ant) createRoot(ant).render(<AntExpenses />);
   if (cal) createRoot(cal).render(<FinancialCalendar />);
   if (cmp && ant && cal) document.documentElement.classList.add('fp-react-insights');
+
+  // Tarjetas (parte superior): resumen, consejo, objetivo de utilización y próximos pagos (el código anterior sigue calculando, oculto)
+  const cOv = rootBefore('react-card-overview', '#card-overview-stats');
+  const cIn = rootBefore('react-card-insight', '#card-insight-container');
+  const cTg = rootBefore('react-card-target', '#section-deudas .raised-card:has(#target-utilization-input)');
+  const cUp = rootBefore('react-card-upcoming', '#upcoming-payments-card');
+  if (cOv) createRoot(cOv).render(<CardsOverview />);
+  if (cIn) createRoot(cIn).render(<CardInsight />);
+  if (cTg) createRoot(cTg).render(<TargetUtilization />);
+  if (cUp) createRoot(cUp).render(<UpcomingPayments />);
+  if (cOv && cIn && cTg && cUp) document.documentElement.classList.add('fp-react-cards');
   const insight = document.getElementById('trm-history-insight');
   if (insight && !insight.dataset.react) { insight.dataset.react = '1'; insight.innerHTML = ''; createRoot(insight).render(<TrmInsight />); }
 

@@ -6070,6 +6070,7 @@ async function buildAnnualPDF(state, year) {
   window.FP.isCardPayment = (t) => isCardPayment(t);
   window.FP.fmt = (n) => fmt(n);
   // Ingresos del mes visible, calculados por la lógica actual (React los usa tal cual hasta migrar también los ingresos)
+  window.FP.getCutoffStatus = (d) => getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id);   // corte, pago recomendado y utilización de una tarjeta
   window.FP.getPaymentMethods = () => getPaymentMethodsAsMap();
   window.FP.getMonthLabel = (m) => getMonthLabel(m);
   window.FP.getIncome = () => ({ recurring: totalIncome(), extras: totalMonthExtraIncome(), cashback: totalMonthCashback() });
@@ -10573,123 +10574,13 @@ async function buildAnnualPDF(state, year) {
   }
 
   // v79: cards de resumen general arriba de "Mis tarjetas" (cupo, saldo, utilización, cashback)
-  function renderCardOverviewStats() {
-    const container = document.getElementById('card-overview-stats');
-    if (!container) return;
-    if (!state.debts || state.debts.length === 0) { container.innerHTML = ''; return; }
-
-    const debt = totalDebt();
-    const limit = totalLimit();
-    const available = limit - debt;
-    const util = limit > 0 ? (debt / limit) * 100 : 0;
-    const cashbackMonth = state.debts.reduce((s, d) => s + getCardMonthStats(d.id).totalCashback, 0);
-
-    container.innerHTML = `
-      <div class="metric-hero">
-        <div class="metric-hero-icon blue">💳</div>
-        <div class="metric-hero-label">Cupo total</div>
-        <p class="metric-hero-value">${fmt(limit)}</p>
-        <div class="metric-hero-sub">${state.debts.length} ${state.debts.length === 1 ? 'tarjeta' : 'tarjetas'}</div>
-      </div>
-      <div class="metric-hero">
-        <div class="metric-hero-icon red">💰</div>
-        <div class="metric-hero-label">Saldo total</div>
-        <p class="metric-hero-value" style="color: var(--danger-text);">${fmt(debt)}</p>
-        <div class="metric-hero-sub">Disponible: ${fmt(available)}</div>
-      </div>
-      <div class="metric-hero">
-        <div class="metric-hero-icon ${util <= 30 ? 'green' : 'amber'}">📊</div>
-        <div class="metric-hero-label">Utilización general</div>
-        <p class="metric-hero-value" style="color: ${util <= 30 ? 'var(--success-text)' : 'var(--warning-text)'};">${util.toFixed(1)}%</p>
-        <div class="metric-hero-sub">${util <= 30 ? 'Saludable' : 'Recomendado: ≤30%'}</div>
-      </div>
-      <div class="metric-hero">
-        <div class="metric-hero-icon green">🎁</div>
-        <div class="metric-hero-label">Cashback este mes</div>
-        <p class="metric-hero-value" style="color: var(--success-text);">${fmt(cashbackMonth)}</p>
-        <div class="metric-hero-sub">De todas tus tarjetas</div>
-      </div>
-    `;
-  }
-
+  function renderCardOverviewStats() { window.dispatchEvent(new CustomEvent('fp:change')); /* el resumen, el consejo y los próximos pagos de Tarjetas los dibuja React (src/react/Cards.tsx); esto solo le avisa */ }
   // v79: insight DINÁMICO real (reemplaza el mensaje estático "Buen hábito" que siempre
   // decía lo mismo sin importar el comportamiento real del usuario)
-  function renderCardInsight() {
-    const container = document.getElementById('card-insight-container');
-    if (!container) return;
-    if (!state.debts || state.debts.length === 0) { container.innerHTML = ''; return; }
-
-    const debt = totalDebt();
-    const limit = totalLimit();
-    const overallUtil = limit > 0 ? (debt / limit) * 100 : 0;
-
-    // ¿Alguna tarjeta con corte muy próximo que todavía necesita pago?
-    let urgentCard = null;
-    state.debts.forEach(d => {
-      if (!d.cutoffDay) return;
-      const info = getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id);
-      if (info.daysLeft <= 1 && info.needsPayment && !urgentCard) urgentCard = { debt: d, info };
-    });
-
-    let html = '';
-    if (urgentCard) {
-      // v115: mismo fix que en renderAlerts — usar recommendedPayment (que sí
-      // contempla cuotas futuras bloqueando cupo) en vez de paymentNeeded a secas.
-      const info = urgentCard.info;
-      const reachMsg = info.canReachTarget
-        ? 'para mantener tu utilización óptima'
-        : `para bajar al mínimo posible este ciclo (${info.recommendedUtilization.toFixed(1)}%)`;
-      html = `<div class="alert alert-danger"><strong>⚠️ Acción requerida:</strong> "${esc(urgentCard.debt.name)}" corta ${info.daysLeft <= 0 ? 'HOY' : 'mañana'} y todavía necesitas pagar <strong>${fmt(info.recommendedPayment)}</strong> ${reachMsg}.</div>`;
-    } else if (overallUtil === 0) {
-      html = `<div class="alert alert-success"><strong>✅ Excelente:</strong> No tienes saldo pendiente en ninguna tarjeta.</div>`;
-    } else if (overallUtil <= 30) {
-      html = `<div class="alert alert-success"><strong>✅ Buen manejo:</strong> Tu utilización general es ${overallUtil.toFixed(1)}%, dentro del rango saludable (≤30%) para tu score crediticio.</div>`;
-    } else if (overallUtil <= 50) {
-      html = `<div class="alert alert-warning"><strong>🟡 Atención:</strong> Tu utilización general es ${overallUtil.toFixed(1)}%. Los expertos recomiendan mantenerla bajo 30% para un score óptimo.</div>`;
-    } else {
-      html = `<div class="alert alert-danger"><strong>⚠️ Utilización alta:</strong> Tu utilización general es ${overallUtil.toFixed(1)}%. Esto puede estar afectando tu score crediticio negativamente. Considera hacer un pago pronto.</div>`;
-    }
-    container.innerHTML = html;
-  }
-
+  function renderCardInsight() { /* ahora lo dibuja React (src/react/Cards.tsx) */ }
   // v79: consolida los próximos cortes de TODAS las tarjetas en una sola lista ordenada
   // por urgencia — antes había que revisar tarjeta por tarjeta para saber cuál pagar primero.
-  function renderUpcomingPayments() {
-    const cardEl = document.getElementById('upcoming-payments-card');
-    const container = document.getElementById('upcoming-payments-content');
-    if (!cardEl || !container) return;
-
-    const withCutoff = (state.debts || []).filter(d => d.cutoffDay);
-    if (withCutoff.length === 0) { cardEl.style.display = 'none'; return; }
-
-    const items = withCutoff
-      .map(d => ({ debt: d, info: getCutoffStatus(d.cutoffDay, d.balance, d.payment, d.id) }))
-      .sort((a, b) => a.info.daysLeft - b.info.daysLeft);
-
-    cardEl.style.display = 'block';
-    container.innerHTML = items.map(({ debt: d, info }) => {
-      let urgencyColor = 'var(--text-tertiary)';
-      if (info.daysLeft <= 1) urgencyColor = 'var(--danger-text)';
-      else if (info.daysLeft <= 3) urgencyColor = 'var(--warning-text)';
-      else if (info.daysLeft <= 7) urgencyColor = 'var(--info-text)';
-
-      const paymentNote = info.needsPayment
-        ? `Paga <strong style="color: var(--success-text);">${fmt(info.recommendedPayment)}</strong> ${info.canReachTarget ? 'para utilización óptima' : `para bajar al mínimo posible (${info.recommendedUtilization.toFixed(1)}%)`}`
-        : `✅ Utilización óptima, sin pago anticipado necesario`;
-
-      return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-secondary); border: 1px solid var(--border-strong); border-left: 3px solid ${urgencyColor}; border-radius: 10px; margin-bottom: 6px;">
-        <div style="min-width: 0;">
-          <div style="font-weight: 600; font-size: 13px;">${esc(d.name)}</div>
-          <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">${paymentNote}</div>
-        </div>
-        <div style="text-align: right; flex-shrink: 0; margin-left: 10px;">
-          <div style="font-size: 13px; font-weight: 700; color: ${urgencyColor};">${info.daysLeft <= 0 ? 'HOY' : info.daysLeft + 'd'}</div>
-          <div style="font-size: 10px; color: var(--text-tertiary);">${info.dateStr}</div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
+  function renderUpcomingPayments() { /* ahora lo dibuja React (src/react/Cards.tsx) */ }
   // v116: helper compartido — el monto que REALMENTE impactó la tarjeta es el total
   // de la compra (t.totalAmount), no "mi parte" (t.amount). Para un gasto compartido
   // o prestado, t.amount guarda solo lo que a ti te toca pagar de tu bolsillo, pero

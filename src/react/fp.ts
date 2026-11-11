@@ -22,6 +22,7 @@ interface Bridge {
   isCardPayment(t: Tx): boolean;
   fmt(n: number): string;
   getIncome(): { recurring: number; extras: number; cashback: number };
+  getCutoffStatus(d: { cutoffDay?: number; balance?: number; payment?: number; id?: unknown }): unknown;
   getPaymentMethods(): Record<string, { icon: string; label: string }>;
   getMonthLabel(m: string): string;
 }
