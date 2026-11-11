@@ -89,33 +89,45 @@ export function AntExpenses() {
 const pad = (n: number) => String(n).padStart(2, '0');
 function EventLabel({ e }: { e: CalEvent }) { return <>{`${e.icon} ${e.label}`}</>; }
 
-/** Calendario del mes actual: cortes de tarjeta y recordatorios. */
+/** Calendario financiero: cortes de tarjeta y recordatorios, con navegación entre meses. */
 export function FinancialCalendar() {
   useFP();
-  const today = new Date();
-  const cal = calendarMonth(liveState(), today);
-  const raw = today.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+  const [offset, setOffset] = useState(0);
+  const real = new Date();
+  const view = new Date(real.getFullYear(), real.getMonth() + offset, 1);
+  const cal = calendarMonth(liveState(), view);
+  const raw = view.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
   const monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);          // "Noviembre de 2026" (solo la primera letra en mayúscula)
   const days = Array.from({ length: cal.daysInMonth }, (_, i) => i + 1);
   const sorted = Object.keys(cal.events).map(Number).sort((a, b) => a - b);
   const hasUser = sorted.some((d) => cal.events[d].some((e) => e.type === 'reminder'));
-  const when = (d: number) => { const diff = d - today.getDate(); return diff === 0 ? 'HOY' : diff === 1 ? 'MAÑANA' : diff > 0 ? `en ${diff} días` : `hace ${Math.abs(diff)} días`; };
+  const dateOf = (d: number) => `${cal.year}-${pad(cal.month + 1)}-${pad(d)}`;
+  const diffDays = (d: number) => Math.round((Date.UTC(cal.year, cal.month, d) - Date.UTC(real.getFullYear(), real.getMonth(), real.getDate())) / 864e5);
+  const when = (d: number) => { const n = diffDays(d); return n === 0 ? 'HOY' : n === 1 ? 'MAÑANA' : n > 0 ? `en ${n} días` : `hace ${Math.abs(n)} días`; };
   return (
     <div className="fp-cal">
-      <div className="fp-cal-top"><div className="fp-cal-month">{monthLabel}</div><button type="button" className="fp-cal-add" onClick={() => window.openReminderModal?.()}>+ Recordatorio</button></div>
+      <div className="fp-cal-top">
+        <div className="fp-cal-nav-wrap">
+          <button type="button" className="fp-cal-nav prev" aria-label="Mes anterior" onClick={() => setOffset((o) => o - 1)}>‹</button>
+          <div className="fp-cal-month" aria-live="polite">{monthLabel}</div>
+          <button type="button" className="fp-cal-nav next" aria-label="Mes siguiente" onClick={() => setOffset((o) => o + 1)}>›</button>
+          {offset !== 0 && <button type="button" className="fp-cal-today-btn" onClick={() => setOffset(0)}>Hoy</button>}
+        </div>
+        <button type="button" className="fp-cal-add" onClick={() => window.openReminderModal?.(offset === 0 ? undefined : dateOf(1))}>+ Recordatorio</button>
+      </div>
       <div className="fp-cal-legend"><span>💳 Corte de tarjeta</span><span>📌 Recordatorio</span></div>
       <div className="fp-cal-grid fp-cal-wd" aria-hidden="true">{['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => <div key={d}>{d}</div>)}</div>
       <div className="fp-cal-grid" role="grid" aria-label={`Calendario de ${monthLabel}`}>
         {Array.from({ length: cal.startWeekday }, (_, i) => <div key={'b' + i} />)}
         {days.map((d) => {
-          const evs = cal.events[d] || [], isToday = d === today.getDate(), hasRem = evs.some((e) => e.type === 'reminder');
-          const dateStr = `${cal.year}-${pad(cal.month + 1)}-${pad(d)}`;
+          const evs = cal.events[d] || [], isToday = offset === 0 && d === real.getDate(), hasRem = evs.some((e) => e.type === 'reminder');
           return (
             <button type="button" key={d} role="gridcell" data-day={d} className={`fp-cal-day${isToday ? ' today' : ''}${hasRem ? ' rem' : evs.length ? ' ev' : ''}`}
-              aria-label={`${d} de ${monthLabel}${evs.length ? ': ' + evs.map((e) => e.label).join(', ') : ''}. Agregar recordatorio`} onClick={() => window.openReminderModal?.(dateStr)}>
+              aria-label={`${d} de ${monthLabel}${evs.length ? ': ' + evs.map((e) => e.label).join(', ') : ''}. Agregar recordatorio`} onClick={() => window.openReminderModal?.(dateOf(d))}>
               <span className="fp-cal-num">{d}</span>
-              {evs.length > 0 && <span className={`fp-cal-chip${evs[0].type === 'reminder' ? ' rem' : ''}`}><EventLabel e={evs[0]} /></span>}
-              {evs.length > 1 && <span className="fp-cal-more">{`+${evs.length - 1} más`}</span>}
+              {evs.slice(0, 2).map((e, i) => <span key={i} className={`fp-cal-chip${e.type === 'reminder' ? ' rem' : ''}`}><EventLabel e={e} /></span>)}
+              {evs.length > 2 && <span className="fp-cal-more">{`+${evs.length - 2} más`}</span>}
+              {evs.length > 0 && <span className="fp-cal-icos" aria-hidden="true">{evs.slice(0, 3).map((e, i) => <span key={i} className="fp-cal-ico">{e.icon}</span>)}{evs.length > 3 && <span className="fp-cal-ico-more">{`+${evs.length - 3}`}</span>}</span>}
             </button>
           );
         })}
@@ -127,7 +139,7 @@ export function FinancialCalendar() {
             <div className="fp-cal-ev-main">
               <div className="fp-cal-ev-title"><EventLabel e={e} /></div>
               {e.amount && e.amount > 0 ? <div className="fp-cal-ev-amt">{`$${e.amount.toLocaleString('es-CO')}`}</div> : null}
-              <div className="fp-cal-ev-when">{`Día ${d} · `}{d === today.getDate() ? <strong className="fp-cal-today">HOY</strong> : when(d)}</div>
+              <div className="fp-cal-ev-when">{`Día ${d} · `}{diffDays(d) === 0 ? <strong className="fp-cal-today">HOY</strong> : when(d)}</div>
             </div>
             {e.type === 'reminder' && e.reminderId && (
               <div className="fp-cal-ev-actions">

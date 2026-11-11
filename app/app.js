@@ -4644,6 +4644,13 @@ window.closeReminderModal = function() {
   }
 };
 
+// Los recordatorios se guardaban solo en el almacenamiento y en la nube, pero NO en el estado que la pantalla tiene en memoria. Resultado:
+// el calendario no los veía hasta recargar y, peor, el siguiente guardado normal (por ejemplo, registrar un gasto) los borraba.
+// Ahora se deja el estado en memoria igual a lo guardado.
+function syncRemindersToLiveState(reminders) {
+  try { const live = window.FP && window.FP.getState && window.FP.getState(); if (live) live.reminders = reminders; } catch (e) {}
+}
+
 window.saveReminder = function() {
   const title = document.getElementById('reminder-title').value.trim();
   const icon = document.getElementById('reminder-icon').value;
@@ -4693,6 +4700,7 @@ window.saveReminder = function() {
     }
     
     localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+    syncRemindersToLiveState(state.reminders);
     
     // Sincronizar con la nube
     if (typeof saveToCloud === 'function' && window.currentUser) {
@@ -4824,6 +4832,7 @@ window.deleteReminder = async function(reminderId) {
       const reminderTitle = state.reminders[reminderId].title || 'Recordatorio';
       delete state.reminders[reminderId];
       localStorage.setItem('finance-dashboard-cristian-v20', JSON.stringify(state));
+      syncRemindersToLiveState(state.reminders);
       
       // Sincronizar con la nube
       if (typeof saveToCloud === 'function' && window.currentUser) {
